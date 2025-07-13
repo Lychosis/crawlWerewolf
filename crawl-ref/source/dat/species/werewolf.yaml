@@ -1,0 +1,63 @@
+enum: SP_WEREWOLF
+monster: MONS_WEREWOLF
+name: "Werewolf"
+short_name: "Wr"
+difficulty: Simple
+difficulty_priority: 90
+aptitudes:
+  xp: 0
+  hp: 2
+  mp_mod: 0
+  wl: 4
+  fighting: 3
+  short_blades: 0
+  long_blades: 0
+  axes: 0
+  maces_and_flails: 0
+  polearms: 0
+  staves: 0
+  ranged weapons: 0
+  throwing: 0
+  armour: 0
+  dodging: 1
+  stealth: 1
+  shields: 0
+  unarmed_combat: 3
+  spellcasting: -4
+  conjurations: -4
+  hexes: -4
+  summoning: -4
+  forgecraft: -4
+  necromancy: -4
+  translocations: -4
+  shapeshifting: -4
+  fire_magic: -4
+  ice_magic: -4
+  air_magic: -4
+  earth_magic: -4
+  alchemy: -4
+  evocations: 0
+  invocations: 0
+str: 10
+int: 5
+dex: 10
+levelup_stat_frequency: 3
+levelup_stats:
+  - str
+  - dex
+mutations:
+  1:
+      MUT_FANGS: 3
+      MUT_CLAWS: 2
+      MUT_SHAGGY_FUR: 3
+      MUT_REGENERATION: 1
+      MUT_FAST: 1
+      MUT_ACUTE_VISION: 1
+      MUT_GOURMAND: 1
+      MUT_FAST_METABOLISM: 3
+
+recommended_jobs:
+  - fighter
+  - berserker
+
+orc_name: Werworc
