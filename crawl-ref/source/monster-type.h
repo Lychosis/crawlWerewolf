@@ -491,6 +491,7 @@ enum monster_type                      // env.mons[].type
     MONS_GUARDIAN_SPHINX,
 #endif
     MONS_MINOTAUR,
+    MONS_WEREWOLF,
     MONS_NAGA,
     MONS_NAGA_WARRIOR,
     MONS_NAGA_MAGE,
