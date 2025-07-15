@@ -53,11 +53,9 @@ mutations:
       MUT_REGENERATION: 1
       MUT_FAST: 1
       MUT_ACUTE_VISION: 1
-      MUT_GOURMAND: 1
-      MUT_FAST_METABOLISM: 3
 
 recommended_jobs:
   - fighter
   - berserker
 
-orc_name: Werworc
+orc_name: Wereworc
