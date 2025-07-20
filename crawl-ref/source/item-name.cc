@@ -150,7 +150,7 @@ string item_def::name(description_level_type descrip, bool terse, bool ident,
     {
         if (in_inventory(*this)) // actually in inventory
         {
-            buff << index_to_letter(link);
+            buff << static_cast<char>(slot);
             if (terse)
                 buff << ") ";
             else
@@ -286,11 +286,8 @@ string item_def::name(description_level_type descrip, bool terse, bool ident,
                 }
             }
         }
-        else if (base_type == OBJ_TALISMANS
-                 && you.using_talisman(*this))
-        {
-                buff << " (active)";
-        }
+        else if (base_type == OBJ_TALISMANS && you.active_talisman() == this)
+                buff << " (worn)";
         else if (you.quiver_action.item_is_quivered(*this))
             buff << " (quivered)";
     }
@@ -2966,6 +2963,7 @@ bool is_dangerous_item(const item_def &item, bool temp)
         case SCR_IMMOLATION:
         case SCR_VULNERABILITY:
         case SCR_NOISE:
+        case SCR_SILENCE:
             return true;
         case SCR_TORMENT:
             return !you.res_torment();
@@ -3354,7 +3352,6 @@ bool is_useless_item(const item_def &item, bool temp, bool ident)
 
         // Deliberate fallthrough.
     case OBJ_BAUBLES:
-    case OBJ_TALISMANS:
     case OBJ_WANDS:
         return cannot_evoke_item_reason(&item, temp, ident || item_type_known(item)).size();
 
@@ -3467,6 +3464,9 @@ bool is_useless_item(const item_def &item, bool temp, bool ident)
         if (you.skills[item.plus] >= 27)
             return true;
         return is_useless_skill((skill_type)item.plus);
+
+    case OBJ_TALISMANS:
+        return !cannot_put_on_talisman_reason(item, temp).empty();
 
     default:
         return false;

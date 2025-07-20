@@ -394,8 +394,6 @@ static vector<ability_def> &_get_ability_list()
             0, 0, 0, -1, {}, abflag::delay },
         { ABIL_END_TRANSFORMATION, "End Transformation",
             0, 0, 0, -1, {}, abflag::none },
-        { ABIL_BEGIN_UNTRANSFORM, "Begin Untransformation",
-            0, 0, 0, -1, {}, abflag::none },
         { ABIL_INVENT_GIZMO, "Invent Gizmo",
             0, 0, 0, -1, {}, abflag::none },
 
@@ -1907,11 +1905,11 @@ static bool _check_ability_possible(const ability_def& abil, bool quiet = false)
     // Check that we can afford to pay the costs.
     // Note that mutation shenanigans might leave us with negative MP,
     // so don't fail in that case if there's no MP cost.
-    if (abil.get_mp_cost() > 0 && !enough_mp(abil.get_mp_cost(), quiet, true))
+    if (abil.get_mp_cost() > 0 && !enough_mp(abil.get_mp_cost(), quiet, !quiet))
         return false;
 
     const int hpcost = abil.get_hp_cost();
-    if (hpcost > 0 && !enough_hp(hpcost, quiet))
+    if (hpcost > 0 && !enough_hp(hpcost, quiet, !quiet))
         return false;
 
     switch (abil.ability)
@@ -2704,7 +2702,6 @@ unique_ptr<targeter> find_ability_targeter(ability_type ability)
 #endif
     case ABIL_EVOKE_TURN_INVISIBLE:
     case ABIL_END_TRANSFORMATION:
-    case ABIL_BEGIN_UNTRANSFORM:
     case ABIL_ZIN_VITALISATION:
     case ABIL_TSO_DIVINE_SHIELD:
     case ABIL_YRED_RECALL_UNDEAD_HARVEST:
@@ -3349,17 +3346,6 @@ static spret _do_ability(const ability_def& abil, bool fail, dist *target,
         if (transforming_is_unsafe(you.default_form))
             return spret::abort;
         return_to_default_form();
-        break;
-
-    case ABIL_BEGIN_UNTRANSFORM:
-        if (transforming_is_unsafe(transformation::none))
-            return spret::abort;
-        if (!i_feel_safe(true) && !yesno("Still begin untransforming?", true, 'n'))
-        {
-            canned_msg(MSG_OK);
-            return spret::abort;
-        }
-        start_delay<TransformDelay>(transformation::none, nullptr);
         break;
 
     case ABIL_INVENT_GIZMO:
@@ -4338,9 +4324,6 @@ bool player_has_ability(ability_type abil, bool include_unusable)
                && (!silenced(you.pos()) || include_unusable);
     case ABIL_END_TRANSFORMATION:
         return you.form != you.default_form && !you.transform_uncancellable;
-    case ABIL_BEGIN_UNTRANSFORM:
-        return you.form == you.default_form
-               && you.default_form != transformation::none;
     // TODO: other god abilities
     case ABIL_RENOUNCE_RELIGION:
         return !you_worship(GOD_NO_GOD);
@@ -4415,7 +4398,6 @@ vector<talent> your_talents(bool check_confused, bool include_unusable, bool ign
             ABIL_IMBUE_SERVITOR,
             ABIL_IMPRINT_WEAPON,
             ABIL_END_TRANSFORMATION,
-            ABIL_BEGIN_UNTRANSFORM,
             ABIL_RENOUNCE_RELIGION,
             ABIL_CONVERT_TO_BEOGH,
             ABIL_EVOKE_BLINK,
