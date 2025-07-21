@@ -67,7 +67,7 @@ enum species_type
     SP_LAVA_ORC,
 #endif
     SP_GARGOYLE,
-    SP_GARGOYLE_MAGE,
+    SP_GARGOYLEMAGE,
     SP_WEREWOLF,
     SP_FORMICID,
     SP_VINE_STALKER,
