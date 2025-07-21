@@ -298,6 +298,7 @@ enum monster_type                      // env.mons[].type
     MONS_DEMONSPAWN_SOUL_SCHOLAR,
 #endif
     MONS_GARGOYLE,
+    MONS_GARGOYLE_MAGE
     MONS_WAR_GARGOYLE,
     MONS_MOLTEN_GARGOYLE,
     MONS_UGLY_THING,
