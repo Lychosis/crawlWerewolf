@@ -168,7 +168,8 @@ gargoyle_red_m
 gargoyle_red_f
 gargoyle_brown_m
 gargoyle_brown_f
-gargoyle_m GARGOYLE_MAGE
+gargoyle_mage_m GARGOYLE_MAGE
+gargoyle_mage_f
 %sdir player/felids
 # These must match the felid horns tiles.
 %rim 0
