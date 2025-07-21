@@ -1,5 +1,5 @@
-enum: SP_GARGOYLE_MAGE
-monster: MONS_GARGOYLE_MAGE
+enum: SP_GARGOYLEMAGE
+monster: MONS_GARGOYLEMAGE
 name: Gargoyle Mage
 difficulty: Simple
 difficulty_priority: 70
