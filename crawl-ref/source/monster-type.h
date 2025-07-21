@@ -300,7 +300,7 @@ enum monster_type                      // env.mons[].type
     MONS_GARGOYLE,
     MONS_WAR_GARGOYLE,
     MONS_MOLTEN_GARGOYLE,
-    MONS_GARGOYLE_MAGE,
+    MONS_GARGOYLEMAGE,
     MONS_UGLY_THING,
     MONS_VERY_UGLY_THING,
 #if TAG_MAJOR_VERSION > 34
