@@ -1,7 +1,6 @@
 enum: SP_GARGOYLE_MAGE
 monster: MONS_GARGOYLE_MAGE
 name: Gargoyle Mage
-short_name: Gr
 difficulty: Simple
 difficulty_priority: 70
 species_flags:
