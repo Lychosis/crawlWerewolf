@@ -1,5 +1,6 @@
-enum: SP_GARGOYLE_MAGE
-monster: MONS_GARGOYLE_MAGE
+
+enum: SP_GARGOYLE
+monster: MONS_GARGOYLE
 name: Gargoyle
 short_name: Gr
 difficulty: Simple
