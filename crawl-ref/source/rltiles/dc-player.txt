@@ -122,7 +122,7 @@ vine_stalker_red_m
 vine_stalker_purple_f
 vine_stalker_purple_m
 werewolf_m WEREWOLF
-werewolf_f 
+werewolf_f WEREWOLF
 
 # draconians
 draconian DRACONIAN DRACONIAN_FIRST
@@ -162,12 +162,15 @@ merfolk_f MERFOLK
 merfolk_m
 merfolk_water_f MERFOLK_WATER
 merfolk_water_m
-gargoyle_m GARGOYLE GARGOYLE_MAGE
+gargoyle_m GARGOYLE
 gargoyle_f
 gargoyle_red_m
 gargoyle_red_f
 gargoyle_brown_m
 gargoyle_brown_f
+gargoyle_mage_m GARGOYLE_MAGE
+gargoyle_mage_f GARGOYLE_MAGE
+
 %sdir player/felids
 # These must match the felid horns tiles.
 %rim 0
