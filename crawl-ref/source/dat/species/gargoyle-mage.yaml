@@ -1,4 +1,4 @@
-enum: SP_GARGOYLE Mage
+enum: SP_GARGOYLE-MAGE
 monster: MONS_GARGOYLE
 name: Gargoyle Mage
 short_name: Gr
