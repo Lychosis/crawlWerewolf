@@ -10,7 +10,7 @@ misc/cursor CURSOR
 ###BASE
 %parts_ctg BASE
 %sdir player/base
-human_f HUMAN
+human_f HUMAN GUTS
 human_m
 human2_f
 human2_m
