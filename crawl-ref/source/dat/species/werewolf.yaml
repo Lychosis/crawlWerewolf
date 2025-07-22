@@ -28,6 +28,7 @@ mutations:
       MUT_REGENERATION: 1
       MUT_FAST: 1
       MUT_ACUTE_VISION: 1
+      MUT_MUTATION_RESISTANCE,
 
 recommended_jobs:
   - fighter
