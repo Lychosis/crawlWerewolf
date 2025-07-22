@@ -15,6 +15,7 @@ enum species_type
  * this way may change as new species are added, breaking old saves.
  */
     SP_HUMAN,
+    SP_GUTS,
 #if TAG_MAJOR_VERSION == 34
     SP_HIGH_ELF,
 #endif
