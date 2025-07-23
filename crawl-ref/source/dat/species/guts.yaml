@@ -1,5 +1,5 @@
 enum: SP_GUTS
-monster: MONS_GUTS
+monster: MONS_HUMAN
 name: "GUTS"
 short_name: "GTS"
 difficulty: Simple
