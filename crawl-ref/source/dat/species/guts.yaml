@@ -1,12 +1,12 @@
 enum: SP_GUTS
 monster: MONS_HUMAN
-name: "GUTS"
+name: "Guts"
 short_name: "GTS"
 difficulty: Simple
 difficulty_priority: 90
 aptitudes:
   xp: 0
-  hp: 2
+  hp: 3
   mp_mod: 0
   wl: 5
   fighting: 5
