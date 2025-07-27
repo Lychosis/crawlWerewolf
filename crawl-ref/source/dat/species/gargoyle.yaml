@@ -25,16 +25,16 @@ aptitudes:
   shields: 1
   spellcasting: 3
   conjurations: 3
-  hexes: -1
-  summoning: -1
-  forgecraft: -1
+  hexes: 0
+  summoning: 0
+  forgecraft: 0
   necromancy: -2
-  translocations: -1
-  shapeshifting: -3
-  air_magic: 2
-  earth_magic: 2
-  alchemy: -1
-  invocations: 1
+  translocations: 0
+  shapeshifting: 0
+  air_magic: 3
+  earth_magic: 3
+  alchemy: 0
+  invocations: 0
   evocations: 0
 str: 11
 int: 8
