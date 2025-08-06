@@ -68,7 +68,7 @@ string InvTitle::get_text() const
 }
 
 InvEntry::InvEntry(const item_def &i)
-    : MenuEntry("", MEL_ITEM), item(&i), _has_star(false)
+    : MenuEntry("", MEL_ITEM), item(&i)
 {
     indent_no_hotkeys = true;
     // This gets the inventory coloring rules to apply by default:
@@ -182,11 +182,6 @@ void InvEntry::select(int qty)
     MenuEntry::select(qty);
 }
 
-bool InvEntry::has_star() const
-{
-    return _has_star;
-}
-
 string InvEntry::get_filter_text() const
 {
     return item_prefix(*item, false) + " " + get_text();
@@ -209,8 +204,6 @@ string InvEntry::_get_text_preface() const
         tstr << '-';
     else if (selected_qty < quantity)
         tstr << '#';
-    else if (_has_star)
-        tstr << '*';
     else
         tstr << '+';
 
@@ -310,17 +303,11 @@ InvMenu::InvMenu(int mflags)
     : Menu((mflags & MF_NOSELECT) ? mflags : (mflags | MF_ARROWS_SELECT),
                 "inventory"),
         type(menu_type::invlist), pre_select(nullptr),
-        title_annotate(nullptr), cur_osel(0),
-        _mode_special_drop(false)
+        title_annotate(nullptr), cur_osel(0)
 {
     menu_action = ACT_EXAMINE; // default
     if (!Options.single_column_item_menus)
         set_flags(get_flags() | MF_USE_TWO_COLUMNS);
-}
-
-bool InvMenu::mode_special_drop() const
-{
-    return _mode_special_drop;
 }
 
 void InvMenu::set_type(menu_type t)
@@ -361,6 +348,7 @@ void InvMenu::set_title(const string &s)
             case 2: str = "Scrolls: "; break;
             case 3: str = "Evocable Items: "; break;
         }
+        str += "    (Left/Right to switch category)";
         set_title(new InvTitle(this, str, title_annotate));
         return;
     }
@@ -384,19 +372,12 @@ bool InvMenu::skip_process_command(int keyin)
 
 int InvMenu::pre_process(int key)
 {
-    if (type == menu_type::drop && key == '\\')
-    {
-        _mode_special_drop = !_mode_special_drop;
-        key = CK_NO_KEY;
-    }
-    else if (key == ';'
+    if (key == ';'
              && you.last_unequip != -1
              && (type == menu_type::drop || type == menu_type::invlist))
     {
         key = index_to_letter(you.last_unequip);
     }
-    else if (key == '-')
-        _mode_special_drop = false;
     return key;
 }
 
@@ -504,6 +485,22 @@ bool InvMenu::process_command(command_type cmd)
     return Menu::process_command(cmd);
 }
 
+void InvMenu::select_index(int index, int qty)
+{
+    // XXX: Apply drop_filter to all pages at once.
+    if (flags & MF_PAGED_INVENTORY && qty == MENU_SELECT_ALL)
+    {
+        int start_osel = cur_osel;
+        do
+        {
+            Menu::select_index(index, qty);
+            cycle_page(1);
+        } while (cur_osel != start_osel);
+    }
+    else
+        Menu::select_index(index, qty);
+}
+
 string InvMenu::get_select_count_string(int) const
 {
     if (flags & MF_PAGED_INVENTORY)
@@ -517,38 +514,6 @@ string InvMenu::get_select_count_string(int) const
     }
 
     return Menu::get_select_count_string(0);
-}
-
-static bool _item_is_permadrop_candidate(const item_def &item)
-{
-    // Known, non-artefact items of the types you see on the '\' menu proper.
-    // (No disabling autopickup for "green fizzy potion", "+3 whip", etc.)
-    if (!item.is_identified())
-        return false;
-    return item.base_type == OBJ_MISCELLANY
-        || item.base_type == OBJ_TALISMANS
-        || is_stackable_item(item)
-        || item_type_has_ids(item.base_type);
-}
-
-void InvMenu::select_item_index(int idx, int qty)
-{
-    if (type != menu_type::drop)
-        return Menu::select_item_index(idx, qty);
-
-    InvEntry *ie = static_cast<InvEntry*>(items[idx]);
-
-    bool should_toggle_star = _item_is_permadrop_candidate(ie->item[0])
-        && (ie->has_star() || _mode_special_drop);
-
-    if (should_toggle_star)
-    {
-        // Toggle starred items back to selected-but-not-starred in this mode
-        // instead of turning them all the way off.
-        qty = _mode_special_drop ? -2 : 0;
-        ie->set_star(!ie->has_star());
-    }
-    Menu::select_item_index(idx, qty);
 }
 
 bool InvMenu::examine_index(int i)
@@ -580,11 +545,6 @@ bool InvMenu::examine_index(int i)
     }
     // nothing to describe, ignore
     return true;
-}
-
-void InvEntry::set_star(bool val)
-{
-    _has_star = val;
 }
 
 static bool _has_temp_unwearable_armour()
@@ -998,12 +958,12 @@ FixedVector<int, NUM_OBJECT_CLASSES> inv_order(
     OBJ_RODS,
 #endif
     OBJ_JEWELLERY,
+    OBJ_TALISMANS,
     OBJ_WANDS,
     OBJ_SCROLLS,
     OBJ_POTIONS,
     OBJ_MISCELLANY,
     OBJ_BAUBLES,
-    OBJ_TALISMANS,
 #if TAG_MAJOR_VERSION == 34
     OBJ_FOOD,
 #endif
@@ -1147,8 +1107,7 @@ vector<SelItem> InvMenu::get_selitems(bool include_offscreen) const
     for (MenuEntry *me : sel)
     {
         InvEntry *inv = dynamic_cast<InvEntry*>(me);
-        selected_items.emplace_back(inv->item->link, inv->selected_qty,
-                                    inv->item, inv->has_star());
+        selected_items.emplace_back(inv->item->link, inv->selected_qty, inv->item);
     }
 
     if (include_offscreen)
@@ -1496,7 +1455,9 @@ static int _invent_select(const char *title = nullptr,
     {
         for (int i = 0; i < 4; ++i)
             menu.set_page(i);
-        menu.set_page(0);
+
+        // And then jump to the first non-empty page.
+        menu.cycle_page(1);
     }
 
     menu.show(true);
@@ -1509,8 +1470,15 @@ static int _invent_select(const char *title = nullptr,
 
 void display_inventory()
 {
-    InvMenu menu(MF_SINGLESELECT | MF_ALLOW_FORMATTING | MF_SECONDARY_SCROLL);
-    menu.load_inv_items(OSEL_ANY, -1);
+
+    int flags = MF_SINGLESELECT | MF_ALLOW_FORMATTING | MF_SECONDARY_SCROLL;
+    if (Options.show_paged_inventory)
+        flags |= MF_PAGED_INVENTORY;
+    else
+        flags |= MF_SELECT_BY_CATEGORY;
+
+    InvMenu menu(flags);
+    menu.load_inv_items(Options.show_paged_inventory ? OSEL_GEAR : OSEL_ANY, -1);
     menu.set_type(menu_type::describe);
 
     menu.show(true);
@@ -1521,23 +1489,9 @@ void display_inventory()
     }
 }
 
-static string _drop_prompt(bool as_menu_title, bool menu_autopickup_mode)
+static string _drop_menu_titlefn(const Menu*, const string &)
 {
-    string prompt_base;
-
-    if (as_menu_title && menu_autopickup_mode)
-        prompt_base = "Drop (and turn off autopickup for) what? ";
-    else if (as_menu_title)
-        prompt_base = "Drop what? (Left/Right to switch category) ";
-    else
-        prompt_base = "Drop what? ";
-    return prompt_base + slot_description() + " (_ for help)";
-}
-
-static string _drop_menu_titlefn(const Menu *m, const string &)
-{
-    const InvMenu *invmenu = static_cast<const InvMenu *>(m);
-    return _drop_prompt(true, invmenu->mode_special_drop());
+    return "Drop what? (Left/Right to switch category) " + slot_description() + " (_ for help)";
 }
 
 /**

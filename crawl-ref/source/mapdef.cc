@@ -4971,7 +4971,7 @@ int str_to_ego(object_class_type item_type, string ego_str)
         "resistance",
         "positive_energy",
         "archmagi",
-        "preservation",
+        "corrosion_resistance",
         "reflection",
         "spirit_shield",
         "hurling",
@@ -4991,6 +4991,21 @@ int str_to_ego(object_class_type item_type, string ego_str)
         "mayhem",
         "guile",
         "energy",
+        "sniping",
+        "ice",
+        "fire",
+        "air",
+        "earth",
+        "archery",
+        "command",
+        "death",
+        "resonance",
+        "parrying",
+        "glass",
+        "pyromania",
+        "stardust",
+        "mesmerism",
+        "attunement",
         nullptr
     };
     COMPILE_CHECK(ARRAYSZ(armour_egos) == NUM_REAL_SPECIAL_ARMOURS);
@@ -5792,6 +5807,27 @@ void item_list::parse_random_by_class(string c, item_spec &spec)
     {
         spec.base_type = OBJ_MISCELLANY;
         spec.sub_type = item_for_set(ITEM_SET_CONTROL_MISCELLANY);
+        return;
+    }
+
+    if (c == "body armour")
+    {
+        spec.base_type = OBJ_ARMOUR;
+        spec.sub_type = pick_random_body_armour_type(concretize_item_level(spec.level));
+        return;
+    }
+
+    if (c == "aux armour")
+    {
+        spec.base_type = OBJ_ARMOUR;
+        spec.sub_type = pick_random_aux_armour_type();
+        return;
+    }
+
+    if (c == "shield")
+    {
+        spec.base_type = OBJ_ARMOUR;
+        spec.sub_type = pick_random_shield_type();
         return;
     }
 

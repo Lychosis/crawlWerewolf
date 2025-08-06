@@ -681,6 +681,15 @@ static const duration_def duration_data[] =
         YELLOW, "-Swarm",
         "on swarm cooldown", "swarm cooldown",
         "Your swarm has recently come to your defense.", D_NO_FLAGS},
+    { DUR_STARDUST_COOLDOWN,
+        YELLOW, "-Star",
+        "on stardust cooldown", "stardust cooldown",
+        "Your orb of stardust has temporarily expended its magic.", D_COOLDOWN},
+    { DUR_MESMERISM_COOLDOWN,
+        YELLOW, "-Mesm",
+        "on mesmerism cooldown", "mesmerism cooldown",
+        "Your orb of mesmerism has temporarily expended its magic.", D_COOLDOWN,
+        {{ "Your orb has recharged its mesmeric power." }}},
     { DUR_MEDUSA_COOLDOWN,
         YELLOW, "-Lithotox",
         "on lithotoxin cooldown", "lithotoxin cooldown",
@@ -748,6 +757,12 @@ static const duration_def duration_data[] =
       "Your melee attacks are strengthened by primal bloodlust.", D_EXPIRES,
       {{ "Your bloodlust subsides." },
        { "You feel your bloodlust ebbing." }}, 6},
+    { DUR_PARRYING, 0, "",
+      "parry", "parrying",
+      "You are parrying attacks and have increased SH.", D_NO_FLAGS,
+      {{ "", []() {
+          you.redraw_armour_class = true;
+      }}}},
 
     // The following are visible in wizmode only, or are handled
     // specially in the status lights and/or the % or @ screens.

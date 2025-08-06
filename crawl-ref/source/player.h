@@ -72,6 +72,8 @@ constexpr int ENKINDLE_CHARGE_COST = 40;
 #define SOLAR_EMBER_MID_KEY "solar_ember_mid"
 #define SOLAR_EMBER_REVIVAL_KEY "solar_ember_revival"
 
+#define PYROMANIA_TRIGGERED_KEY "pyromania_triggered"
+
 // display/messaging breakpoints for penalties from Ru's MUT_HORROR
 #define HORROR_LVL_EXTREME  3
 #define HORROR_LVL_OVERWHELMING  5
@@ -596,7 +598,7 @@ public:
     int shout_volume() const;
 
     int base_ac_from(const item_def &armour, int scale = 1,
-                     bool include_penalties = true) const;
+                     bool include_form = true) const;
 
     int corrosion_amount() const;
 
@@ -877,8 +879,8 @@ public:
     bool missile_repulsion() const override;
 
     // Combat-related adjusted penalty calculation methods
-    int unadjusted_body_armour_penalty() const;
-    int adjusted_body_armour_penalty(int scale = 1) const;
+    int unadjusted_body_armour_penalty(bool archery = false) const;
+    int adjusted_body_armour_penalty(int scale = 1, bool archery = false) const;
     int adjusted_shield_penalty(int scale = 1) const;
 
     // Calculates total permanent AC/EV/SH if the player was/wasn't wearing a
@@ -1029,6 +1031,9 @@ bool player_can_hear(const coord_def& p, int hear_distance = 999);
 void update_acrobat_status();
 bool player_acrobatic();
 
+int player_parrying();
+void update_parrying_status();
+
 bool is_effectively_light_armour(const item_def *item);
 bool player_effectively_in_light_armour();
 
@@ -1043,7 +1048,7 @@ int sanguine_armour_bonus();
 int stone_body_armour_bonus();
 
 int player_wizardry();
-int player_channelling();
+int player_channelling_chance(bool max = false);
 
 int player_prot_life(bool allow_random = true, bool temp = true,
                      bool items = true);

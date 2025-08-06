@@ -550,6 +550,7 @@ const vector<GameOption*> game_options::build_options_list()
                         set_menu_sort(frag);
             }),
         new BoolGameOption(SIMPLE_NAME(bad_item_prompt), true),
+        new BoolGameOption(SIMPLE_NAME(show_paged_inventory), false),
         new MultipleChoiceGameOption<slot_select_mode>(
             SIMPLE_NAME(assign_item_slot),
             SS_FORWARD,
@@ -599,7 +600,8 @@ const vector<GameOption*> game_options::build_options_list()
 #endif
             ),
 
-        new ListGameOption<text_pattern>(SIMPLE_NAME(unusual_monster_items), {}, true),
+        new ListGameOption<text_pattern>(SIMPLE_NAME(unusual_monster_items), {}, true,
+                                         {[this]() { process_unusual_items(); }}),
 
         new BoolGameOption(SIMPLE_NAME(arena_dump_msgs), false),
         new BoolGameOption(SIMPLE_NAME(arena_dump_msgs_all), false),
@@ -3096,6 +3098,10 @@ void game_options::update_travel_terrain()
 
 void game_options::update_consumable_shortcuts()
 {
+    potion_shortcuts.init(0);
+    scroll_shortcuts.init(0);
+    evokable_shortcuts.init(0);
+
     for (const auto& entry : auto_consumable_letters)
     {
         item_kind kind = item_kind_by_name(entry.first);
@@ -3104,8 +3110,6 @@ void game_options::update_consumable_shortcuts()
             report_error("Unknown consumable type: %s\n", entry.first.c_str());
             continue;
         }
-        else
-            string str = string(1, entry.second);
 
         if (kind.base_type == OBJ_POTIONS)
             potion_shortcuts[kind.sub_type] = entry.second;
@@ -3115,6 +3119,38 @@ void game_options::update_consumable_shortcuts()
             evokable_shortcuts[kind.sub_type] = entry.second;
         else if (kind.base_type == OBJ_MISCELLANY)
             evokable_shortcuts[kind.sub_type + NUM_WANDS] = entry.second;
+        else if (kind.base_type == OBJ_BAUBLES)
+            evokable_shortcuts[kind.sub_type + NUM_WANDS + NUM_MISCELLANY] = entry.second;
+    }
+}
+
+// Extract 'vulnerable brand' options from unusual_monster_items
+void game_options::process_unusual_items()
+{
+    for (int i = (int)unusual_monster_items.size() - 1; i >= 0; --i)
+    {
+        text_pattern& pattern = unusual_monster_items[i];
+        string str = pattern.tostring();
+
+        if (!starts_with(str, "vulnerable:"))
+            continue;
+
+        vector<string> splits = split_string(":", str, true, true, -1, true);
+
+        if (splits.size() >= 2)
+        {
+            int brand = str_to_ego(OBJ_WEAPONS, splits[1]);
+            if (brand <= 0)
+                continue;
+
+            int xl = 27;
+            if (splits.size() >= 3)
+                parse_int(splits[2].c_str(), xl);
+
+            vulnerable_brand_warning.push_back({static_cast<brand_type>(brand), xl});
+        }
+
+        unusual_monster_items.erase(unusual_monster_items.begin() + i);
     }
 }
 

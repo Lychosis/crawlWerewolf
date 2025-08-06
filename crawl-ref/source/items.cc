@@ -750,8 +750,43 @@ bool item_is_branded(const item_def& item)
     }
 }
 
+static bool _immune_to_brand(brand_type brand)
+{
+    switch (brand)
+    {
+        case SPWPN_HOLY_WRATH:
+            return !you.holy_wrath_susceptible();
+
+        case SPWPN_VENOM:
+            return you.res_poison() == 3;
+
+        case SPWPN_DRAINING:
+        case SPWPN_PAIN:
+            return you.res_negative_energy() == 3;
+
+        case SPWPN_ELECTROCUTION:
+            return you.res_elec() >= 1;
+
+        default:
+            return false;
+    }
+}
+
 bool item_is_unusual(const item_def& item)
 {
+    if (item.base_type == OBJ_WEAPONS)
+    {
+        for (auto& match : Options.vulnerable_brand_warning)
+        {
+            if (get_weapon_brand(item) == match.first
+                && you.experience_level <= match.second
+                && !_immune_to_brand(match.first))
+            {
+                return true;
+            }
+        }
+    }
+
     const auto &patterns = Options.unusual_monster_items;
     const string name = item.name(DESC_A, false, false, true, false);
 
@@ -2170,6 +2205,9 @@ static int _letter_for_consumable(item_def& item, bool first_pickup)
             case OBJ_MISCELLANY:
                 key = Options.evokable_shortcuts[item.sub_type + NUM_WANDS];
                 break;
+            case OBJ_BAUBLES:
+                key = Options.evokable_shortcuts[item.sub_type + NUM_WANDS + NUM_MISCELLANY];
+                break;
             default:
                 key = 0;
         }
@@ -2215,6 +2253,7 @@ static int _letter_for_consumable(item_def& item, bool first_pickup)
             break;
         case OBJ_WANDS:
         case OBJ_MISCELLANY:
+        case OBJ_BAUBLES:
             for (const char& key : Options.evokable_shortcuts)
                 if (isalpha(key))
                     reserved[letter_to_index(key)] = true;
@@ -2930,16 +2969,19 @@ int item_autopickup_level(const item_def &item)
     return you.force_autopickup[item.base_type][_autopickup_subtype(item)];
 }
 
-static void _disable_autopickup_for_starred_items(vector<SelItem> &items)
+static void _maybe_disable_autopickup_for_dropped_items(vector<SelItem> &items)
 {
     int autopickup_remove_count = 0;
     const item_def *last_touched_item;
     for (SelItem &si : items)
     {
-        if ((si.has_star ||
-            (inventory_category_for(*si.item) == INVENT_CONSUMABLE
-             && si.item->is_identified()))
-            && item_autopickup_level(si.item[0]) != AP_FORCE_OFF)
+        const item_def& item = *si.item;
+        if (!item.is_identified() || is_artefact(item))
+            continue;
+
+        if ((inventory_category_for(item) == INVENT_CONSUMABLE
+             || item.base_type == OBJ_JEWELLERY)
+             && item_autopickup_level(si.item[0]) != AP_FORCE_OFF)
         {
             last_touched_item = si.item;
             ++autopickup_remove_count;
@@ -2976,7 +3018,7 @@ void drop()
         return;
     }
 
-    _disable_autopickup_for_starred_items(tmp_items);
+    _maybe_disable_autopickup_for_dropped_items(tmp_items);
     _multidrop(tmp_items);
 }
 
@@ -5097,4 +5139,31 @@ void maybe_split_nets(item_def &item, const coord_def& where)
     set_net_stationary(item);
 
     copy_item_to_grid(it, where);
+}
+
+// Returns whether an additional copy of a given item in the player's inventory
+// would be strictly redundant with ones they already have.
+bool jewellery_is_redundant(const item_def& item)
+{
+    if (item.base_type != OBJ_JEWELLERY || is_artefact(item))
+        return false;
+
+    const jewellery_type type = static_cast<jewellery_type>(item.sub_type);
+    const int slots = jewellery_is_amulet(type) ? you.equipment.num_slots[SLOT_AMULET]
+                                                : you.equipment.num_slots[SLOT_RING];
+    const int limit = min(slots, jewellery_usefulness_limit(type));
+
+    // A new item would be useless if we already have as many copies as we can use.
+    int count = 0;
+    for (int i = 0; i < MAX_GEAR; ++i)
+    {
+        if (you.inv[i].is_type(OBJ_JEWELLERY, type))
+        {
+            ++count;
+            if (count >= limit)
+                return true;
+        }
+    }
+
+    return false;
 }

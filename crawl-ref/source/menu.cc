@@ -2180,8 +2180,7 @@ int Menu::get_first_visible(bool skip_init_headers, int col) const
 
 bool Menu::is_hotkey(int i, int key)
 {
-    bool ishotkey = items[i]->is_hotkey(key);
-    return ishotkey && (!is_set(MF_SELECT_BY_PAGE) || in_page(i));
+    return items[i]->is_hotkey(key);
 }
 
 /// find the first item (if any) that has hotkey `key`.
@@ -2192,29 +2191,69 @@ int Menu::hotkey_to_index(int key, bool primary_only)
     // Process all items, in case user hits hotkey for an
     // item not on the current page.
 
-    // We first check for the first matching hotkey from the cursor's current
-    // position to the end of the menu. If no match is found, we next check from
-    // the start of the menu to the current position. (This means that in cases
-    // where a menu has multiple entries with the same letter, we will select
-    // the first one below the cursor, if one exists, and then wrap around if not.)
+    // Depending on flags, we have one of two behaviors:
+    //
+    // If MF_SELECT_BY_CATEGORY is set (used for single-page inventory screen),
+    // we first check for the first matching hotkey, starting from the top of
+    // the current menu subsection the cursor is in. If no match is found, we
+    // next check from the start of the menu to the current position. (This
+    // means that in cases where a menu has multiple entries with the same
+    // letter, we will select one within the current subsection, if one exists,
+    // and then check elsewhere if not.)
+    //
+    // If it is not, we simply select the nearest entry with a matching hotkey.
 
-    int nearest_dist = INT_MAX;
-    int nearest_sel = -1;
-    for (int i = 0; i < final; ++i)
+    if (is_set(MF_SELECT_BY_CATEGORY))
     {
-        if (is_hotkey(i, key)
-            && (!primary_only || items[i]->hotkeys[0] == key))
+        // First, determine the top of our current section.
+        int top = 0;
+        for (int i = last_hovered; i >= 0; --i)
         {
-            const int dist = abs(i - last_hovered);
-            if (dist < nearest_dist)
+            if (items[i]->level != MEL_ITEM)
             {
-                nearest_dist = dist;
-                nearest_sel = i;
+                top = i;
+                break;
+            }
+        }
+
+        for (int i = top; i < final; ++i)
+        {
+            if (is_hotkey(i, key)
+                && (!primary_only || items[i]->hotkeys[0] == key))
+            {
+                return i;
+            }
+        }
+        for (int i = 0; i < top; ++i)
+        {
+            if (is_hotkey(i, key)
+                && (!primary_only || items[i]->hotkeys[0] == key))
+            {
+                return i;
             }
         }
     }
+    else
+    {
+        int nearest_index = -1;
+        int nearest_dist = INT_MAX;
+        for (int i = 0; i < (int)items.size(); ++i)
+        {
+            if (is_hotkey(i, key))
+            {
+                int dist = abs(i - last_hovered);
+                if (dist < nearest_dist)
+                {
+                    nearest_dist = dist;
+                    nearest_index = i;
+                }
+            }
+        }
 
-    return nearest_sel;
+        return nearest_index;
+    }
+
+    return -1;
 }
 
 pair<int,int> Menu::hotkey_range(int key)

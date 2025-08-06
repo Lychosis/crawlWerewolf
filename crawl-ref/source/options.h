@@ -554,6 +554,8 @@ public:
 
     vector<text_pattern> unusual_monster_items; // which monster items to
                                                 // highlight as unusual
+    vector<pair<brand_type, int>> vulnerable_brand_warning; // Monster brands to hilight the monster
+                                                // as having, below a given XL, while vulnerable
 
     int         hp_warning;      // percentage hp for danger warning
     int         magic_point_warning;    // percentage mp for danger warning
@@ -641,7 +643,7 @@ public:
     vector<pair<string, char>> auto_consumable_letters;
     FixedVector<char, NUM_POTIONS> potion_shortcuts;
     FixedVector<char, NUM_SCROLLS> scroll_shortcuts;
-    FixedVector<char, NUM_WANDS + NUM_MISCELLANY> evokable_shortcuts;
+    FixedVector<char, NUM_WANDS + NUM_MISCELLANY + NUM_BAUBLES> evokable_shortcuts;
 
     bool        pickup_thrown;  // Pickup thrown missiles
     int         travel_delay;   // How long to pause between travel moves
@@ -759,6 +761,8 @@ public:
     bool        spell_menu;         // 'z' starts with a full-screen menu
     bool        easy_floor_use;     // , selects the floor item if there's 1
     bool        bad_item_prompt;    // Confirm before using a bad consumable
+    bool        show_paged_inventory;   // If true, use pages for the 'i' menu
+                                        // (just like the 'd'rop menu does).
 
     slot_select_mode assign_item_slot;   // How free slots are assigned
     maybe_bool  show_god_gift;      // Show {god gift} in item names
@@ -1007,6 +1011,7 @@ private:
     void remove_force_ability_targeter(const string &s);
 
     void update_consumable_shortcuts();
+    void process_unusual_items();
 
     static const string interrupt_prefix;
 

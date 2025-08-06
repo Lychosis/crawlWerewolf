@@ -636,9 +636,10 @@ void UseItemMenu::update_sections()
         floor_header->text = "Floor Items";
         if (easy_floor)
         {
-            floor_header->text += make_stringf(" (%s to %s)",
-                    menu_keyhelp_cmd(CMD_MENU_CYCLE_HEADERS).c_str(),
-                        _oper_name(oper).c_str());
+            floor_header->text += make_stringf(
+                "<lightgray> (%s to %s)</lightgray>",
+                menu_keyhelp_cmd(CMD_MENU_CYCLE_HEADERS).c_str(),
+                _oper_name(oper).c_str());
         }
         else if (is_inventory)
             floor_header->text += cycle_hint;
@@ -831,6 +832,7 @@ static operation_types _item_type_to_oper(object_class_type type)
 {
     switch (type)
     {
+        case OBJ_BAUBLES:
         case OBJ_WANDS:
         case OBJ_MISCELLANY: return OPER_EVOKE;
         case OBJ_POTIONS:    return OPER_QUAFF;

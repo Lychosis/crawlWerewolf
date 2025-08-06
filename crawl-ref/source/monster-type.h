@@ -1027,6 +1027,7 @@ enum monster_type                      // env.mons[].type
     MONS_GLOBE_OF_ANNIHILATION,
     MONS_PILE_OF_DEBRIS,
     MONS_PILE_OF_FLESH,
+    MONS_SHOOTING_STAR,
 #endif
     MONS_PILLAR_OF_SALT,
 #if TAG_MAJOR_VERSION > 34
@@ -1371,6 +1372,7 @@ enum monster_type                      // env.mons[].type
     MONS_ORB_OF_ENTROPY,
     MONS_ORB_OF_WINTER,
     MONS_SCREAMING_REFRACTION,
+    MONS_SHOOTING_STAR,
 #endif
 
     NUM_MONSTERS,               // used for polymorph

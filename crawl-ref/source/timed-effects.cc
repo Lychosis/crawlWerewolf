@@ -700,7 +700,8 @@ void monster::timeout_enchantments(int levels)
         case ENCH_CLOCKWORK_BEE_CAST:
         case ENCH_RIMEBLIGHT: case ENCH_MAGNETISED: case ENCH_TEMPERED:
         case ENCH_CHAOS_LACE: case ENCH_VEXED: case ENCH_DEEP_SLEEP:
-        case ENCH_DROWSY:
+        case ENCH_DROWSY: case ENCH_PARADOX_TOUCHED: case ENCH_DIMINISHED_SPELLS:
+        case ENCH_ORB_COOLDOWN:
             lose_ench_levels(entry.second, levels);
             break;
 
@@ -986,7 +987,7 @@ void timeout_malign_gateways(int duration)
                                          MHITNOT,
                                          MG_FORCE_PLACE,
                                          mmark->god);
-                mg.set_summoned(caster, 0);
+                mg.set_summoned(caster, SPELL_MALIGN_GATEWAY, 0, false, false);
                 if (!is_player)
                     mg.non_actor_summoner = mmark->summoner_string;
 

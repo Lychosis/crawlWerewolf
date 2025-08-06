@@ -1489,7 +1489,7 @@ static void _give_weapon(monster *mon, int level, bool second_weapon = false)
         make_item_for_monster(mon, OBJ_JEWELLERY, NUM_RINGS, 0, 1);
 
     if (mon->type == MONS_FANNAR && i.is_type(OBJ_WEAPONS, WPN_QUARTERSTAFF))
-        make_item_for_monster(mon, OBJ_JEWELLERY, RING_ICE, 0, 1);
+        make_item_for_monster(mon, OBJ_JEWELLERY, RING_PROTECTION_FROM_COLD, 0, 1);
 
     if (mon->type == MONS_WIGLAF)
     {
@@ -1503,7 +1503,7 @@ static void _give_weapon(monster *mon, int level, bool second_weapon = false)
     }
 
     if (mon->type == MONS_JOSEPHINA)
-        make_item_for_monster(mon, OBJ_JEWELLERY, RING_ICE, ISPEC_RANDART, true);
+        make_item_for_monster(mon, OBJ_JEWELLERY, RING_PROTECTION_FROM_COLD, ISPEC_RANDART, true);
 }
 
 // Hands out ammunition fitting the monster's launcher (if any), or else any
@@ -1723,16 +1723,16 @@ static void _give_shield(monster* mon, int level)
         shield = make_item_for_monster(mon, OBJ_ARMOUR, ARM_ORB, level);
         if (shield)
         {
-            // Light is good-coded and Wrath is too vicious.
-            const auto ego = random_choose(SPARM_MAYHEM, SPARM_ENERGY, SPARM_GUILE);
+            const auto ego = random_choose(SPARM_STARDUST, SPARM_MESMERISM,
+                                           SPARM_ENERGY, SPARM_GUILE);
             set_item_ego_type(*shield, OBJ_ARMOUR, ego);
         }
         break;
 
     case MONS_FREDERICK:
     {
-        // Divinity or conjurer support.
-        const auto ego = random_choose(SPARM_LIGHT, SPARM_ENERGY);
+        // Conjurer support.
+        const auto ego = random_choose(SPARM_STARDUST, SPARM_ENERGY);
 
         give_specific_item(mon, items(false, OBJ_ARMOUR,
                            ARM_ORB, ISPEC_RANDART, ego));

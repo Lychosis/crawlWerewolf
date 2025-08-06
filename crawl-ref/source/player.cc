@@ -38,6 +38,7 @@
 #include "errors.h"
 #include "exercise.h"
 #include "files.h"
+#include "fineff.h"
 #include "god-abil.h"
 #include "god-conduct.h"
 #include "god-passive.h"
@@ -505,9 +506,11 @@ bool swap_check(monster* mons, coord_def &loc, bool quiet)
 
     if (!swap && !quiet)
     {
-        // Might not be ideal, but it's better than insta-killing
-        // the monster... maybe try for a short blink instead? - bwr
-        simple_monster_message(*mons, " cannot make way for you.");
+        // Might not be ideal, but it's better than insta-killing the monster.
+        mprf("There is no room for %s to move out of your way! "
+             "(Try telling them to retreat with <w>%sr</w> instead.)",
+              mons->name(DESC_THE).c_str(),
+              command_to_string(CMD_SHOUT).c_str());
         // FIXME: activity_interrupt::hit_monster isn't ideal.
         interrupt_activity(activity_interrupt::hit_monster, mons);
     }
@@ -644,7 +647,6 @@ void moveto_location_effects(dungeon_feature_type old_feat,
     bool was_running = you.running;
 
     update_monsters_in_view();
-    maybe_update_stashes();
     if (check_for_interesting_features() && you.running.is_explore())
         stop_running();
 
@@ -1235,10 +1237,6 @@ int player_res_fire(bool allow_random, bool temp, bool items)
     {
         // rings of fire resistance/fire
         rf += you.wearing_jewellery(RING_PROTECTION_FROM_FIRE);
-        rf += you.wearing_jewellery(RING_FIRE);
-
-        // rings of ice
-        rf -= you.wearing_jewellery(RING_ICE);
 
         // Staves
         rf += you.wearing(OBJ_STAVES, STAFF_FIRE);
@@ -1339,10 +1337,6 @@ int player_res_cold(bool allow_random, bool temp, bool items)
     {
         // rings of cold resistance/ice
         rc += you.wearing_jewellery(RING_PROTECTION_FROM_COLD);
-        rc += you.wearing_jewellery(RING_ICE);
-
-        // rings of fire
-        rc -= you.wearing_jewellery(RING_FIRE);
 
         // Staves
         rc += you.wearing(OBJ_STAVES, STAFF_COLD);
@@ -1404,7 +1398,7 @@ int player_res_corrosion(bool allow_random, bool temp, bool items)
         if (you.scan_artefacts(ARTP_RCORR)
             || you.wearing(OBJ_ARMOUR, ARM_ACID_DRAGON_ARMOUR)
             || you.wearing_jewellery(RING_RESIST_CORROSION)
-            || you.wearing_ego(OBJ_ARMOUR, SPARM_PRESERVATION))
+            || you.wearing_ego(OBJ_ARMOUR, SPARM_CORROSION_RESISTANCE))
         {
             return 1;
         }
@@ -1544,9 +1538,12 @@ int player_spec_death()
 {
     int sd = 0;
 
-    sd += you.wearing(OBJ_STAVES, STAFF_DEATH);
+    if (you.wearing(OBJ_STAVES, STAFF_NECROMANCY))
+        sd += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
 
     sd += you.get_mutation_level(MUT_NECRO_ENHANCER);
+
+    sd += you.wearing_ego(OBJ_ARMOUR, SPARM_DEATH);
 
     sd += you.scan_artefacts(ARTP_ENHANCE_NECRO);
 
@@ -1557,9 +1554,11 @@ int player_spec_fire()
 {
     int sf = 0;
 
-    sf += you.wearing(OBJ_STAVES, STAFF_FIRE);
+    if (you.wearing(OBJ_STAVES, STAFF_FIRE))
+        sf += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
 
-    sf += you.wearing_jewellery(RING_FIRE);
+    sf += you.wearing_ego(OBJ_ARMOUR, SPARM_FIRE);
+    sf += you.wearing_ego(OBJ_ARMOUR, SPARM_PYROMANIA);
 
     sf += you.scan_artefacts(ARTP_ENHANCE_FIRE);
 
@@ -1573,9 +1572,10 @@ int player_spec_cold()
 {
     int sc = 0;
 
-    sc += you.wearing(OBJ_STAVES, STAFF_COLD);
+    if (you.wearing(OBJ_STAVES, STAFF_COLD))
+        sc += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
 
-    sc += you.wearing_jewellery(RING_ICE);
+    sc += you.wearing_ego(OBJ_ARMOUR, SPARM_ICE);
 
     sc += you.scan_artefacts(ARTP_ENHANCE_ICE);
 
@@ -1590,7 +1590,10 @@ int player_spec_earth()
     int se = 0;
 
     // Staves
-    se += you.wearing(OBJ_STAVES, STAFF_EARTH);
+    if (you.wearing(OBJ_STAVES, STAFF_EARTH))
+        se += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
+
+    se += you.wearing_ego(OBJ_ARMOUR, SPARM_EARTH);
 
     se += you.scan_artefacts(ARTP_ENHANCE_EARTH);
 
@@ -1605,7 +1608,10 @@ int player_spec_air()
     int sa = 0;
 
     // Staves
-    sa += you.wearing(OBJ_STAVES, STAFF_AIR);
+    if (you.wearing(OBJ_STAVES, STAFF_AIR))
+        sa += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
+
+    sa += you.wearing_ego(OBJ_ARMOUR, SPARM_AIR);
 
     sa += you.scan_artefacts(ARTP_ENHANCE_AIR);
 
@@ -1619,7 +1625,9 @@ int player_spec_conj()
 {
     int sc = 0;
 
-    sc += you.wearing(OBJ_STAVES, STAFF_CONJURATION);
+    if (you.wearing(OBJ_STAVES, STAFF_CONJURATION))
+        sc += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
+
     sc += you.scan_artefacts(ARTP_ENHANCE_CONJ);
 
     return sc;
@@ -1650,7 +1658,10 @@ int player_spec_alchemy()
 {
     int sp = 0;
 
-    sp += you.wearing(OBJ_STAVES, STAFF_ALCHEMY);
+    if (you.wearing(OBJ_STAVES, STAFF_ALCHEMY))
+        sp += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
+
+    sp += you.wearing_jewellery(AMU_ALCHEMY);
 
     sp += you.scan_artefacts(ARTP_ENHANCE_ALCHEMY);
 
@@ -1704,7 +1715,7 @@ int player_prot_life(bool allow_random, bool temp, bool items)
             pl++;
         }
 
-        pl += you.wearing(OBJ_STAVES, STAFF_DEATH);
+        pl += you.wearing(OBJ_STAVES, STAFF_NECROMANCY);
     }
 
     // undead/demonic power
@@ -1852,6 +1863,30 @@ void update_acrobat_status()
     you.redraw_evasion = true;
 }
 
+int player_parrying()
+{
+    int sh = 8 * you.wearing_ego(OBJ_ARMOUR, SPARM_PARRYING);
+    if (you.get_mutation_level(MUT_MISSING_HAND))
+        sh /= 2;
+    else
+    {
+        item_def* item = you.equipment.get_first_slot_item(SLOT_OFFHAND);
+        if (item && item->base_type != OBJ_WEAPONS)
+            sh /= 2;
+    }
+
+    return sh;
+}
+
+void update_parrying_status()
+{
+    if (player_parrying() <= 0)
+        return;
+
+    you.duration[DUR_PARRYING] = you.time_taken+1;
+    you.redraw_armour_class = true;
+}
+
 // An evasion factor based on the player's body size, smaller == higher
 // evasion size factor.
 static int _player_evasion_size_factor(bool base = false)
@@ -1960,9 +1995,6 @@ static int _player_temporary_evasion_modifiers()
 // Player EV multipliers for transient effects
 static int _player_apply_evasion_multipliers(int prescaled_ev, const int scale)
 {
-    if (you.form == transformation::statue)
-        prescaled_ev = prescaled_ev * 4 / 5;
-
     if (you.duration[DUR_PETRIFYING] || you.caught())
         prescaled_ev /= 2;
 
@@ -2025,13 +2057,16 @@ static int _player_evasion(int final_scale, bool ignore_temporary)
     const int size_base_ev = (10 + size_factor) * scale;
 
     // Calculate 'base' evasion from all permanent modifiers
-    const int natural_evasion =
+    int natural_evasion =
         size_base_ev
         + _player_armour_adjusted_dodge_bonus(scale)
         - you.adjusted_body_armour_penalty(scale)
         - you.adjusted_shield_penalty(scale)
         - _player_aux_evasion_penalty(scale)
         + _player_base_evasion_modifiers() * scale;
+
+    if (you.form == transformation::statue)
+        natural_evasion = natural_evasion * 4 / 5;
 
     // Everything below this are transient modifiers
     if (ignore_temporary)
@@ -2084,14 +2119,13 @@ int player_wizardry()
            + you.scan_artefacts(ARTP_WIZARDRY);
 }
 
-int player_channelling()
+int player_channelling_chance(bool max)
 {
-    // Here and elsewhere, let's consider making this work for Dj.
     if (you.has_mutation(MUT_HP_CASTING))
         return 0;
 
-    return 2 * you.unrand_equipped(UNRAND_WUCAD_MU)
-           + you.wearing_ego(OBJ_ARMOUR, SPARM_ENERGY);
+    const int skill = max ? 27 : you.skill(SK_EVOCATIONS);
+    return 15 + skill * 30 / 27;
 }
 
 static int _sh_from_shield(const item_def &item)
@@ -2158,6 +2192,9 @@ int player_shield_class(int scale, bool random, bool ignore_temporary)
     shield += qazlal_sh_boost() * 100;
     shield += you.wearing_jewellery(AMU_REFLECTION) * AMU_REFLECT_SH * 100;
     shield += you.scan_artefacts(ARTP_SHIELDING) * 200;
+
+    if (you.duration[DUR_PARRYING])
+        shield += player_parrying() * 200;
 
     return random ? div_rand_round(shield * scale, 100) : ((shield * scale) / 100);
 }
@@ -3357,7 +3394,7 @@ static void _display_attack_delay(const item_def *offhand)
     // the primary.
     const bool shield_penalty = you.adjusted_shield_penalty(2) > 0;
     const bool armour_penalty = is_slowed_by_armour(weapon)
-                                && you.adjusted_body_armour_penalty(2) > 0;
+                                && you.adjusted_body_armour_penalty(2, true) > 0;
     string penalty_msg = "";
     if (shield_penalty || armour_penalty)
     {
@@ -3609,7 +3646,7 @@ int slaying_bonus(bool throwing, bool random)
         ret += you.props[WU_JIAN_HEAVENLY_STORM_KEY].get_int();
 
     if (you.has_bane(BANE_CLAUSTROPHOBIA))
-        ret += you.props[CLAUSTROPHOBIA_KEY].get_int();
+        ret -= you.props[CLAUSTROPHOBIA_KEY].get_int();
 
     ret += get_form()->slay_bonus(random);
 
@@ -4164,6 +4201,9 @@ void contaminate_player(int change, bool controlled, bool msg)
 
         change *= mul;
     }
+
+    if (change < 0)
+        change *= 1 + you.wearing_jewellery(AMU_DISSIPATION);
 
     you.magic_contamination = max(0, min(3000,
                                          you.magic_contamination + change));
@@ -5899,6 +5939,7 @@ bool player::shielded() const
     return shield()
            || duration[DUR_DIVINE_SHIELD]
            || duration[DUR_EPHEMERAL_SHIELD]
+           || duration[DUR_PARRYING]
            || get_mutation_level(MUT_LARGE_BONE_PLATES) > 0
            || qazlal_sh_boost() > 0
            || you.wearing_jewellery(AMU_REFLECTION)
@@ -5953,14 +5994,16 @@ bool player::missile_repulsion() const
  * @return  The player's body armour's PARM_EVASION, if any, taking into account
  *          the sturdy frame mutation that reduces encumbrance.
  */
-int player::unadjusted_body_armour_penalty() const
+int player::unadjusted_body_armour_penalty(bool archery) const
 {
     const item_def *body_armour = you.body_armour();
     if (!body_armour)
         return 0;
 
+    int rfactor = archery && you.wearing_ego(OBJ_ARMOUR, SPARM_ARCHERY) ? 2 : 1;
+
     // PARM_EVASION is always less than or equal to 0
-    return max(0, -property(*body_armour, PARM_EVASION) / 10
+    return max(0, -property(*body_armour, PARM_EVASION) / 10 / rfactor
                   - get_mutation_level(MUT_STURDY_FRAME) * 2);
 }
 
@@ -5971,9 +6014,9 @@ int player::unadjusted_body_armour_penalty() const
  * @return          A penalty to EV based quadratically on body armour
  *                  encumbrance.
  */
-int player::adjusted_body_armour_penalty(int scale) const
+int player::adjusted_body_armour_penalty(int scale, bool archery) const
 {
-    const int base_ev_penalty = unadjusted_body_armour_penalty();
+    const int base_ev_penalty = unadjusted_body_armour_penalty(archery);
 
     // New formula for effect of str on aevp: (2/5) * evp^2 / (str+3)
     return 2 * base_ev_penalty * base_ev_penalty * (450 - skill(SK_ARMOUR, 10))
@@ -6064,6 +6107,9 @@ int player::skill(skill_type sk, int scale, bool real, bool temp) const
             level = level * 3 / 4;
     }
 
+    if (sk == SK_SHAPESHIFTING)
+        level += you.wearing_jewellery(AMU_WILDSHAPE) * 5 * scale;
+
     if (level > MAX_SKILL_LEVEL * scale)
         level = MAX_SKILL_LEVEL * scale;
 
@@ -6117,12 +6163,12 @@ int stone_body_armour_bonus()
  * @param armour    The armour in question.
  * @param scale     A value to multiply the result by. (Used to avoid integer
  *                  rounding.)
- * @param include_penalties     Whether to include penalties to base AC from
- *                              forms or mutations.
+ * @param include_form    Whether to include modifiers to base AC from the
+ *                        player's current form.
  * @return          The AC from that armour, including armour skill, mutations
  *                  & divine blessings, but not enchantments or egos.
  */
-int player::base_ac_from(const item_def &armour, int scale, bool include_penalties) const
+int player::base_ac_from(const item_def &armour, int scale, bool include_form) const
 {
     const int base = property(armour, PARM_AC) * scale;
 
@@ -6130,12 +6176,12 @@ int player::base_ac_from(const item_def &armour, int scale, bool include_penalti
     const int AC = base * (440 + skill(SK_ARMOUR, 20)) / 440;
 
     // Only body armour can have additional penalties from mutations or forms.
-    if (get_armour_slot(armour) != SLOT_BODY_ARMOUR || !include_penalties)
+    if (get_armour_slot(armour) != SLOT_BODY_ARMOUR)
         return AC;
 
-    int mult = get_form()->get_body_ac_mult();
+    int mult = include_form ? get_form()->get_body_ac_mult() : 0;
     if (get_mutation_level(MUT_DEFORMED) || get_mutation_level(MUT_PSEUDOPODS))
-        mult -= 40; // Should we double this if you have both?
+        mult = ((mult + 100) * 6 / 10) - 100; // Should we double this if you have both?
     const int mod = AC * mult / 100;
 
     return max(0, AC + mod);
@@ -6357,7 +6403,7 @@ int player::armour_class_scaled(int scale) const
             AC += _meek_bonus() * 100;
     }
 
-    if (you.wearing_ego(OBJ_GIZMOS, SPGIZMO_PARRYREV))
+    if (you.wearing_ego(OBJ_GIZMOS, SPGIZMO_REVGUARD))
     {
         const static int rev_bonus[] = {0, 200, 400, 500};
         AC += rev_bonus[you.rev_tier()];
@@ -7994,10 +8040,6 @@ bool player::do_shaft()
         return false;
     }
 
-    // Ensure altars, items, and shops discovered at the moment
-    // the player gets shafted are correctly registered.
-    maybe_update_stashes();
-
     down_stairs(DNGN_TRAP_SHAFT);
 
     return true;
@@ -8537,7 +8579,7 @@ void player::rev_down(int dur)
     const int perc_lost = div_rand_round(dur * 5, 6);
     you.props[REV_PERCENT_KEY] = max(0, you.rev_percent() - perc_lost);
 
-    if (you.wearing_ego(OBJ_GIZMOS, SPGIZMO_PARRYREV))
+    if (you.wearing_ego(OBJ_GIZMOS, SPGIZMO_REVGUARD))
         you.redraw_armour_class = true;
 }
 
@@ -8550,7 +8592,7 @@ void player::rev_up(int dur)
     const int perc_gained = random_range(dur * 2, dur * 3);
     you.props[REV_PERCENT_KEY] = min(100, you.rev_percent() + perc_gained);
 
-    if (you.wearing_ego(OBJ_GIZMOS, SPGIZMO_PARRYREV))
+    if (you.wearing_ego(OBJ_GIZMOS, SPGIZMO_REVGUARD))
         you.redraw_armour_class = true;
 }
 

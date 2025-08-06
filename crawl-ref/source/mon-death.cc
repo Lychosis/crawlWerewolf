@@ -27,6 +27,7 @@
 #include "dgn-overview.h"
 #include "english.h"
 #include "env.h"
+#include "evoke.h"
 #include "fineff.h"
 #include "god-abil.h"
 #include "god-blessing.h"
@@ -414,6 +415,7 @@ static void _create_monster_hide(monster_type mtyp, monster_type montype,
     }
 
     item.flags |= ISFLAG_IDENTIFIED;
+    item.flags |= ISFLAG_SEEN;
 }
 
 static void _create_monster_wand(monster_type mtyp, coord_def pos, bool silent)
@@ -2101,6 +2103,43 @@ static void _maybe_set_monster_foe(monster& mons, int killer_index)
     }
 }
 
+static void _maybe_trigger_pyromania()
+{
+    // Test if there's at least *something* worth hitting before exploding
+    // (primarily to avoid wasting the player's time). Note: we don't check the
+    // the player *wants* to hit what is there, just that there is something
+    // there to hit. Burning down random plants is thematic here.
+    bool found = false;
+    for (radius_iterator ri(you.pos(), 2, C_SQUARE, LOS_NO_TRANS); ri; ++ri)
+    {
+        if (monster* mon = monster_at(*ri))
+        {
+            if (!never_harm_monster(&you, mon))
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if (!found)
+        return;
+
+    bolt exp;
+    zappy(ZAP_FIREBALL, 50, false, exp);
+    exp.damage = pyromania_damage();
+    exp.set_agent(&you);
+    exp.target = you.pos();
+    exp.source = you.pos();
+    exp.ex_size = 2;
+
+    explosion_fineff::schedule(exp, "Your orb flickers with a hungry flame!",
+                               "By Zin's power, the fiery explosion is contained.",
+                               EXPLOSION_FINEFF_PYROMANIA, &you, "");
+
+    you.props[PYROMANIA_TRIGGERED_KEY] = true;
+}
+
 /**
  * Handles giving various mutation/god/equipment-based benefits to the player
  * that trigger when they (or sometimes their pets) kill a monster.
@@ -2296,7 +2335,7 @@ static void _player_on_kill_effects(monster& mons, killer_type killer,
         makhleb_crucible_kill(mons);
     }
 
-    if (you.has_bane(BANE_SUCCOUR))
+    if (you.has_bane(BANE_SUCCOUR) && !mons.is_firewood() && !mons.wont_attack())
     {
         bool visible_effect = false;
         const int healing = random_range(mons.max_hit_points / 3,
@@ -2320,6 +2359,15 @@ static void _player_on_kill_effects(monster& mons, killer_type killer,
     {
         if (--you.attribute[ATTR_TEMP_MUT_KILLS] <= 0)
             temp_mutation_wanes();
+    }
+
+    if (YOU_KILL(killer)
+        && you.wearing_ego(OBJ_ARMOUR, SPARM_PYROMANIA)
+        && !mons.props.exists(ATTACK_KILL_KEY)
+        && !you.props.exists(PYROMANIA_TRIGGERED_KEY)
+        && x_chance_in_y(pyromania_trigger_chance(), 100))
+    {
+        _maybe_trigger_pyromania();
     }
 }
 
@@ -3004,7 +3052,7 @@ item_def* monster_die(monster& mons, killer_type killer,
             else if (mons.type == MONS_FIRE_VORTEX
                      || mons.type == MONS_SPATIAL_VORTEX
                      || mons.type == MONS_TWISTER
-                     || mons.type == MONS_FOXFIRE)
+                     || mons_is_seeker(mons))
             {
                 msg = " dissipates.";
             }
@@ -3450,6 +3498,7 @@ item_def* monster_die(monster& mons, killer_type killer,
     if (in_bounds(mwhere) && you.see_cell(mwhere))
     {
         view_update_at(mwhere);
+        StashTrack.update_stash(mwhere);
         update_screen();
     }
 

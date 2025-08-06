@@ -637,7 +637,8 @@ static bool _boosted_sh()
            || (you.get_mutation_level(MUT_EPHEMERAL_SHIELD)
                 && you.duration[DUR_EPHEMERAL_SHIELD])
            || (you.get_mutation_level(MUT_CONDENSATION_SHIELD)
-                && !you.duration[DUR_ICEMAIL_DEPLETED]);
+                && !you.duration[DUR_ICEMAIL_DEPLETED])
+           || you.duration[DUR_PARRYING];
 }
 
 #ifdef DGL_SIMPLE_MESSAGING
@@ -2822,11 +2823,14 @@ static string _extra_passive_effects()
     if (you.archmagi())
         passives.emplace_back("archmagi");
 
-    const int channel = player_channelling();
-    if (channel)
+    if (you.wearing_ego(OBJ_ARMOUR, SPARM_ENERGY))
     {
-        passives.emplace_back(
-            make_stringf("channel magic (%d%%)", 20 * channel).c_str());
+        const int channel = player_channelling_chance();
+        if (channel)
+        {
+            passives.emplace_back(
+                make_stringf("channel magic (%d%%)", 20 * channel).c_str());
+        }
     }
 
     if (you.infusion_amount())

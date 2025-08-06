@@ -202,7 +202,7 @@ namespace quiver
     bool action::do_inscription_check() const
     {
         const int slot = get_item();
-        if (slot <= 0 || slot >= ENDOFPACK || !you.inv[slot].defined())
+        if (slot < 0 || slot >= ENDOFPACK || !you.inv[slot].defined())
             return true;
 
         return check_warning_inscriptions(you.inv[slot], OPER_FIRE);
@@ -698,7 +698,7 @@ namespace quiver
                     if (mons->wont_attack())
                     {
                         // Let's assume friendlies cooperate.
-                        mpr("You could not reach far enough!");
+                        mprf("You fail to reach past %s.", mons->name(DESC_THE).c_str());
                         you.time_taken = attack_delay;
                         you.turn_is_over = true;
                         return;
@@ -732,7 +732,7 @@ namespace quiver
             }
             else
             {
-                if (is_valid_tempering_target(*mons, you) && !you.confused())
+                if (is_valid_tempering_target(*mons, you, true) && !you.confused())
                 {
                     mprf("You deconstruct %s.", mons->name(DESC_THE).c_str());
                     monster_die(*mons, KILL_RESET, NON_MONSTER);

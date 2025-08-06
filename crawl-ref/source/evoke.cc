@@ -27,6 +27,7 @@
 #include "env.h"
 #include "exercise.h"
 #include "fight.h"
+#include "fineff.h"
 #include "god-abil.h"
 #include "god-conduct.h"
 #include "god-item.h"
@@ -218,7 +219,10 @@ void zap_wand(int slot, dist *_target)
 
     // Spend MP.
     if (mp_cost)
+    {
+        stardust_orb_trigger(mp_cost);
         finalize_mp_cost();
+    }
 
     // Take off a charge (unless gadgeteer procs)
     if ((you.wearing_ego(OBJ_GIZMOS, SPGIZMO_GADGETEER)
@@ -1369,4 +1373,33 @@ string evoke_noise_string(const item_def& item)
     }
     else
         return "";
+}
+
+dice_def pyromania_damage(bool random, bool max)
+{
+    const int power = max ? 2700 : you.skill(SK_EVOCATIONS, 100);
+    if (random)
+        return zap_damage(ZAP_FIREBALL, 30 + div_rand_round(power, 25), false, true);
+    else
+        return zap_damage(ZAP_FIREBALL, 30 + power / 25, false, false);
+}
+
+int pyromania_trigger_chance(bool max)
+{
+    return 23 + (max ? 27 : you.skill(SK_EVOCATIONS, 1));
+}
+
+int mesmerism_orb_radius(bool max)
+{
+    const int skill = max ? 27 : you.skill(SK_EVOCATIONS);
+    return min(2 + skill / 7, 4);
+}
+
+void stardust_orb_trigger(int mp_spent)
+{
+    if (!you.duration[DUR_STARDUST_COOLDOWN]
+        && you.wearing_ego(OBJ_ARMOUR, SPARM_STARDUST))
+    {
+        stardust_fineff::schedule(&you, mp_spent, 10 + you.skill(SK_EVOCATIONS, 10));
+    }
 }
