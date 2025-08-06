@@ -13,9 +13,9 @@ aptitudes:
   dodging: 1
   stealth: 1
   unarmed_combat: 3
-str: 9
-int: 9
-dex: 9
+str: 10
+int: 10
+dex: 10
 # No natural stat gain (quadruple chosen instead)
 levelup_stats: []
 levelup_stat_frequency: 28
