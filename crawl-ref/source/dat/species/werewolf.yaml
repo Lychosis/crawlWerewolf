@@ -13,13 +13,12 @@ aptitudes:
   dodging: 1
   stealth: 1
   unarmed_combat: 3
-str: 10
-int: 5
-dex: 10
-levelup_stat_frequency: 3
-levelup_stats:
-  - str
-  - dex
+str: 9
+int: 9
+dex: 9
+# No natural stat gain (quadruple chosen instead)
+levelup_stats: []
+levelup_stat_frequency: 28
 mutations:
   1:
       MUT_FANGS: 3
