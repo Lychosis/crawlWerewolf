@@ -121,7 +121,8 @@ vine_stalker_red_f
 vine_stalker_red_m
 vine_stalker_purple_f
 vine_stalker_purple_m
-werewolf WEREWOLF
+werewolf_f WEREWOLF
+werewolf_m
 
 # draconians
 draconian DRACONIAN DRACONIAN_FIRST
