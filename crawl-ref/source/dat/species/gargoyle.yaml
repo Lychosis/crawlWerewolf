@@ -31,7 +31,7 @@ aptitudes:
   necromancy: -2
   translocations: -1
   shapeshifting: -3
-  air_magic: -2
+  air_magic: 1
   earth_magic: 2
   alchemy: -2
   invocations: 1
