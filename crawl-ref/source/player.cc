@@ -2107,6 +2107,16 @@ int player_armour_shield_spell_penalty()
     return max(total_penalty, 0) / scale;
 }
 
+int player_armour_stealth_penalty()
+{
+    const item_def *body_armour = you.body_armour();
+
+    if (body_armour && body_armour->sub_type == ARM_SHADOW_DRAGON_ARMOUR)
+        return 0;
+
+    return you.unadjusted_body_armour_penalty();
+}
+
 /**
  * How many spell-success-boosting ('wizardry') effects does the player have?
  *
@@ -2158,7 +2168,7 @@ int player_shield_class(int scale, bool random, bool ignore_temporary)
     int shield = 0;
 
     if (!ignore_temporary
-        && you.incapacitated() || you.has_bane(BANE_RECKLESS))
+        && you.incapacitated() || you.has_mutation(MUT_RECKLESS))
     {
         return 0;
     }
@@ -2477,7 +2487,7 @@ static void _handle_banes(int exp)
 
     if (you.attribute[ATTR_DOOM] > 0)
     {
-        you.attribute[ATTR_DOOM] -= div_rand_round(loss, 15);
+        you.attribute[ATTR_DOOM] -= div_rand_round(loss, 60);
         if (you.attribute[ATTR_DOOM] <= 0)
         {
             mprf(MSGCH_DURATION, "You feel the doom around you dissipate.");
@@ -3208,7 +3218,7 @@ int player_stealth()
     {
         // [ds] New stealth penalty formula from rob: SP = 6 * (EP^2)
         // Now 2 * EP^2 / 3 after EP rescaling.
-        const int evp = you.unadjusted_body_armour_penalty();
+        const int evp = player_armour_stealth_penalty();
         const int penalty = evp * evp * 2 / 3;
         stealth -= penalty;
 

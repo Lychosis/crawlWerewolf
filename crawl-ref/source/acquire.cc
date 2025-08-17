@@ -929,17 +929,10 @@ static bool _acquire_manual(item_def &book)
     {
         const int skl = _skill_rdiv(sk);
 
-        if (skl == 27 || is_useless_skill(sk))
+        if (skl == 27 || is_useless_skill(sk) || _skill_useless_with_god(sk))
             continue;
 
         int w = (skl < 12) ? skl + 3 : max(0, 25 - skl);
-
-        // Greatly reduce the chances of getting a manual for a skill
-        // you couldn't use unless you switched your religion.
-        // Note: manuals that gods actively hate, e.g. spellcasting under
-        // Trog, will be mulched and replaced later. This is silly!
-        if (_skill_useless_with_god(sk))
-            w /= 2;
 
         weights[sk] = w;
         total_weights += w;
@@ -1155,6 +1148,10 @@ static string _why_reject(const item_def &item, int agent)
     // Oka does not gift reaping weapons.
     if (agent == GOD_OKAWARU && get_weapon_brand(item) == SPWPN_REAPING)
         return "Destroying Oka-gifted reaping weapon.";
+
+    // Oka does not gift command armour.
+    if (agent == GOD_OKAWARU && get_armour_ego_type(item) == SPARM_COMMAND)
+        return "Destroying Oka-gifted command armour.";
 
     // Pain brand is useless if you've sacrificed Necromancy.
     if (you.get_mutation_level(MUT_NO_NECROMANCY_MAGIC)

@@ -1757,8 +1757,8 @@ int mons_adjust_flavoured(monster* mons, bolt &pbolt, int hurted,
         break;
 
     case BEAM_UMBRAL_TORCHLIGHT:
-        if (mons->holiness() & ~(MH_NATURAL | MH_DEMONIC | MH_HOLY)
-            || mons->god == GOD_YREDELEMNUL)
+        if (mons->god == GOD_YREDELEMNUL
+            || mons->holiness() & ~(MH_NATURAL | MH_DEMONIC | MH_HOLY))
         {
             if (doFlavouredEffects && !mons_aligned(mons, pbolt.agent(true)))
                 simple_monster_message(*mons, " completely resists.");
@@ -3279,7 +3279,8 @@ bool bolt::is_harmless(const monster* mon) const
         return mon->res_poison() > 0 || mon->clarity();
 
     case BEAM_UMBRAL_TORCHLIGHT:
-        return (bool)!(mon->holiness() & (MH_NATURAL | MH_DEMONIC | MH_HOLY));
+        return mon->god == GOD_YREDELEMNUL
+               || (bool)!(mon->holiness() & (MH_NATURAL | MH_DEMONIC | MH_HOLY));
 
     default:
         return false;
@@ -3360,7 +3361,7 @@ bool bolt::harmless_to_player() const
 
     case BEAM_UMBRAL_TORCHLIGHT:
         return you_worship(GOD_YREDELEMNUL)
-                || (bool)!(you.holiness() & (MH_NATURAL | MH_DEMONIC | MH_HOLY));
+               || (bool)!(you.holiness() & (MH_NATURAL | MH_DEMONIC | MH_HOLY));
 
     case BEAM_QAZLAL:
         return true;

@@ -3095,6 +3095,9 @@ item_def* monster_die(monster& mons, killer_type killer,
             mons.update_ench(summ);
         }
 
+        // Also wake them up if they're asleep
+        mons.behaviour = BEH_SEEK;
+
         // Hack: with cleanup_dead=false, a tentacle [segment] of a dead
         // [malign] kraken has no valid head reference.
         if (!mons_is_tentacle_or_tentacle_segment(mons.type))
@@ -3169,6 +3172,26 @@ item_def* monster_die(monster& mons, killer_type killer,
 
             bennu_revive_fineff::schedule(mons.pos(), revives, att, mons.foe,
                                           duel, gozag_bribe);
+        }
+        else if (mons.type == MONS_CASSANDRA && real_death)
+        {
+            mpr("Foes suddenly leap out to ambush you!");
+
+            // Recall several random monsters from the floor. If none are
+            // available, make some suitable ones instead.
+            if (!mons_word_of_recall(nullptr, random_range(3, 5), 2))
+            {
+                mgen_data mg(RANDOM_MOBILE_MONSTER, SAME_ATTITUDE(&mons),
+                             you.pos(), MHITYOU, MG_FORBID_BANDS);
+                mg.set_place(level_id::current());
+                mg.set_range(4, 5, 2);
+                mg.extra_flags |= (MF_NO_REWARD | MF_HARD_RESET);
+                mg.set_non_actor_summoner("an inevitable fate");
+
+                const int num = random_range(3, 4);
+                for (int i = 0; i < num; ++i)
+                    create_monster(mg);
+            }
         }
     }
 

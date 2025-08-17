@@ -1917,17 +1917,34 @@ bool travel_pathfind::path_examine_point(const coord_def &c)
     // proceeds from source, so we take transporters, but for determining moves
     // we work in reverse from destination back to source, so we pathfind
     // through the landing sites.
-    if (runmode == RMODE_TRAVEL || runmode == RMODE_NOT_RUNNING)
+    if (runmode == RMODE_TRAVEL || runmode == RMODE_NOT_RUNNING
+        || runmode == RMODE_CONNECTIVITY)
     {
         if (floodout && env.grid(c) == DNGN_TRANSPORTER)
         {
-            LevelInfo &li = travel_cache.get_level_info(level_id::current());
-            transporter_info *ti = li.get_transporter(c);
-            if (ti && ti->destination != INVALID_COORD)
+            coord_def tdest;
+
+            // For connectivity checks, we have to use the map markers directly,
+            // since the travel cache info will not be set up yet. (These are only
+            // done in floodout mode, so it isn't necessary to do this for
+            // transporter landings.)
+            if (runmode == RMODE_CONNECTIVITY)
             {
-                if (path_flood(c, ti->destination))
-                    found_target = true;
+                map_position_marker* mark = get_position_marker_at(c, DNGN_TRANSPORTER);
+                if (mark)
+                    tdest = mark->dest;
             }
+            // But for travel checks, rely only on the player's knowledge instead.
+            else
+            {
+                LevelInfo &li = travel_cache.get_level_info(level_id::current());
+                transporter_info *ti = li.get_transporter(c);
+                if (ti && ti->destination != INVALID_COORD)
+                    tdest = ti->destination;
+            }
+
+            if (!tdest.origin() && path_flood(c, tdest))
+                found_target = true;
         }
         else if (!floodout && env.grid(c) == DNGN_TRANSPORTER_LANDING)
         {
@@ -5324,15 +5341,12 @@ bool stairs_destination_is_excluded(const stair_info &si)
             return false;
         }
 
-        // Check for exclusions that cover the stair destination, but ignore
-        // those that have radius 1: those exclude travel in the _other_
-        // direction only (from the destination to here, not from here to the
-        // destination)
+        // Check for exclusions that cover the stair destination
         const exclude_set &excludes = dest_li->get_excludes();
         for (auto entry : excludes)
         {
             const travel_exclude &ex = entry.second;
-            if (ex.in_bounds(dest.pos) && ex.radius > 1)
+            if (ex.in_bounds(dest.pos))
                 return true;
         }
     }
