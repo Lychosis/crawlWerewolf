@@ -1937,6 +1937,7 @@ static int _mons_power_hd_factor(spell_type spell)
         case SPELL_CONFUSION_GAZE:
             return 8;
 
+        case SPELL_SLEETSTRIKE:
         case SPELL_CALL_DOWN_LIGHTNING:
             return 16;
 
@@ -2618,6 +2619,7 @@ bool setup_mons_cast(const monster* mons, bolt &pbolt, spell_type spell_cast,
     case SPELL_FULMINANT_PRISM:
     case SPELL_HELLFIRE_MORTAR:
     case SPELL_GLOOM:
+    case SPELL_SLEETSTRIKE:
         pbolt.range = 0;
         pbolt.glyph = 0;
         return true;
@@ -5862,7 +5864,15 @@ static void _mesmerise_los(monster& agent, int power, bool check_hearing)
                 else
                     mprf("%s is mesmerised by %s!", mons->name(DESC_THE).c_str(), agent.name(DESC_THE).c_str());
             }
-            ai->as_monster()->add_ench(mon_enchant(ENCH_DAZED, 0, &agent, random_range(50, 90)));
+
+            if (!mons->has_ench(ENCH_DAZED))
+                mons->add_ench(mon_enchant(ENCH_DAZED, 0, &agent, random_range(50, 90)));
+            else
+            {
+                mon_enchant dazed = mons->get_ench(ENCH_DAZED);
+                dazed.duration = min(120, random_range(50, 90));
+                mons->update_ench(dazed);
+            }
         }
     }
 }
@@ -7420,17 +7430,19 @@ void mons_cast(monster* mons, bolt pbolt, spell_type spell_cast,
     }
 
     case SPELL_AIRSTRIKE:
+    case SPELL_SLEETSTRIKE:
     {
-        pbolt.flavour = BEAM_AIR;
+        pbolt.flavour = spell_cast == SPELL_SLEETSTRIKE ? BEAM_AIR : BEAM_ICE;
 
         int empty_space = 0;
         ASSERT(foe);
         for (adjacent_iterator ai(foe->pos()); ai; ++ai)
-            if (!monster_at(*ai) && !cell_is_solid(*ai))
+            if (!actor_at(*ai) && !cell_is_solid(*ai))
                 empty_space++;
 
-        int damage_taken = empty_space * 2
-                         + random2avg(2 + div_rand_round(splpow, 7), 2);
+        const int space_factor = spell_cast == SPELL_SLEETSTRIKE ? 3 : 2;
+        int damage_taken = empty_space * space_factor
+                                + base_airstrike_damage(splpow, false).roll();
         damage_taken = foe->beam_resists(pbolt, damage_taken, false);
 
         damage_taken = foe->apply_ac(damage_taken);
@@ -7439,17 +7451,37 @@ void mons_cast(monster* mons, bolt pbolt, spell_type spell_cast,
         {
             tileidx_t tile = TILE_BOLT_DEFAULT_WHITE;
 
-            mprf("%s and strikes %s%s",
+            mprf("%s and strikes %s%s%s",
                  airstrike_intensity_display(empty_space, tile).c_str(),
                  foe->name(DESC_THE).c_str(),
+                 spell_cast == SPELL_SLEETSTRIKE ? " with frigid sleet" : "",
                  attack_strength_punctuation(damage_taken).c_str());
 
             flash_tile(foe->pos(), WHITE, 60, tile);
         }
 
         foe->hurt(mons, damage_taken, BEAM_MISSILE, KILLED_BY_BEAM,
-                  "", "by the air");
+                  "", spell_cast == SPELL_SLEETSTRIKE ? "by frigid sleet"
+                                                      : "by the air");
         _whack(*mons, *foe);
+
+        if (spell_cast == SPELL_SLEETSTRIKE && foe->alive())
+        {
+            if (foe->is_player() && !you.duration[DUR_FROZEN])
+            {
+                mprf(MSGCH_WARN, "You are encased in ice.");
+                you.duration[DUR_FROZEN] = (random_range(5, 8)) * BASELINE_DELAY;
+            }
+            else if (monster* monfoe = foe->as_monster())
+            {
+                if (!monfoe->has_ench(ENCH_FROZEN))
+                {
+                    simple_monster_message(*monfoe, " is flash-frozen.");
+                    monfoe->add_ench(mon_enchant(ENCH_FROZEN, 0, mons));
+                }
+            }
+        }
+
         return;
     }
 
