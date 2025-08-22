@@ -99,7 +99,7 @@ function callback.xom_greatest_gift(data, triggerable, triggerer, marker, ev)
     local gob = "generate_awake att:good_neutral goblin perm_ench:might " ..
                 "perm_ench:haste perm_ench:invis perm_ench:repel_missiles " ..
                 "perm_ench:resistant perm_ench:regen perm_ench:magic_res " ..
-                "perm_ench:doubled_health perm_ench:mirror_dam perm_ench:swift"
+                "perm_ench:doubled_vigour perm_ench:mirror_dam perm_ench:swift"
     dgn.create_monster(pos[1].x, pos[1].y, gob)
     crawl.god_speaks("Xom", 'A goblin pops into existence! It looks at you'
                      .. ' with admiration.')
@@ -690,11 +690,12 @@ KFEAT:  C = altar_elyvilon
 : kmons("3 = yak tile:mons_yak_bow " .. g)
 : if you.absdepth() > 10 then
 SUBST:  2 = 3
-FTILE:  'CFJt = floor_grass
+FTILE:  'CFJ = floor_grass_dark
 :   decorative_floor(_G, '13', "garden patch")
 : else
-FTILE:  '12CFJt = floor_grass
+FTILE:  '12CFJ = floor_grass_dark
 : end
+FTILE:  t = floor_moss
 COLOUR: '123 = green
 KMASK:  '123CFJ = opaque
 MARKER: E = lua:transp_loc("ely_altar_entry")
@@ -3318,7 +3319,8 @@ NSUBST:  ' = 3=e / ', " = 4=W / ', t = t / d / -
 SUBST:   ` = ', S = SSW
 KFEAT:   _ = altar_wu_jian
 FTILE:   e' = floor_sand
-FTILE:   td- = floor_grass
+FTILE:   td- = floor_grass_dark
+FTILE:   ._ = floor_pebble_red
 COLOUR:  e' = yellow
 COLOUR:  d- = green
 : interest_check(_G)
@@ -3807,7 +3809,7 @@ DEPTH:  D:4-10, Crypt
 : if you.in_branch("Crypt") then
 MONS:   zombie, guardian mummy, skeletal warrior, ghoul
 : else
-MONS:   zombie, mummy, wight, weeping skull
+MONS:   zombie, mummy, wight, weeping skull / bes kemwar w:2
 : end
 NSUBST: ? = 1:_ / *:1
 SUBST:  1 = 1:30 2 3 4
@@ -4674,14 +4676,15 @@ KFEAT:  B = altar_yredelemnul
 KFEAT:  D = tree
 KFEAT:  '"wW = floor
 TILE:   D = dngn_tree_dead
-FTILE:  .t1ATW = floor_grass
+FTILE:  .t1ATW = floor_grass_dark
+FTILE:  ` = floor_moss
 COLOUR: tW = white
 FTILE:  'D2BVw = floor_crypt
 COLOUR: Dw = black
 MAP
        """""""
-     """""ccc"""
-  """""""''Dccc"""
+     """"`ccc"""
+  """"""`''Dccc"""
   "ccccccD''DDccc"
  ""ctttttcD'''DDc""
  "cct....tcD'''Dcc"
@@ -4697,8 +4700,8 @@ MAP
  "cct...tcD''''Dcc"
  ""ctt...tcDDDDDc""
   "ccctt..tcccccc"
-  """ccct.."""""""
-    """ccc"""""
+  """ccct..`""""""
+    """ccc`""""
       """""""
 ENDMAP
 
@@ -4785,13 +4788,14 @@ KMONS: 3 = menkaure, wight
 SUBST: 2 = 2---
 : elseif you.depth() <= 7 then
 MONS: zombie / gnoll draugr w:2 / adder draugr w:2 / mummy / \
-      shadow imp / wight / mummy / phantom
+      shadow imp / wight / mummy / phantom / bes kemwar
 MONS: burial acolyte / wraith / vampire
 KMONS: 3 = menkaure, burial acolyte / wraith / vampire
 SUBST: 2 = 12--
 : else
 MONS: mummy / wight / zombie / steam dragon draugr w:2 / \
-      howler monkey draugr w:2 / centaur draugr w:2 / phantom
+      howler monkey draugr w:2 / centaur draugr w:2 / phantom w:5 / \
+      bes kemwar w:5
 MONS: wraith / vampire / shadowghast / w:5 death knight / w:5 skeletal warrior
 MONS: flayed ghost / death knight
 NSUBST: 2 = 2 / 2-

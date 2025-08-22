@@ -4717,7 +4717,8 @@ void dec_sticky_flame_player(int delay)
     ouch(damage, KILLED_BY_BURNING);
 
     you.duration[DUR_STICKY_FLAME] =
-        max(0, you.duration[DUR_STICKY_FLAME] - delay);
+        max(0, you.duration[DUR_STICKY_FLAME]
+                    - (delay * (1 + you.wearing_jewellery(AMU_DISSIPATION))));
 
     if (you.duration[DUR_STICKY_FLAME == 0])
     {
@@ -4814,6 +4815,8 @@ void dec_slow_player(int delay)
 {
     if (!you.duration[DUR_SLOW])
         return;
+
+    delay = delay * (1 + you.wearing_jewellery(AMU_DISSIPATION));
 
     if (you.duration[DUR_SLOW] > BASELINE_DELAY)
     {
@@ -8309,6 +8312,16 @@ void player::weaken(const actor */*attacker*/, int pow)
         mprf(MSGCH_WARN, "You feel as though you will be weak longer.");
 
     increase_duration(DUR_WEAK, pow + random2(pow + 3), 50);
+}
+
+void player::diminish(const actor */*attacker*/, int pow)
+{
+    if (!duration[DUR_DIMINISHED_SPELLS])
+        mprf(MSGCH_WARN, "You feel your spells grow feeble.");
+    else
+        mprf(MSGCH_WARN, "You feel as though your spells will be weakened yet longer.");
+
+    increase_duration(DUR_DIMINISHED_SPELLS, pow + random2(pow + 3), 50);
 }
 
 bool player::strip_willpower(actor */*attacker*/, int dur, bool quiet)

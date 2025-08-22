@@ -3322,7 +3322,7 @@ bool bolt::harmless_to_player() const
     case BEAM_AGILITY:
     case BEAM_INVISIBILITY:
     case BEAM_RESISTANCE:
-    case BEAM_DOUBLE_HEALTH:
+    case BEAM_DOUBLE_VIGOUR:
         return true;
 
     case BEAM_HOLY:
@@ -3752,6 +3752,7 @@ void bolt::affect_player_enchantment(bool resistible)
         break;
 
     case BEAM_WEAKNESS:
+        // actor::weaken already is randomized- why are we randomizing input?
         you.weaken(agent(), 8 + random2(4));
         obvious_effect = true;
         break;
@@ -3964,6 +3965,11 @@ void bolt::affect_player_enchantment(bool resistible)
         obvious_effect = true;
         nasty = false;
         nice  = true;
+        break;
+
+    case BEAM_DIMINISH_SPELLS:
+        you.diminish(agent(), 9);
+        obvious_effect = true;
         break;
 
     case BEAM_SAP_MAGIC:
@@ -5965,6 +5971,7 @@ bool bolt::has_saving_throw() const
     case BEAM_SHADOW_TORPOR:
     case BEAM_ILL_OMEN:
     case BEAM_WARP_BODY:
+    case BEAM_DIMINISH_SPELLS:
         return false;
     case BEAM_VULNERABILITY:
         return !one_chance_in(3);  // Ignores will 1/3 of the time
@@ -6045,6 +6052,7 @@ bool ench_flavour_affects_monster(actor *agent, beam_type flavour,
         rc = (mon->res_poison() < 3);
         break;
 
+    case BEAM_DIMINISH_SPELLS:
     case BEAM_DRAIN_MAGIC:
         rc = mon->antimagic_susceptible();
         break;
@@ -6396,11 +6404,11 @@ mon_resist_type bolt::apply_enchantment_to_monster(monster* mon)
         }
         return MON_AFFECTED;
 
-    case BEAM_DOUBLE_HEALTH:
-        if (!mon->has_ench(ENCH_DOUBLED_HEALTH)
-            && mon->add_ench(ENCH_DOUBLED_HEALTH))
+    case BEAM_DOUBLE_VIGOUR:
+        if (!mon->has_ench(ENCH_DOUBLED_VIGOUR)
+            && mon->add_ench(ENCH_DOUBLED_VIGOUR))
         {
-            if (simple_monster_message(*mon, " surges with doubled health!"))
+            if (simple_monster_message(*mon, " surges with doubled vitality!"))
                 obvious_effect = true;
         }
         return MON_AFFECTED;
@@ -6666,6 +6674,11 @@ mon_resist_type bolt::apply_enchantment_to_monster(monster* mon)
                 obvious_effect = true;
             }
         }
+        return MON_AFFECTED;
+
+    case BEAM_DIMINISH_SPELLS:
+        mon->diminish(agent(), 9);
+        obvious_effect = true;
         return MON_AFFECTED;
 
     case BEAM_DRAIN_MAGIC:
@@ -7414,7 +7427,7 @@ bool bolt::nice_to(const monster_info& mi) const
 
     if (flavour == BEAM_HASTE
         || flavour == BEAM_HEALING
-        || flavour == BEAM_DOUBLE_HEALTH
+        || flavour == BEAM_DOUBLE_VIGOUR
         || flavour == BEAM_MIGHT
         || flavour == BEAM_AGILITY
         || flavour == BEAM_INVISIBILITY
@@ -7657,6 +7670,7 @@ static string _beam_type_name(beam_type type)
     case BEAM_AGILITY:               return "agility";
     case BEAM_SAP_MAGIC:             return "sap magic";
     case BEAM_DRAIN_MAGIC:           return "drain magic";
+    case BEAM_DIMINISH_SPELLS:       return "diminish spells";
     case BEAM_TUKIMAS_DANCE:         return "tukima's dance";
     case BEAM_DEATH_RATTLE:          return "breath of the dead";
     case BEAM_RESISTANCE:            return "resistance";
@@ -7683,7 +7697,7 @@ static string _beam_type_name(beam_type type)
     case BEAM_SHADOW_TORPOR:         return "shadow torpor";
     case BEAM_HAEMOCLASM:            return "gore";
     case BEAM_BLOODRITE:             return "blood";
-    case BEAM_DOUBLE_HEALTH:         return "health-doubling";
+    case BEAM_DOUBLE_VIGOUR:         return "vigour-doubling";
     case BEAM_VEX:                   return "vexing";
     case BEAM_SEISMIC:               return "seismic shockwave";
     case BEAM_BOLAS:                 return "entwining bolas";
