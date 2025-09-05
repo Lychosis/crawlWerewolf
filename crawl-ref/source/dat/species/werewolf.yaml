@@ -23,7 +23,6 @@ mutations:
   1:
       MUT_FANGS: 3
       MUT_CLAWS: 2
-      MUT_SPELLCLAWS: 1
       MUT_SHAGGY_FUR: 3
       MUT_REGENERATION: 1
       MUT_FAST: 1
