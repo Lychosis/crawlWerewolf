@@ -33,6 +33,5 @@ mutations:
 recommended_jobs:
   - fighter
   - berserker
-  - conjurer
 
 orc_name: Wereworc
