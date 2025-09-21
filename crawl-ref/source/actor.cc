@@ -104,7 +104,8 @@ int actor::skill_rdiv(skill_type sk, int mult, int div) const
 
 int actor::wearing_jewellery(int sub_type) const
 {
-    return wearing(OBJ_JEWELLERY, sub_type, ring_plusses_matter(sub_type),
+    return wearing(OBJ_JEWELLERY, sub_type,
+                   jewellery_type_has_pluses(sub_type),
                    sub_type == AMU_REGENERATION || sub_type == AMU_MANA_REGENERATION);
 }
 
@@ -1070,12 +1071,8 @@ bool actor::knockback(const actor &cause, int dist, int dmg, string source_name)
         ray.advance();
 
         newpos = ray.pos();
-        if (newpos == oldray.pos()
-            || !in_bounds(newpos)
-            || cell_is_solid(newpos)
-            || actor_at(newpos)
-            || !can_pass_through(newpos)
-            || !is_habitable(newpos))
+        if (newpos == oldray.pos() || actor_at(newpos)
+            || !in_bounds(newpos) || !is_habitable(newpos))
         {
             ray = oldray;
             break;
@@ -1128,14 +1125,8 @@ coord_def actor::stumble_pos(coord_def targ) const
     if (!adjacent(newpos, oldpos)) // !?
         return coord_def();
 
-    // copied from actor::knockback, ew
-    if (!in_bounds(newpos)
-        || cell_is_solid(newpos)
-        || !can_pass_through(newpos)
-        || !is_habitable(newpos))
-    {
+    if (!in_bounds(newpos) || !is_habitable(newpos))
         return coord_def();
-    }
 
     const actor* other = actor_at(newpos);
     if (other && can_see(*other))

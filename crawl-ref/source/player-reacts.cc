@@ -671,8 +671,7 @@ static void _try_to_respawn_ancestor()
     mprf("%s emerges from the mists of memory!",
          ancestor->name(DESC_YOUR).c_str());
     add_companion(ancestor);
-    check_place_cloud(CLOUD_MIST, ancestor->pos(), random_range(1,2),
-                      ancestor); // ;)
+    place_cloud(CLOUD_MIST, ancestor->pos(), random_range(1,2), ancestor); // ;)
 }
 
 static void _decrement_transform_duration(int delay)
@@ -1100,7 +1099,7 @@ void maybe_attune_regen_items(bool attune_regen, bool attune_mana_regen)
 
     if (gained_regen || gained_mana_regen)
     {
-        msgs.emplace_back(make_stringf("regenerate %s more quickly",
+        msgs.emplace_back(make_stringf("regenerate%s more quickly",
                 gained_regen && gained_mana_regen ? " health and magic"
                 : (gained_regen ? "" : " magic")));
     }

@@ -293,14 +293,9 @@ static bool _swap_monsters(monster& mover, monster& moved)
     return true;
 }
 
-
-
 static energy_use_type _get_swim_or_move(monster& mon)
 {
-    const dungeon_feature_type feat = env.grid(mon.pos());
-    // FIXME: Replace check with mons_is_swimming()?
-    return (feat_is_lava(feat) || feat_is_water(feat))
-            && mon.ground_level() ? EUT_SWIM : EUT_MOVE;
+    return mon.swimming(true) ? EUT_SWIM : EUT_MOVE;
 }
 
 static void _swim_or_move_energy(monster& mon)
@@ -470,6 +465,63 @@ static coord_def _get_step_from_dest(const monster* mons, const coord_def dest)
     return direction;
 }
 
+static void _tweak_wall_move(const monster* mons, coord_def &dir)
+{
+    // This is the resurrected version of _tweak_wall_mmov which used to
+    // applied to dryads and prior to that, rock worms.
+    // It was removed in 26b5dca when dryads were evicted from their trees.
+
+    // Wall dwellers will try to move through walls for as long as
+    // possible. If the player is walking through a corridor, for example,
+    // moving along in the wall beside him is much preferable to actually
+    // leaving the wall.
+    // This might cause the monster to take detours but it still
+    // comes off as smarter than otherwise.
+
+    // If we're already moving into a wall spot, don't adjust move
+    // (this leads to zig-zagging)
+    if (cell_is_solid(mons->pos() + dir))
+        return;
+
+    int cdir = _compass_idx(dir);
+    ASSERT(cdir != -1);
+
+    // If we're already adjacent to our target and in a wall, don't shift position.
+    // If we're adjacent and in open space, widen our search angle to include any
+    // spot adjacent to both us and our target. This no longer gives any shield
+    // advantage, but might make room allowing another target to approach.
+    int range = 1;
+    if (mons->target == mons->pos() + dir)
+    {
+        if (cell_is_solid(mons->pos()))
+            return;
+        else
+        {
+            if (cdir % 2 == 1)
+                range = 2;
+        }
+    }
+
+    const int tdist = (mons->target - (mons->pos() + dir)).rdist();
+    int count = 0;
+    int choice = cdir; // stick with original move if none are good
+    for (int i = -range; i <= range; ++i)
+    {
+        // Ignore same direction
+        if (i == 0)
+            continue;
+        const int altdir = (cdir + i + 8) % 8;
+        coord_def t = mons->pos() + mon_compass[altdir];
+        const bool good = habitat_is_compatible(HT_WALLS_ONLY, env.grid(t))
+                            && mons->is_habitable(t)
+                            && mon_can_move_to_pos(mons, mon_compass[altdir])
+                            && (mons->target - t).rdist() <= tdist;
+        if (good && one_chance_in(++count))
+            choice = altdir;
+    }
+    dir = mon_compass[choice];
+}
+
 typedef FixedArray< bool, 3, 3 > move_array;
 
 static void _fill_good_move(const monster* mons, move_array* good_move)
@@ -596,6 +648,10 @@ static coord_def _find_best_step(monster* mons)
     // Now quit if we can't move.
     if (dir.origin())
         return dir;
+
+    // Wall monsters prefer their natural habitat.
+    if (mons_habitat(*mons) & HT_WALLS_ONLY)
+        _tweak_wall_move(mons, dir);
 
     const coord_def newpos(mons->pos() + dir);
 
@@ -1761,7 +1817,7 @@ static void _pre_monster_move(monster& mons)
         && !cell_see_cell(you.pos(), mons.pos(), LOS_NO_TRANS))
     {
         if (mons_is_seeker(mons))
-            check_place_cloud(seeker_trail_type(mons), mons.pos(), 2, &mons);
+            place_cloud(seeker_trail_type(mons), mons.pos(), 2, &mons);
         monster_die(mons, KILL_RESET, NON_MONSTER);
         return;
     }
@@ -2046,7 +2102,7 @@ void handle_monster_move(monster* mons)
     {
         if (mons->steps_remaining == 0)
         {
-            check_place_cloud(seeker_trail_type(*mons), mons->pos(), 2, mons);
+            place_cloud(seeker_trail_type(*mons), mons->pos(), 2, mons);
             monster_die(*mons, KILL_TIMEOUT, NON_MONSTER);
             return;
         }
@@ -3006,6 +3062,11 @@ static bool _handle_pickup(monster* mons)
             return false;
         }
 
+        // Letting Maurice pickup thrown items would let players lock his
+        // behavior into a loop while they have throwables, so we disallow it.
+        if (mons->has_attack_flavour(AF_STEAL) && si->flags & ISFLAG_THROWN)
+            continue;
+
         if (si->flags & ISFLAG_NO_PICKUP)
             continue;
 
@@ -3081,7 +3142,7 @@ static void _mons_open_door(monster& mons, const coord_def &pos)
 static bool _no_habitable_adjacent_grids(const monster* mon)
 {
     for (adjacent_iterator ai(mon->pos()); ai; ++ai)
-        if (monster_habitable_grid(mon, *ai))
+        if (mon->is_habitable(*ai))
             return false;
 
     return true;
@@ -3257,15 +3318,15 @@ bool mon_can_move_to_pos(const monster* mons, const coord_def& delta,
 
     const bool digs = _mons_can_cast_dig(mons, false);
     if (digs && feat_is_diggable(target_grid)
-        || mons->can_burrow_through(target_grid)
+        || mons->can_burrow_through(targ)
         || mons->type == MONS_SPATIAL_MAELSTROM
            && feat_is_solid(target_grid) && !feat_is_permarock(target_grid)
            && !feat_is_critical(target_grid)
-        || feat_is_tree(target_grid) && mons_flattens_trees(*mons))
+        || mons->can_flatten_tree_at(targ))
     {
     }
     else if (!mons_can_traverse(*mons, targ, false, false)
-             && !monster_habitable_feat(mons, target_grid))
+             && !mons->is_habitable(targ))
     {
         // If the monster somehow ended up in this habitat (and is
         // not dead by now), give it a chance to get out again.
@@ -3994,9 +4055,10 @@ static bool _monster_move(monster* mons, coord_def& delta)
     }
 
     // Take care of Dissolution burrowing, lerny, etc
-    const dungeon_feature_type feat = env.grid(mons->pos() + delta);
-    const bool burrows = mons->can_burrow_through(feat);
-    const bool flattens_trees = mons_flattens_trees(*mons) && feat_is_tree(feat);
+    const coord_def target = mons->pos() + delta;
+    const dungeon_feature_type feat = env.grid(target);
+    const bool burrows = mons->can_burrow_through(target);
+    const bool flattens_trees = mons->can_flatten_tree_at(target);
     const bool digs = _mons_can_cast_dig(mons, false) && feat_is_diggable(feat);
     if (digs)
     {
@@ -4006,7 +4068,7 @@ static bool _monster_move(monster* mons, coord_def& delta)
         if (_mons_can_cast_dig(mons, true))
         {
             setup_mons_cast(mons, beem, SPELL_DIG);
-            beem.target = mons->pos() + delta;
+            beem.target = target;
             mons_cast(mons, beem, SPELL_DIG,
                         mons->spell_slot_flags(SPELL_DIG));
         }
@@ -4018,7 +4080,7 @@ static bool _monster_move(monster* mons, coord_def& delta)
     else if ((burrows || flattens_trees)
                 && good_move[delta.x + 1][delta.y + 1] == true)
     {
-        const coord_def target(mons->pos() + delta);
+        revert_terrain_change(target);
         destroy_wall(target);
 
         if (flattens_trees)
@@ -4038,7 +4100,7 @@ static bool _monster_move(monster* mons, coord_def& delta)
                 noisy(25, target, "You hear a crashing sound.");
         }
         // Dissolution dissolves walls.
-        else if (player_can_hear(mons->pos() + delta))
+        else if (player_can_hear(target))
         {
             mprf(MSGCH_SOUND, mons->type == MONS_DISSOLUTION
                                 ? "You hear a sizzling sound."
@@ -4116,7 +4178,7 @@ static bool _monster_move(monster* mons, coord_def& delta)
             place_cloud(CLOUD_ELECTRICITY, mons->pos(), random_range(2, 3), mons);
 
         if (mons_is_seeker(*mons))
-            check_place_cloud(seeker_trail_type(*mons), mons->pos(), 2, mons);
+            place_cloud(seeker_trail_type(*mons), mons->pos(), 2, mons);
 
         if (mons->type == MONS_CURSE_TOE)
             place_cloud(CLOUD_MIASMA, mons->pos(), 2 + random2(3), mons);

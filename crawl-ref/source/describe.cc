@@ -2273,7 +2273,12 @@ static string _describe_ammo(const item_def &item)
     if (ammo_always_destroyed(item))
         description += "\n\nIt is always destroyed on impact.";
     else if (!ammo_never_destroyed(item))
-        description += "\n\nIt may be destroyed on impact.";
+    {
+        description += make_stringf(
+            "\n\nIt has a 1/%d chance to be destroyed on impact.",
+            ammo_destroy_chance(item)
+        );
+    }
 
     return description;
 }
@@ -2342,7 +2347,7 @@ static const char* _item_ego_desc(special_armour_type ego)
         return "it improves its wearer's accuracy and damage with "
                "thrown weapons, such as rocks and javelins (Slay +4).";
     case SPARM_REPULSION:
-        return "it helps its wearer evade missiles.";
+        return "it helps its wearer evade both magical and non-magical projectiles (EV +15).";
 #if TAG_MAJOR_VERSION == 34
     case SPARM_CLOUD_IMMUNE:
         return "it does nothing special.";

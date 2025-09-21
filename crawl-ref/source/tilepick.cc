@@ -1470,6 +1470,8 @@ static tileidx_t _mon_to_zombie_tile(const monster_info &mon)
 
     // specific per-species zombies - use to override genuses
     static const map<monster_type, tileidx_t> species_tiles = {
+        // XXX: Prince Ribbit is in his human shape after he dies.
+        { MONS_PRINCE_RIBBIT,           TILEP_MONS_HUMAN, },
         { MONS_JUGGERNAUT,              TILEP_MONS_ZOMBIE_JUGGERNAUT },
         { MONS_ACID_DRAGON,             TILEP_MONS_ZOMBIE_DRAKE },
         { MONS_STEAM_DRAGON,            TILEP_MONS_ZOMBIE_DRAKE },
@@ -1514,7 +1516,8 @@ static tileidx_t _mon_to_zombie_tile(const monster_info &mon)
         { MONS_CRAB,                    TILEP_MONS_ZOMBIE_CRAB },
         { MONS_SNAPPING_TURTLE,         TILEP_MONS_ZOMBIE_TURTLE },
         { MONS_RIBBON_WORM,             TILEP_MONS_ZOMBIE_WORM },
-        { MONS_GIANT_COCKROACH,         TILEP_MONS_ZOMBIE_ROACH },
+        { MONS_CLOCKROACH,              TILEP_MONS_ZOMBIE_ROACH },
+        { MONS_RADROACH,                TILEP_MONS_ZOMBIE_ROACH },
         { MONS_SCORPION,                TILEP_MONS_ZOMBIE_SCORPION },
         { MONS_EMPEROR_SCORPION,        TILEP_MONS_ZOMBIE_SCORPION },
         { MONS_KRAKEN,                  TILEP_MONS_ZOMBIE_KRAKEN },
@@ -2258,7 +2261,7 @@ tileidx_t tileidx_monster(const monster_info& mons)
         ch |= TILE_FLAG_UNUSUAL;
     else if (mons.type == MONS_PLAYER_GHOST)
     {
-       // Threat is always displayed for ghosts, with different tiles,
+        // Threat is always displayed for ghosts, with different tiles,
         // to make them more easily visible.
         ch |= TILE_FLAG_GHOST;
         switch (mons.threat)

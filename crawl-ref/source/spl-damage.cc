@@ -512,7 +512,7 @@ static void _player_hurt_monster(monster &mon, int damage, beam_type flavour,
 {
     ASSERT(mon.alive() || !god_conducts);
 
-    if (never_harm_monster(&you, mon, true))
+    if (never_harm_monster(&you, mon, !quiet))
         return;
 
     god_conduct_trigger conducts[3];
@@ -951,7 +951,7 @@ string airstrike_intensity_display(int empty_space, tileidx_t& tile)
 
 spret cast_airstrike(int pow, coord_def target, bool fail)
 {
-    if (cell_is_solid(target))
+    if (cell_is_invalid_target(target))
     {
         canned_msg(MSG_UNTHINKING_ACT);
         return spret::abort;
@@ -1026,7 +1026,7 @@ string describe_resonance_strike_dam(dice_def dice)
 
 spret cast_momentum_strike(int pow, coord_def target, bool fail)
 {
-    if (cell_is_solid(target))
+    if (cell_is_invalid_target(target))
     {
         canned_msg(MSG_UNTHINKING_ACT);
         return spret::abort;
@@ -1257,11 +1257,13 @@ static const map<monster_type, monster_frag> fraggable_monsters = {
     { MONS_PILE_OF_DEBRIS,    { "stone", LIGHTGRAY } },
     { MONS_PETRIFIED_FLOWER,  { "stone", LIGHTGRAY } },
     { MONS_EARTH_ELEMENTAL,   { "rock", BROWN } },
+    { MONS_MOUNTAINSHELL,     { "rock", BROWN } },
     { MONS_ROCKSLIME,         { "rock", BROWN } },
     { MONS_BOULDER,           { "rock", BROWN } },
     { MONS_USHABTI,           { "rock", BROWN } },
     { MONS_STATUE,            { "rock", BROWN } },
     { MONS_GARGOYLE,          { "rock", BROWN } },
+    { MONS_ROCK_FISH,         { "rock", BROWN } },
     { MONS_VV,                { "rock", BROWN } },
     { MONS_HELLFIRE_MORTAR,   { "rock", BROWN } },
     { MONS_CRAWLING_FLESH_CAGE, { "metal", CYAN, frag_damage_type::metal } },
@@ -1947,7 +1949,7 @@ spret cast_scorch(const actor& agent, int pow, bool fail)
 
     // XXX: interact with clouds of cold?
     // XXX: dedup with beam::affect_place_clouds()?
-    if (feat_is_water(env.grid(p)) && !cloud_at(p))
+    if (feat_is_water(env.grid(p)))
         place_cloud(CLOUD_STEAM, p, 2 + random2(5), &agent, 11);
 
     if (!targ->alive())
@@ -2579,7 +2581,7 @@ spret cast_ignition(const actor *agent, int pow, bool fail)
     {
         for (adjacent_iterator ai(pos); ai; ++ai)
         {
-            if (cell_is_solid(*ai)
+            if (cell_is_invalid_target(*ai)
                 && (!beam_actual.can_affect_wall(*ai)
                     || you_worship(GOD_FEDHAS)))
             {
@@ -3587,7 +3589,8 @@ void toxic_radiance_effect(actor* agent, int mult, bool on_cast)
             else
                 ai->hurt(agent, dam, BEAM_POISON);
 
-            if (ai->alive())
+            if (ai->alive() && (!never_harm_monster(&you, *ai->as_monster(), false)
+                                || !agent->is_player()))
             {
                 behaviour_event(ai->as_monster(), ME_ANNOY, agent,
                                 agent->pos());
@@ -3612,7 +3615,7 @@ static void _setup_unravelling(bolt &beam, int pow, coord_def target)
 
 spret cast_unravelling(coord_def target, int pow, bool fail)
 {
-    if (cell_is_solid(target))
+    if (cell_is_invalid_target(target))
     {
         canned_msg(MSG_UNTHINKING_ACT);
         return spret::abort;
@@ -3692,7 +3695,7 @@ string mons_inner_flame_immune_reason(const monster *mons)
 
 spret cast_inner_flame(coord_def target, int pow, bool fail)
 {
-    if (cell_is_solid(target))
+    if (cell_is_invalid_target(target))
     {
         canned_msg(MSG_UNTHINKING_ACT);
         return spret::abort;
@@ -4244,7 +4247,7 @@ void seeker_attack(monster& seeker, actor& target)
     beam.hit_verb = (seeker.type == MONS_FOXFIRE ? "burns" : "hits");
     beam.fire();
 
-    check_place_cloud(seeker_trail_type(seeker), seeker.pos(), 2, &seeker);
+    place_cloud(seeker_trail_type(seeker), seeker.pos(), 2, &seeker);
 
     if (target.alive() && seeker.type == MONS_SHOOTING_STAR)
         target.knockback(seeker, 1, 0, "");

@@ -2203,7 +2203,7 @@ int player_shield_class(int scale, bool random, bool ignore_temporary)
     shield += you.wearing_jewellery(AMU_REFLECTION) * AMU_REFLECT_SH * 100;
     shield += you.scan_artefacts(ARTP_SHIELDING) * 200;
 
-    if (you.duration[DUR_PARRYING])
+    if (!ignore_temporary && you.duration[DUR_PARRYING])
         shield += player_parrying() * 200;
 
     return random ? div_rand_round(shield * scale, 100) : ((shield * scale) / 100);
@@ -2233,6 +2233,21 @@ int player_displayed_shield_class(int scale, bool ignore_temporary)
 bool player_omnireflects()
 {
     return you.unrand_equipped(UNRAND_WARLOCK_MIRROR);
+}
+
+int player::temp_ac_mod() const
+{
+    return armour_class_scaled(100) - base_ac(100);
+}
+
+int player::temp_ev_mod() const
+{
+    return evasion_scaled(100) - evasion_scaled(100, true);
+}
+
+int player::temp_sh_mod() const
+{
+    return player_shield_class(1, false, false) - player_shield_class(1, false, true);
 }
 
 void forget_map(bool rot)
@@ -6114,7 +6129,7 @@ int player::skill(skill_type sk, int scale, bool real, bool temp) const
 
     if (temp && skill_has_dilettante_penalty(sk))
     {
-        if (sk <= SK_LAST_WEAPON)
+        if (sk <= SK_LAST_WEAPON || sk ==  SK_UNARMED_COMBAT)
             level = level / 2;
         else
             level = level * 3 / 4;
