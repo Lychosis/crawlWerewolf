@@ -5,7 +5,7 @@ short_name: "Wr"
 difficulty: Simple
 difficulty_priority: 90
 aptitudes:
-  xp: 0
+  xp: 1
   hp: 3
   mp_mod: 1
   wl: 5
