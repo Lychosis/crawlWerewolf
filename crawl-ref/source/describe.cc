@@ -678,7 +678,7 @@ static const char* _jewellery_base_ability_description(int subtype)
     case AMU_REFLECTION:
         return "It reflects blocked missile attacks.";
     case AMU_WILDSHAPE:
-        return "It improves your skill with shapeshifting (+5)";
+        return "It improves your skill with shapeshifting (+5).";
     case AMU_ALCHEMY:
         return "It enhances your alchemy spells and restores some MP when you "
                "drink potions.";
@@ -1391,7 +1391,7 @@ static string _desc_attack_delay(const item_def &item)
     return make_stringf("\n    Current attack delay: %.1f.", (float)cur_delay / 10);
 }
 
-static string _describe_missile_brand(const item_def &item)
+static string _describe_missile_dmg_brand(const item_def &item)
 {
     switch (item.brand)
     {
@@ -1484,7 +1484,7 @@ string damage_rating(const item_def *item, int *rating_value)
                                                     : "Slay");
     }
 
-    const string brand_desc = thrown ? _describe_missile_brand(*item) : "";
+    const string dmg_brand_desc = thrown ? _describe_missile_dmg_brand(*item) : "";
 
     return make_stringf(
         "%d (Base %s x %d%% (%s) x %d%% (%s)%s)%s.",
@@ -1495,7 +1495,16 @@ string damage_rating(const item_def *item, int *rating_value)
         skill_mult,
         use_weapon_skill ? "Skill" : "Fight",
         plusses_desc.c_str(),
-        brand_desc.c_str());
+        dmg_brand_desc.c_str());
+}
+
+static string _weapon_ego_key(brand_type ego)
+{
+    string verbose_ego_name = lowercase_first(brand_type_name(ego, false));
+    string terse_ego_name = lowercase_first(brand_type_name(ego, true));
+    string ego_key = verbose_ego_name + " (" + terse_ego_name + ") weapon ego";
+
+    return ego_key;
 }
 
 static void _append_skill_needed(string &description, const item_def &item,
@@ -1620,7 +1629,11 @@ static void _append_weapon_stats(string &description, const item_def &item)
         }
         // XXX: Would be nice if this wasn't duplicated
         if (testbits(item.flags, ISFLAG_CHAOTIC))
-            description += "\nChaotic:    Each hit has a different, random effect.";
+        {
+            string ego_key = _weapon_ego_key(SPWPN_CHAOS);
+            string ego_desc = getEgoString(ego_key);
+            description += "\nChaotic:    " + ego_desc;
+        }
 
         // XX spacing following brand and dbrand for randarts/unrands is a bit
         // inconsistent with other object types
@@ -1719,97 +1732,29 @@ static string _describe_weapon_brand(const item_def &item)
     if (!item.is_identified())
         return "";
 
-    const brand_type brand = get_weapon_brand(item);
     const bool ranged = is_range_weapon(item);
+    const int damtype = get_vorpal_type(item);
+    const bool blade = !ranged && damtype == DVORP_SLICING || damtype == DVORP_CHOPPING;
 
-    switch (brand)
+    const brand_type ego = get_weapon_brand(item);
+    string ego_key = _weapon_ego_key(ego);
+    string ego_desc = getEgoString(ego_key);
+
+    // Overrides for ranged weapons and blade weapons, if they exist.
+    if (ranged)
     {
-    case SPWPN_FLAMING:
+        string ranged_ego_desc = getEgoString(ego_key + " ranged");
+        if (!ranged_ego_desc.empty())
+            ego_desc = ranged_ego_desc;
+    }
+    if (blade)
     {
-        const int damtype = get_vorpal_type(item);
-        const string desc = "It burns victims, dealing an additional "
-                            "one-quarter of any damage that pierces defenders'"
-                            " armour.";
-        if (ranged || damtype != DVORP_SLICING && damtype != DVORP_CHOPPING)
-            return desc;
-        return desc +
-            " Big, fiery blades are also staple armaments of hydra-hunters.";
+        string blade_ego_desc = getEgoString(ego_key + " blade");
+        if (!blade_ego_desc.empty())
+            ego_desc = blade_ego_desc;
     }
-    case SPWPN_FREEZING:
-        return "It freezes victims, dealing an additional one-quarter of any "
-               "damage that pierces defenders' armour. It may also slow down "
-               "cold-blooded creatures.";
-    case SPWPN_HOLY_WRATH:
-        return "It has been blessed by the Shining One, dealing an additional "
-               "three-quarters of any damage that pierces undead and demons' "
-               "armour. Undead and demons cannot use this.";
-    case SPWPN_FOUL_FLAME:
-        return "It has been infused with foul flame, dealing an additional "
-               "three-quarters damage to holy beings, an additional "
-               "one-quarter damage to undead and demons, and an additional "
-               "half damage to all others, so long as it pierces armour. "
-               "Holy beings and good god worshippers cannot use this.";
-    case SPWPN_ELECTROCUTION:
-        return "It sometimes electrocutes victims (1/4 chance, 8-20 damage).";
-    case SPWPN_VENOM:
-        return "It poisons victims.";
-    case SPWPN_PROTECTION:
-        return "It grants its wielder temporary protection after it strikes "
-               "(+7 AC).";
-    case SPWPN_DRAINING:
-        return "It sometimes drains living victims (1/2 chance). This deals "
-               "an additional one-quarter of any damage that pierces "
-               "defenders' armour as well as a flat 2-4 damage, and also "
-               "weakens them slightly.";
-    case SPWPN_SPEED:
-        return "Attacks with this weapon are significantly faster.";
-    case SPWPN_HEAVY:
-    {
-        string desc = ranged ? "Any ammunition fired from it" : "It";
-        return desc + " deals dramatically more damage, but attacks with "
-                      "it are much slower.";
-    }
-    case SPWPN_CHAOS:
-        return "Each hit has a different, random effect.";
-    case SPWPN_VAMPIRISM:
-        return "It occasionally heals its wielder for a portion "
-               "of the damage dealt when it wounds a living foe.";
-    case SPWPN_PAIN:
-        {
-            string desc = "In the hands of one skilled in necromantic "
-                 "magic, it inflicts extra damage on living creatures.";
-            if (you_worship(GOD_TROG))
-                return desc + " Trog prevents you from unleashing this effect.";
-            if (!is_useless_skill(SK_NECROMANCY))
-                return desc;
-            return desc + " Your inability to study Necromancy prevents "
-                     "you from drawing on the full power of this weapon.";
-        }
-    case SPWPN_DISTORTION:
-        return "It warps and distorts space around it, and may blink, banish, "
-               "or inflict extra damage upon those it strikes. Unwielding it "
-               "can teleport you to foes or banish you to the Abyss.";
-    case SPWPN_PENETRATION:
-        return "Any ammunition fired by it continues flying after striking "
-               "targets, potentially hitting everything in its path until it "
-               "leaves sight.";
-    case SPWPN_REAPING:
-        return "Any living, holy, or demonic foe damaged by it may be "
-               "temporarily reanimated upon death as a friendly spectral, with "
-               "an increasing chance as more damage is dealt.";
-    case SPWPN_ANTIMAGIC:
-        return "It reduces the magical energy of the wielder, and disrupts "
-               "the spells and magical abilities of those it strikes. Natural "
-               "abilities and divine invocations are not affected.";
-    case SPWPN_SPECTRAL:
-        return "When its wielder attacks, the weapon's spirit leaps out and "
-               "launches a second, slightly weaker strike. The spirit shares "
-               "part of any damage it takes with its wielder.";
-    case SPWPN_ACID:
-        return "It splashes victims with acid (2d4 damage, Corrosion).";
-    default:
-        return "";
-    }
+
+    return ego_desc;
 }
 
 static string _describe_point_change(float points)
@@ -2160,6 +2105,15 @@ static string _describe_weapon(const item_def &item, bool verbose, bool monster)
     return description;
 }
 
+static string _missile_ego_key(const item_def &item)
+{
+    string verbose_ego_name = lowercase_first(missile_brand_name(item, MBN_NAME));
+    string terse_ego_name = lowercase_first(missile_brand_name(item, MBN_TERSE));
+    string ego_key = verbose_ego_name + " (" + terse_ego_name + ") missile ego";
+
+    return ego_key;
+}
+
 static string _describe_ammo(const item_def &item)
 {
     string description;
@@ -2169,70 +2123,11 @@ static string _describe_ammo(const item_def &item)
     if (item.brand && item.is_identified())
     {
         description += "\n\n";
-        switch (item.brand)
-        {
-#if TAG_MAJOR_VERSION == 34
-        case SPMSL_FLAME:
-            description += "It burns those it strikes, causing extra injury "
-                    "to most foes and up to half again as much damage against "
-                    "particularly susceptible opponents. Compared to normal "
-                    "ammo, it is twice as likely to be destroyed on impact.";
-            break;
-        case SPMSL_FROST:
-            description += "It freezes those it strikes, causing extra injury "
-                    "to most foes and up to half again as much damage against "
-                    "particularly susceptible opponents. It can also slow down "
-                    "cold-blooded creatures. Compared to normal ammo, it is "
-                    "twice as likely to be destroyed on impact.";
-            break;
-#endif
-        case SPMSL_CHAOS:
-            description += "When thrown, it has a random effect.";
-            break;
-        case SPMSL_POISONED:
-            description += "It is coated with poison.";
-            break;
-        case SPMSL_CURARE:
-            description += "It is tipped with a substance that causes "
-                           "asphyxiation, dealing direct damage as well as "
-                           "poisoning and slowing those it strikes.\n\n"
-                           "It is twice as likely to be destroyed on impact as "
-                           "other darts.";
-            break;
-        case SPMSL_FRENZY:
-            description += "It is tipped with a substance that sends those it "
-                           "hits into a mindless frenzy, attacking friend and "
-                           "foe alike.\n\n"
-                           "The chance of successfully applying its effect "
-                           "increases with Throwing and Stealth skill.";
 
-            break;
-        case SPMSL_BLINDING:
-            description += "It is tipped with a substance that causes "
-                           "blindness and brief confusion.\n\n"
-                           "The chance of successfully applying its effect "
-                           "increases with Throwing and Stealth skill.";
-            break;
-        case SPMSL_DISPERSAL:
-            description += "It causes any target it hits to blink, with a "
-                           "tendency towards blinking further away from the "
-                           "one who threw it.";
-            break;
-        case SPMSL_DISJUNCTION:
-            description += "It causes any target it hits to become temporarily "
-                           "untethered in space, blinking uncontrollably for "
-                           "several turns and taking minor damage each time it "
-                           "does so.";
-            break;
+        string ego_key = _missile_ego_key(item);
+        string ego_desc = getEgoString(ego_key);
 
-        case SPMSL_SILVER:
-            description += "It deals increased damage compared to normal ammo "
-                           "and substantially increased damage to chaotic "
-                           "and magically transformed beings. It also inflicts "
-                           "extra damage against mutated beings, according to "
-                           "how mutated they are.";
-            break;
-        }
+        description += ego_desc;
     }
 
     const int dam = property(item, PWPN_DAMAGE);
@@ -2289,141 +2184,13 @@ static string _warlock_mirror_reflect_desc()
            "normally unblockable effects.";
 }
 
-static const char* _item_ego_desc(special_armour_type ego)
+static string _armour_ego_key(special_armour_type ego)
 {
-    switch (ego)
-    {
-    case SPARM_FIRE_RESISTANCE:
-        return "it protects its wearer from fire.";
-    case SPARM_COLD_RESISTANCE:
-        return "it protects its wearer from cold.";
-    case SPARM_POISON_RESISTANCE:
-        return "it protects its wearer from poison.";
-    case SPARM_SEE_INVISIBLE:
-        return "it allows its wearer to see invisible things.";
-    case SPARM_INVISIBILITY:
-        return "when activated, it grants its wearer temporary "
-               "invisibility, but also drains their maximum health.";
-    case SPARM_STRENGTH:
-        return "it increases the strength of its wearer (Str +3).";
-    case SPARM_DEXTERITY:
-        return "it increases the dexterity of its wearer (Dex +3).";
-    case SPARM_INTELLIGENCE:
-        return "it increases the intelligence of its wearer (Int +3).";
-    case SPARM_PONDEROUSNESS:
-        return "it is very cumbersome, slowing its wearer's movement.";
-    case SPARM_FLYING:
-        return "it grants its wearer flight.";
-    case SPARM_WILLPOWER:
-        return "it increases its wearer's willpower, protecting "
-               "against certain magical effects.";
-    case SPARM_PROTECTION:
-        return "it protects its wearer from most sources of damage (AC +3).";
-    case SPARM_STEALTH:
-        return "it enhances the stealth of its wearer.";
-    case SPARM_RESISTANCE:
-        return "it protects its wearer from the effects of both fire and cold.";
-    case SPARM_POSITIVE_ENERGY:
-        return "it protects its wearer from the effects of negative energy.";
-    case SPARM_ARCHMAGI:
-        return "it increases the power of its wearer's magical spells.";
-    case SPARM_CORROSION_RESISTANCE:
-        return "it protects its wearer from the effects of acid and corrosion.";
-    case SPARM_REFLECTION:
-        return "it reflects blocked missile attacks back in the "
-               "direction they came from.";
-    case SPARM_SPIRIT_SHIELD:
-        return "it causes incoming damage to be divided between "
-               "the wearer's reserves of health and magic.";
-    case SPARM_HURLING:
-        return "it improves its wearer's accuracy and damage with "
-               "thrown weapons, such as rocks and javelins (Slay +4).";
-    case SPARM_REPULSION:
-        return "it helps its wearer evade both magical and non-magical projectiles (EV +15).";
-#if TAG_MAJOR_VERSION == 34
-    case SPARM_CLOUD_IMMUNE:
-        return "it does nothing special.";
-#endif
-    case SPARM_HARM:
-        return "it increases damage dealt and taken.";
-    case SPARM_SHADOWS:
-        return "it reduces the distance the wearer can be seen at "
-               "and can see.";
-    case SPARM_RAMPAGING:
-        return "its wearer takes one free step when moving towards enemies.";
-    case SPARM_INFUSION:
-        return "it empowers each of its wearer's melee hits with a small part "
-               "of their magic.";
-    case SPARM_LIGHT:
-        return "it surrounds the wearer with a glowing halo, revealing "
-               "invisible creatures, increasing accuracy against all within "
-               "it other than the wearer, and reducing the wearer's stealth.";
-    case SPARM_RAGE:
-        return "it berserks the wearer when making melee attacks (20% chance).";
-    case SPARM_MAYHEM:
-        return "it causes witnesses of the wearer's kills to go into a frenzy,"
-               " attacking everything nearby with great strength and speed.";
-    case SPARM_GUILE:
-        return "it weakens the willpower of the wielder and everyone they hex, "
-               "the latter of which is increased by Evocations skill.";
-    case SPARM_ENERGY:
-        return "it may return the magic spent to cast spells, but lowers their "
-               "success rate. It always returns the magic spent on miscasts. "
-               "The spell refund chance is increased by Evocations skill.";
-    case SPARM_SNIPING:
-        return "it increases the wearer's damage with ranged and thrown "
-               "weapons against incapacitated targets by 50%.";
-    case SPARM_ICE:
-        return "it enhances the wearer's ice magic.";
-    case SPARM_FIRE:
-        return "it enhances the wearer's fire magic.";
-    case SPARM_AIR:
-        return "it enhances the wearer's air magic.";
-    case SPARM_EARTH:
-        return "it enhances the wearer's earth magic.";
-    case SPARM_ARCHERY:
-        return "it has half the normal encumbrance for the purpose of ranged "
-               "combat.";
-    case SPARM_COMMAND:
-        return "it improves the power and success of the wearer's Summoning "
-               "spells in proportion to their Armour skill.";
-    case SPARM_DEATH:
-        return "it empowers the wearer's Necromancy spells and improves their "
-               "success rate, but imposes a health cost for other magic.";
-    case SPARM_RESONANCE:
-        return "it improves the success rate of the wearer's Forgecraft spells "
-               "and enhances their melee attacks proportionally to Forgecraft "
-               "skill.";
-    case SPARM_PARRYING:
-        return "It shields the wearer if their last action was a melee attack. "
-               "The shielding is half as effective if the wielder's offhand is "
-               "occupied by an item other than their weapon.";
-    case SPARM_GLASS:
-        return "It may vitrify enemies when you injure them, making them more "
-               "vulnerable to further damage. Evocations skill increases the "
-               "likelihood and duration of vitrification.";
-    case SPARM_PYROMANIA:
-        return "It enhances the wearer's Fire magic and may unleash a blast of "
-               "flames around the wearer whenever they kill an enemy through any "
-               "means besides attacks. The explosion chance and damage both scale "
-               "with Evocations and it may trigger no more than once each turn.";
-    case SPARM_STARDUST:
-        return "It conjures a barrage of shooting stars the first time its wearer "
-               "spends MP to use a spell or ability each battle, recharging only "
-               "when their MP is restored and no more enemies remain. Evocations "
-               "skill increases the number and damage of the stars and MP spent "
-               "further increases damage.";
-    case SPARM_MESMERISM:
-        return "When you are struck in melee, it briefly dazes all nearby enemies, "
-               "then must recharge by standing still for a while. Its duration, "
-               "radius, and recharge speed are improved by Evocations skill.";
-    case SPARM_ATTUNEMENT:
-        return "When worn alongside a magical staff, it doubles the effectiveness "
-               "of that staff's primary enhancer and causes melee attacks made "
-               "with it to restore a small amount of MP.";
-    default:
-        return "it makes the wearer crave the taste of eggplant.";
-    }
+    string verbose_ego_name = lowercase_first(special_armour_type_name(ego, false));
+    string terse_ego_name = lowercase_first(special_armour_type_name(ego, true));
+    string ego_key = verbose_ego_name + " (" + terse_ego_name + ") armour ego";
+
+    return ego_key;
 }
 
 static string _orb_ego_details(special_armour_type ego)
@@ -2544,7 +2311,8 @@ static string _describe_armour(const item_def &item, bool verbose, bool monster)
         else
             description += "'Of " + string(armour_ego_name(item, false)) + "': ";
 
-        string ego_desc = string(_item_ego_desc(ego));
+        string ego_key = _armour_ego_key(ego);
+        string ego_desc = getEgoString(ego_key);
         if (is_artefact(item))
             ego_desc = " " + uppercase_first(ego_desc);
         description += ego_desc;
