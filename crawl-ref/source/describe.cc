@@ -251,23 +251,22 @@ const char* jewellery_base_ability_string(int subtype)
     switch (subtype)
     {
 #if TAG_MAJOR_VERSION == 34
-    case RING_SUSTAIN_ATTRIBUTES: return "SustAt";
-    case RING_TELEPORTATION:      return "*Tele";
-    case RING_TELEPORT_CONTROL:   return "+cTele";
-    case AMU_HARM:                return "Harm";
-    case AMU_THE_GOURMAND:        return "Gourm";
-    case AMU_CONSERVATION:        return "Cons";
-    case AMU_CONTROLLED_FLIGHT:   return "cFly";
+    case RING_SUSTAIN_ATTRIBUTES:
+    case RING_TELEPORTATION:
+    case RING_TELEPORT_CONTROL:
+    case AMU_THE_GOURMAND:
+    case AMU_HARM:
+    case AMU_CONSERVATION:
+    case AMU_CONTROLLED_FLIGHT:
+    case AMU_INACCURACY:
 #endif
-    case AMU_GUARDIAN_SPIRIT:     return "Spirit";
-    case AMU_FAITH:               return "Faith";
-    case AMU_REFLECTION:          return "Reflect";
-    case AMU_WILDSHAPE:           return "Wildshape";
-    case AMU_DISSIPATION:         return "Dissipate";
-    case AMU_ALCHEMY:             return "Alch+";
-#if TAG_MAJOR_VERSION == 34
-    case AMU_INACCURACY:          return "Inacc";
-#endif
+    case AMU_GUARDIAN_SPIRIT:
+    case AMU_FAITH:
+    case AMU_REFLECTION:
+    case AMU_WILDSHAPE:
+    case AMU_ALCHEMY:
+    case AMU_DISSIPATION:
+        return jewellery_effect_name(subtype, true);
     }
     return "";
 }
@@ -663,12 +662,16 @@ static const char* _jewellery_base_ability_description(int subtype)
         return "It may teleport you next to monsters.";
     case RING_TELEPORT_CONTROL:
         return "It can be evoked for teleport control.";
-    case AMU_HARM:
-        return "It increases damage dealt and taken.";
     case AMU_THE_GOURMAND:
         return "It allows you to eat raw meat even when not hungry.";
+    case AMU_HARM:
+        return "It increases damage dealt and taken.";
     case AMU_CONSERVATION:
         return "It protects your inventory from destruction.";
+    case AMU_CONTROLLED_FLIGHT:
+        return "It allows you to control your flight when levitating.";
+    case AMU_INACCURACY:
+        return "It reduces the accuracy of all your attacks.";
 #endif
     case AMU_GUARDIAN_SPIRIT:
         return "It causes incoming damage to be divided between your reserves "
@@ -685,10 +688,6 @@ static const char* _jewellery_base_ability_description(int subtype)
     case AMU_DISSIPATION:
         return "It reduces the duration of hostile enchantments and decays "
                "magical contamination more quickly.";
-#if TAG_MAJOR_VERSION == 34
-    case AMU_INACCURACY:
-        return "It reduces the accuracy of all your attacks.";
-#endif
     }
     return "";
 }
