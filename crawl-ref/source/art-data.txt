@@ -412,16 +412,16 @@ BOOL:    poison, skip_ego, deleted
 WILL:    1
 # end TAG_MAJOR_VERSION
 
-NAME:    eveningstar "Brilliance"
-OBJ:     OBJ_WEAPONS/WPN_EVENINGSTAR
-PLUS:    +1
-INSCRIP: Umbra
-COLOUR:  ETC_FOUL_FLAME
-TILE:    urand_brilliance
-TILE_EQ: eveningstar_brilliance
-BRAND:   SPWPN_FOUL_FLAME
+NAME:     eveningstar "Brilliance"
+OBJ:      OBJ_WEAPONS/WPN_EVENINGSTAR
+PLUS:     +1
+INSCRIP:  Umbra
+COLOUR:   ETC_FOUL_FLAME
+TILE:     urand_brilliance
+TILE_EQ:  eveningstar_brilliance
+BRAND:    SPWPN_FOUL_FLAME
 FB_BRAND: SPWPN_PAIN
-DESCRIP: Umbra:     It surrounds you with an aura of shadow, increasing your
+DESCRIP:  Umbra:     It surrounds you with an aura of shadow, increasing your
  stealth and reducing the accuracy of all others within it.
 
 NAME:    demon blade "Leech"
@@ -851,7 +851,6 @@ INSCRIP:  Bear,
 COLOUR:   DARKGREY
 TILE:     urand_bear
 TILE_EQ:  bear
-# TODO: why isn't this brand working on the fallback?
 BRAND:    SPARM_SPIRIT_SHIELD
 ANGRY:    20
 WILL:     2
