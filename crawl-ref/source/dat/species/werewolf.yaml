@@ -29,7 +29,7 @@ mutations:
       MUT_REGENERATION: 1
       MUT_FAST: 1
       MUT_ACUTE_VISION: 1
-      MUT_MUTATION_RESISTANCE: 3
+      MUT_MUTATION_RESISTANCE: 1
       MUT_DIVINE_ATTRS: 1
 
 recommended_jobs:
