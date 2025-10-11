@@ -23,6 +23,7 @@ levelup_stat_frequency: 28
 mutations:
   1:
       MUT_FANGS: 3
+      MUT_ANTIMAGIC_BITE: 1
       MUT_CLAWS: 2
       MUT_SHAGGY_FUR: 3
       MUT_REGENERATION: 1
