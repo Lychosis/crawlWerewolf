@@ -11,9 +11,9 @@ aptitudes:
   wl: 3
   fighting: 1
   unarmed_combat: 1
-str: 11
+str: 13
 int: 11
-dex: 11
+dex: 13
 # No natural stat gain (quadruple chosen instead)
 levelup_stats: []
 levelup_stat_frequency: 28
