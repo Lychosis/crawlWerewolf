@@ -12,7 +12,7 @@ aptitudes:
   fighting: 1
   unarmed_combat: 1
 str: 13
-int: 11
+int: 13
 dex: 13
 # No natural stat gain (quadruple chosen instead)
 levelup_stats: []
