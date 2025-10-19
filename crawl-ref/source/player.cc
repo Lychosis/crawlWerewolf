@@ -3261,15 +3261,6 @@ int player_stealth()
         stealth += (STEALTH_PIP * 2);
     }
 
-    // Radiating silence is the negative complement of shouting all the
-    // time... a sudden change from background noise to no noise is going
-    // to clue anything in to the fact that something is very wrong...
-    // a personal silence spell would naturally be different, but this
-    // silence radiates for a distance and prevents monster spellcasting,
-    // which pretty much gives away the stealth game.
-    if (you.duration[DUR_SILENCE])
-        stealth -= STEALTH_PIP;
-
     if (feat_is_water(env.grid(you.pos())))
     {
         if (you.has_mutation(MUT_NIMBLE_SWIMMER))
@@ -9184,8 +9175,11 @@ void trickster_trigger(const monster& victim, enchant_type ench)
     if (!_ench_triggers_trickster(ench))
         return;
 
-    if (!you.can_see(victim) || !you.see_cell_no_trans(victim.pos()) || victim.friendly())
+    if (!you.can_see(victim) || !you.see_cell_no_trans(victim.pos())
+        || victim.friendly() || victim.is_firewood())
+    {
         return;
+    }
 
     const int min_bonus = 3 + you.experience_level / 6;
 
