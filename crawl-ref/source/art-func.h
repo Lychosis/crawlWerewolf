@@ -518,9 +518,9 @@ static void _STORM_QUEEN_melee_effects(item_def* /*item*/, actor* wearer,
     // elec brand - same average damage per trigger, higher trigger chance,
     // but checks (half) AC - and triggers on block instead of attack :)
     if (!attacker || !one_chance_in(3)) return;
-    shock_discharge_fineff::schedule(wearer, *attacker,
-                                     wearer->pos(), 3,
-                                     "shield");
+    schedule_shock_discharge_fineff(wearer, *attacker,
+                                    wearer->pos(), 3,
+                                    "shield");
 
 }
 
@@ -1483,7 +1483,6 @@ static int _harvest_corpses()
                 beam.draw_delay = 3;
                 beam.fire();
                 viewwindow();
-                update_screen();
             }
 
             destroy_item(item.index());

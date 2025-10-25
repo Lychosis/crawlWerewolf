@@ -1007,7 +1007,6 @@ bool view_update()
     if (you.num_turns > you.last_view_update)
     {
         viewwindow();
-        update_screen();
         return true;
     }
     return false;
@@ -1018,24 +1017,26 @@ void animation_delay(unsigned int ms, bool do_refresh)
     // this leaves any Options.use_animations & UA_BEAM checks to the caller;
     // but maybe it could be refactored into here
     if (do_refresh)
-    {
         viewwindow(false);
-        update_screen();
-    }
     scaled_delay(ms);
+}
+
+static void _flash_view(colour_t colour, targeter* where)
+{
+#ifndef USE_TILE_LOCAL
+    save_cursor_pos save;
+#endif
+
+    you.flash_colour = colour;
+    you.flash_where = where;
+    viewwindow(false);
 }
 
 void flash_view(use_animation_type a, colour_t colour, targeter *where)
 {
     if (crawl_state.need_save && Options.use_animations & a)
     {
-#ifndef USE_TILE_LOCAL
-        save_cursor_pos save;
-#endif
-
-        you.flash_colour = colour;
-        you.flash_where = where;
-        viewwindow(false);
+        _flash_view(colour, where);
         update_screen();
     }
 }
@@ -1045,9 +1046,9 @@ void flash_view_delay(use_animation_type a, colour_t colour, int flash_delay,
 {
     if (crawl_state.need_save && Options.use_animations & a)
     {
-        flash_view(a, colour, where);
+        _flash_view(colour, where);
         scaled_delay(flash_delay);
-        flash_view(a, 0);
+        _flash_view(BLACK, nullptr);
     }
 }
 
@@ -1372,21 +1373,16 @@ void run_animation(animation_type anim, use_animation_type type, bool cleanup)
         animation *a = animations[anim];
 
         viewwindow();
-        update_screen();
 
         for (int i = 0; i < a->frames; ++i)
         {
             a->init_frame(i);
             viewwindow(false, false, a);
-            update_screen();
             delay(a->frame_delay);
         }
 
         if (cleanup)
-        {
             viewwindow();
-            update_screen();
-        }
     }
 }
 
@@ -1444,7 +1440,6 @@ void viewwindow(bool show_updates, bool tiles_only, animation *a, view_renderer 
         if (crawl_state.smallterm)
         {
             smallterm_warning();
-            update_screen();
             return;
         }
 #endif
@@ -1508,7 +1503,6 @@ void viewwindow(bool show_updates, bool tiles_only, animation *a, view_renderer 
             UNUSED(tiles_only);
 #endif
 #ifdef USE_TILE
-            tiles.set_need_redraw();
             tiles.load_dungeon(vbuf, crawl_view.vgrdc);
             tiles.update_tabs();
 #endif
@@ -1863,7 +1857,6 @@ static void _config_layers_menu()
     while (!exit)
     {
         viewwindow();
-        update_screen();
         mprf(MSGCH_PROMPT, "Select layers to display:\n"
                            "<%s>(m)onsters</%s>|"
                            "<%s>(p)layer</%s>|"
@@ -1978,8 +1971,5 @@ void handle_terminal_resize()
         ui::force_render();
     }
     else
-    {
         redraw_screen();
-        update_screen();
-    }
 }

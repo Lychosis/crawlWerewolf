@@ -253,10 +253,8 @@ bool bless_weapon(god_type god, brand_type brand, colour_t colour)
                 maybe_bloodify_square(*ri);
     }
 
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(1000);
-#endif
     return true;
 }
 
@@ -1316,10 +1314,8 @@ void zin_sanctuary()
         mpr("You are suddenly bathed in radiance!");
 
     flash_view(UA_PLAYER, WHITE);
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(1000);
-#endif
 
     // Pets stop attacking and converge on you.
     you.pet_target = MHITYOU;
@@ -1789,7 +1785,7 @@ void yred_make_bound_soul(monster* mon, bool force_hostile)
     }
 
     // schedule our actual revival for the end of this combat round
-    avoided_death_fineff::schedule(mon);
+    schedule_avoided_death_fineff(mon);
 
     mprf("%s soul %s.", whose.c_str(),
          !force_hostile ? "is now yours" : "fights you");
@@ -1828,10 +1824,8 @@ bool kiku_gift_capstone_spells()
     simple_god_message(" grants you forbidden knowledge!");
     library_add_spells(spells);
     flash_view(UA_PLAYER, RED);
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(1000);
-#endif
     more();
     you.one_time_ability_used.set(you.religion);
     take_note(Note(NOTE_GOD_GIFT, you.religion, 0, "forbidden knowledge"));
@@ -2088,10 +2082,8 @@ void cheibriados_time_step(int pow)
         // Update corpses, etc.
         update_level(1000);
 
-#ifndef USE_TILE_LOCAL
+        // Allow extra time for the flash to linger.
         scaled_delay(1000);
-#endif
-
     }
     _cleanup_time_steps();
 
@@ -5033,7 +5025,6 @@ static void _extra_sacrifice_code(ability_type sac)
         }
 
         redraw_screen();
-        update_screen();
         break;
     }
     case ABIL_RU_SACRIFICE_FORMS:
@@ -5238,7 +5229,6 @@ bool ru_do_sacrifice(ability_type sac)
     _ru_expire_sacrifices();
     ru_reset_sacrifice_timer(true);
     redraw_screen(); // pretty much everything could have changed
-    update_screen();
     return true;
 }
 
@@ -5952,7 +5942,7 @@ spret uskayaw_grand_finale(bool fail)
         // need to do this here, because react_to_damage is never called
         mprf("%s explodes violently into a cloud of jellies%s",
                                         mons->name(DESC_THE, false).c_str(), attack_punctuation.c_str());
-        trj_spawn_fineff::schedule(&you, mons, mons->pos(), mons->hit_points);
+        schedule_trj_spawn_fineff(&you, mons, mons->pos(), mons->hit_points);
     }
     else
         mprf("%s explodes violently%s", mons->name(DESC_THE, false).c_str(), attack_punctuation.c_str());

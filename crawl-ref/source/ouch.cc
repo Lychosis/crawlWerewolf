@@ -31,6 +31,7 @@
 #include "delay.h"
 #include "dgn-event.h"
 #include "end.h"
+#include "env.h"
 #include "fight.h"
 #include "files.h"
 #include "fineff.h"
@@ -472,7 +473,6 @@ void lose_level()
     // In case of intrinsic ability changes.
     tiles.layout_statcol();
     redraw_screen();
-    update_screen();
 #endif
 
     xom_is_stimulated(200);
@@ -625,7 +625,7 @@ static void _maybe_ru_retribution(int dam, mid_t death_source)
         if (dam <= 0 || !mons || death_source == MID_YOU_FAULTLESS)
             return;
 
-        ru_retribution_fineff::schedule(mons, &you, dam);
+        schedule_ru_retribution_fineff(mons, &you, dam);
     }
 }
 
@@ -638,7 +638,7 @@ static void _maybe_inflict_anguish(int dam, mid_t death_source)
     {
         return;
     }
-    anguish_fineff::schedule(mons, dam);
+    schedule_anguish_fineff(mons, dam);
 }
 
 static void _maybe_spawn_rats(int dam, kill_method_type death_type)
@@ -1217,7 +1217,6 @@ static void _print_endgame_messages(scorefile_entry &se)
 
     flush_prev_message();
     viewwindow(); // don't do for leaving/winning characters
-    update_screen();
 
     if (crawl_state.game_is_hints())
         hints_death_screen();

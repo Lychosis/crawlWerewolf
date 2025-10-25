@@ -681,7 +681,6 @@ void move_player_to_grid(const coord_def& p, bool stepped)
     // Move the player to new location.
     you.moveto(p, true);
     viewwindow();
-    update_screen();
 
     moveto_location_effects(old_grid, stepped, old_pos);
 }
@@ -1025,6 +1024,26 @@ bool player::unrand_equipped(int unrand_index, bool include_melded) const
         return you.equipment.unrand_equipped.get(unrand_index - UNRAND_START);
     else
         return you.equipment.unrand_active.get(unrand_index - UNRAND_START);
+}
+
+bool player::weapon_is_good_stab(const item_def *weapon) const
+{
+    const skill_type wpn_skill = weapon ? item_attack_skill(*weapon)
+                                        : SK_UNARMED_COMBAT;
+
+    return wpn_skill == SK_SHORT_BLADES
+           || you.get_mutation_level(MUT_PAWS)
+           || you.form == transformation::spider
+           || you.unrand_equipped(UNRAND_HOOD_ASSASSIN)
+              && (!weapon || is_melee_weapon(*weapon));
+}
+
+bool player::has_good_stab() const
+{
+    const item_def *weapon = you.weapon();
+    const item_def *offhand = you.offhand_weapon();
+
+    return you.weapon_is_good_stab(weapon) || you.weapon_is_good_stab(offhand);
 }
 
 bool player_can_hear(const coord_def& p, int hear_distance)
@@ -2902,7 +2921,6 @@ void level_change(bool skip_attribute_increase)
         {
             // Don't want to see the dead creature at the prompt.
             redraw_screen();
-            update_screen();
 
             if (new_exp == 27)
                 mprf(MSGCH_INTRINSIC_GAIN, "You have reached level 27, the final one!");
@@ -2936,7 +2954,6 @@ void level_change(bool skip_attribute_increase)
             // In case of intrinsic ability changes.
             tiles.layout_statcol();
             redraw_screen();
-            update_screen();
 #endif
             if (!skip_attribute_increase)
                 species_stat_gain(you.species);
@@ -3021,7 +3038,6 @@ void level_change(bool skip_attribute_increase)
                     tiles.layout_statcol();
 #endif
                     redraw_screen();
-                    update_screen();
                 }
                 break;
 
@@ -8121,7 +8137,6 @@ bool player::do_shaft_ability()
     {
         canned_msg(MSG_NOTHING_HAPPENS);
         redraw_screen();
-        update_screen();
         return false;
     }
 }
@@ -8785,7 +8800,6 @@ void player_open_door(coord_def doorpos)
 
     update_exclusion_los(excludes);
     viewwindow();
-    update_screen();
     you.turn_is_over = true;
 }
 

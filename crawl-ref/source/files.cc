@@ -2228,7 +2228,7 @@ bool load_level(dungeon_feature_type stair_taken, load_mode_type load_mode,
     show_update_emphasis();
 
     // Shouldn't happen, but this is too unimportant to assert.
-    deleteAll(env.final_effects);
+    clear_final_effects();
     env.final_effect_monster_cache.clear();
 
     los_changed();
@@ -3451,10 +3451,6 @@ void level_excursion::go_to(const level_id& next)
     // TODO: reimplement with no_excursions?
     ASSERT(!crawl_state.generating_level || original.branch == BRANCH_ABYSS);
 
-    // This must be set before loading a level as it redraws the map knowledge
-    // which checks what is currently in view
-    you.on_current_level = (next == original);
-
     if (level_id::current() != next)
     {
         ASSERT(level_excursions_allowed());
@@ -3465,6 +3461,11 @@ void level_excursion::go_to(const level_id& next)
         ever_changed_levels = true;
 
         save_level(level_id::current());
+
+        // This must be set before loading a level as it redraws the map knowledge
+        // which checks what is currently in view.
+        you.on_current_level = (next == original);
+
         _load_level(next);
 
         if (you.level_visited(next))

@@ -625,7 +625,6 @@ LUARET1(you_depth_fraction, number,
 // [ds] Absolute depth is 1-based for Lua to match things like DEPTH:
 // which are also 1-based. Yes, this is confusing. FIXME: eventually
 // change you.absdepth0 to be 1-based as well.
-// [1KB] FIXME: eventually eliminate the notion of absolute depth at all.
 LUARET1(you_absdepth, number, env.absdepth0 + 1)
 
 /*** How long has the player been on the current level?
@@ -1386,29 +1385,56 @@ LUAFN(you_status)
     PLUARET(string, status_effects.c_str());
 }
 
+/*** Is your quivered action valid?
+ * @treturn boolean
+ * @function quiver_valid
+ */
 LUAFN(you_quiver_valid)
 {
     PLUARET(boolean, !you.quiver_action.is_empty()
                    && you.quiver_action.get()->is_valid());
 }
 
+/*** Is your quivered action enabled?
+ * @treturn boolean
+ * @function quiver_enabled
+ */
 LUAFN(you_quiver_enabled)
 {
     PLUARET(boolean, !you.quiver_action.is_empty()
                    && you.quiver_action.get()->is_enabled());
 }
 
+/*** Does your quivered action use MP?
+ * @treturn boolean
+ * @function quiver_uses_mp
+ */
 LUAFN(you_quiver_uses_mp)
 {
     PLUARET(boolean, quiver::get_secondary_action()->uses_mp());
 }
 
+/*** Does your quivered action allow autofight?
+ * @treturn boolean
+ * @function quiver_allows_autofight
+ */
 LUAFN(you_quiver_allows_autofight)
 {
     PLUARET(boolean, quiver::get_secondary_action()->allow_autofight());
 }
 
+/*** Are you immune to webs?
+ * @treturn boolean
+ * @function is_web_immune
+ */
 LUARET1(you_is_web_immune, boolean, you.is_web_immune())
+
+/*** Do your successful stab attacks deal significantly increased damage,
+ * considering weapon type, equipment, and transformations?
+ * @treturn boolean
+ * @function has_good_stab
+ */
+LUARET1(you_has_good_stab, boolean, you.has_good_stab())
 
 static const struct luaL_reg you_clib[] =
 {
@@ -1557,6 +1583,7 @@ static const struct luaL_reg you_clib[] =
     { "quiver_allows_autofight", you_quiver_allows_autofight },
     { "activate_ability",        you_activate_ability},
     { "is_web_immune",     you_is_web_immune },
+    { "has_good_stab",      you_has_good_stab },
 
     { nullptr, nullptr },
 };

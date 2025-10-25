@@ -725,7 +725,6 @@ void dec_penance(god_type god, int val)
             {
                 simple_god_message(" restores the support of your attributes.");
                 redraw_screen();
-                update_screen();
                 notify_stat_change();
             }
             if (have_passive(passive_t::storm_shield))
@@ -899,7 +898,6 @@ static void _inc_penance(god_type god, int val)
         if (will_have_passive(passive_t::stat_boost))
         {
             redraw_screen();
-            update_screen();
             notify_stat_change();
         }
 
@@ -907,7 +905,7 @@ static void _inc_penance(god_type god, int val)
         {
             if (you.duration[DUR_TROGS_HAND])
                 trog_remove_trogs_hand();
-            dismiss_divine_allies_fineff::schedule(GOD_TROG);
+            schedule_dismiss_divine_allies_fineff(GOD_TROG);
         }
         else if (god == GOD_ZIN)
         {
@@ -920,7 +918,7 @@ static void _inc_penance(god_type god, int val)
         {
             if (you.duration[DUR_DIVINE_SHIELD])
                you.duration[DUR_DIVINE_SHIELD] = 0;
-            dismiss_divine_allies_fineff::schedule(GOD_SHINING_ONE);
+            schedule_dismiss_divine_allies_fineff(GOD_SHINING_ONE);
         }
         else if (god == GOD_ELYVILON)
         {
@@ -990,7 +988,7 @@ static void _inc_penance(god_type god, int val)
                 okawaru_remove_finesse();
         }
         else if (god == GOD_BEOGH)
-            dismiss_divine_allies_fineff::schedule(GOD_BEOGH);
+            schedule_dismiss_divine_allies_fineff(GOD_BEOGH);
         else if (god == GOD_YREDELEMNUL)
         {
             you.props.erase(YRED_TORCH_POWER_KEY);
@@ -2387,7 +2385,6 @@ static void _handle_piety_gain(int old_piety)
     #ifdef USE_TILE_LOCAL
                     tiles.layout_statcol();
                     redraw_screen();
-                    update_screen();
     #endif
                     learned_something_new(HINT_NEW_ABILITY_GOD);
                 }
@@ -2642,7 +2639,6 @@ static void _handle_piety_loss(int old_piety)
 #ifdef USE_TILE_LOCAL
         tiles.layout_statcol();
         redraw_screen();
-        update_screen();
 #endif
 
         if (will_have_passive(passive_t::frail) && !have_passive(passive_t::frail))
@@ -2940,7 +2936,6 @@ void excommunication(bool voluntary, god_type new_god)
     if (had_stat_boost)
     {
         redraw_screen();
-        update_screen();
         notify_stat_change();
     }
 
@@ -2971,7 +2966,7 @@ void excommunication(bool voluntary, god_type new_god)
         break;
 
     case GOD_MAKHLEB:
-        dismiss_divine_allies_fineff::schedule(GOD_MAKHLEB);
+        schedule_dismiss_divine_allies_fineff(GOD_MAKHLEB);
         if (you.form == transformation::slaughter)
             untransform();
         break;
@@ -2979,7 +2974,7 @@ void excommunication(bool voluntary, god_type new_god)
     case GOD_TROG:
         if (you.duration[DUR_TROGS_HAND])
             trog_remove_trogs_hand();
-        dismiss_divine_allies_fineff::schedule(GOD_TROG);
+        schedule_dismiss_divine_allies_fineff(GOD_TROG);
         you.skills_to_show.insert(SK_SPELLCASTING);
         break;
 
@@ -3020,7 +3015,7 @@ void excommunication(bool voluntary, god_type new_god)
         if (you.duration[DUR_DIVINE_SHIELD])
             you.duration[DUR_DIVINE_SHIELD] = 0;
 
-        dismiss_divine_allies_fineff::schedule(GOD_SHINING_ONE);
+        schedule_dismiss_divine_allies_fineff(GOD_SHINING_ONE);
         break;
 
     case GOD_ZIN:
@@ -3183,7 +3178,6 @@ void excommunication(bool voluntary, god_type new_god)
 #ifdef USE_TILE_LOCAL
     tiles.layout_statcol();
     redraw_screen();
-    update_screen();
 #endif
 
     // Evil hack.
@@ -3657,7 +3651,6 @@ static void _join_gozag()
 #ifdef USE_TILE_LOCAL
         tiles.layout_statcol();
         redraw_screen();
-        update_screen();
 #else
         ;
 #endif
@@ -3828,7 +3821,6 @@ void join_religion(god_type which_god)
     ASSERT(!you.has_mutation(MUT_FORLORN));
 
     redraw_screen();
-    update_screen();
 
     const god_type old_god = you.religion;
     if (you.previous_good_god == GOD_NO_GOD)
@@ -3910,7 +3902,6 @@ void join_religion(god_type which_god)
 #ifdef USE_TILE_LOCAL
     tiles.layout_statcol();
     redraw_screen();
-    update_screen();
 #endif
 
     learned_something_new(HINT_CONVERT);
@@ -3953,7 +3944,6 @@ void god_pitch(god_type which_god)
     {
         you.turn_is_over = false;
         redraw_screen();
-        update_screen();
     }
 }
 

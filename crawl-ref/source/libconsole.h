@@ -35,13 +35,13 @@ int getch_ck();
 bool kbhit();
 void delay(unsigned int ms);
 void puttext(int x, int y, const crawl_view_buffer &vbuf);
-void update_screen();
+void update_screen(unsigned int min_delay_ms = 0);
 
 void set_cursor_enabled(bool enabled);
 bool is_cursor_enabled();
 void set_mouse_enabled(bool enabled);
 
-static inline void put_colour_ch(int colour, unsigned ch)
+static inline void put_colour_ch(int colour, char32_t ch)
 {
     textcolour(colour);
     putwch(ch);

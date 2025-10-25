@@ -614,7 +614,6 @@ public:
     {
         // Update known terrain
         viewwindow();
-        update_screen();
 
         const bool exit_is_near = abyss_exit_nearness();
         const bool rune_is_near = abyss_rune_nearness();
@@ -978,12 +977,6 @@ static void _abyss_identify_area_to_shift(coord_def source, int radius,
         _abyss_expand_mask_to_cover_vault(mask, i);
 }
 
-static void _abyss_invert_mask(map_bitmask *mask)
-{
-    for (rectangle_iterator ri(0); ri; ++ri)
-        mask->set(*ri, !mask->get(*ri));
-}
-
 // Moves everything in the given radius around the player (where radius=0 =>
 // only the player) to another part of the level, centred on target_centre.
 // Everything not in the given radius is wiped to DNGN_UNSEEN and the provided
@@ -1046,7 +1039,7 @@ static void _abyss_shift_level_contents_around_player(
     // So far we've used the mask to track the portions of the level we're
     // preserving. The inverse of the mask represents the area to be filled
     // with brand new abyss:
-    _abyss_invert_mask(&abyss_destruction_mask);
+    abyss_destruction_mask.invert();
 
     // Update env.level_vaults to discard any vaults that are no longer in
     // the picture.
@@ -2324,10 +2317,8 @@ void lugonu_corrupt_level(int power)
     _corrupt_level_features(cenv);
     run_corruption_effects(300);
 
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(1000);
-#endif
 }
 
 void lugonu_corrupt_level_monster(const monster &who)
@@ -2348,10 +2339,8 @@ void lugonu_corrupt_level_monster(const monster &who)
     for (int i = 0; i < count; ++i)
         _spawn_corrupted_servant_near_monster(who);
 
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(300);
-#endif
 }
 
 /// Splash decorative corruption around the given space.
@@ -2397,7 +2386,6 @@ void abyss_maybe_spawn_xp_exit()
     env.grid(you.pos()) = stairs ? DNGN_ABYSSAL_STAIR : DNGN_EXIT_ABYSS;
     big_cloud(CLOUD_TLOC_ENERGY, &you, you.pos(), 3 + random2(3), 3, 3);
     redraw_screen(); // before the force-more
-    update_screen();
     mprf(MSGCH_BANISHMENT,
          "The substance of the Abyss twists violently,"
          " and a gateway leading %s appears!", stairs ? "down" : "out");

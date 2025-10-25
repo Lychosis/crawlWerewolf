@@ -168,7 +168,6 @@ static void _wizard_go_to_level(const level_pos &pos)
     new_level();
     seen_monsters_react();
     viewwindow();
-    update_screen();
 
     // Tell stash-tracker and travel that we've changed levels.
     trackers_init_new_level();
@@ -276,6 +275,12 @@ bool wizard_create_feature(const coord_def& pos, dungeon_feature_type feat, bool
     return wizard_create_feature(t, feat, mimic);
 }
 
+static void _connect_door(coord_def pos)
+{
+    if (map_bounds(pos) && feat_is_door(env.grid(pos)))
+        tile_init_flavour(pos);
+}
+
 bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
 {
     if (feat == DNGN_UNSEEN)
@@ -330,12 +335,10 @@ bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
         // Update gate tiles, if existing.
         if (feat_is_door(old_feat) || feat_is_door(feat))
         {
-            const coord_def left  = pos - coord_def(1, 0);
-            const coord_def right = pos + coord_def(1, 0);
-            if (map_bounds(left) && feat_is_door(env.grid(left)))
-                tile_init_flavour(left);
-            if (map_bounds(right) && feat_is_door(env.grid(right)))
-                tile_init_flavour(right);
+            _connect_door(pos - coord_def(1, 0));
+            _connect_door(pos + coord_def(1, 0));
+            _connect_door(pos - coord_def(0, 1));
+            _connect_door(pos + coord_def(0, 1));
         }
         if (pos == you.pos() && cell_is_solid(pos))
             you.wizmode_teleported_into_rock = true;
@@ -685,7 +688,6 @@ static void _debug_kill_traps()
 static int _debug_time_explore()
 {
     viewwindow();
-    update_screen();
     start_explore(false);
 
     unwind_var<int> es(Options.explore_stop, 0);
@@ -834,7 +836,6 @@ void wizard_recreate_level()
     new_level();
     seen_monsters_react();
     viewwindow();
-    update_screen();
 
     trackers_init_new_level();
 }
