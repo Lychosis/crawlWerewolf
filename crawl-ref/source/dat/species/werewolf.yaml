@@ -7,8 +7,8 @@ difficulty_priority: 90
 aptitudes:
   xp: 1
   hp: 3
-  mp_mod: 3
-  wl: 3
+  mp_mod: 5
+  wl: 5
   fighting: 1
   unarmed_combat: 1
 str: 13
