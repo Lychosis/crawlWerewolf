@@ -16,6 +16,10 @@ int: 13
 dex: 13
 # No natural stat gain (quadruple chosen instead)
 levelup_stat_frequency: 3
+levelup_stats:
+  - str
+  - int
+  - agl
 mutations:
   1:
     MUT_MUTATION_RESISTANCE: 1
