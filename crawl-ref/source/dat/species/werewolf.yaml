@@ -15,16 +15,16 @@ str: 13
 int: 13
 dex: 13
 # No natural stat gain (quadruple chosen instead)
-levelup_stats: []
-levelup_stat_frequency: 28
+levelup_stat_frequency: 3
 mutations:
   1:
     MUT_MUTATION_RESISTANCE: 1
+    MUT_REGENERATION: 1
+    MUT_FAST: 1
     MUT_FANGS: 1
     MUT_CLAWS: 1
     MUT_SHAGGY_FUR: 1
-    MUT_REGENERATION: 1
-    MUT_FAST: 1
+
   5:
     MUT_FANGS: 1
     MUT_CLAWS: 1
