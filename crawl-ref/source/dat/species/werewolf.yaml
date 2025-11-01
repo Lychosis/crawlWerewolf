@@ -19,7 +19,7 @@ levelup_stat_frequency: 3
 levelup_stats:
   - str
   - int
-  - agl
+  - dex
 mutations:
   1:
     MUT_MUTATION_RESISTANCE: 1
