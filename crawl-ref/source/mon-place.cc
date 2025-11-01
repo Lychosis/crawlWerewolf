@@ -319,6 +319,7 @@ void spawn_random_monsters()
 
     mons_place(mg);
     viewwindow();
+    update_screen();
 }
 
 static bool _is_random_monster(monster_type mt)
@@ -1508,6 +1509,8 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
         mon->add_ench(mon_enchant(ENCH_REGENERATION, 0, &you, random_range(300, 500)));
     }
 
+    mon->origin_level = level_id::current();
+
     return mon;
 }
 
@@ -1960,7 +1963,7 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_MNOLEG,          { {}, {{ BAND_MNOLEG, {5, 8}, true }}}},
     { MONS_LOM_LOBON,       { {}, {{ BAND_LOM_LOBON, {5, 8}, true }}}},
     { MONS_DEATH_SCARAB,  { {0, 0, []() {
-        return you.where_are_you == BRANCH_TOMB;
+        return you.where_are_you != BRANCH_SPIDER;
     }},                            {{ BAND_DEATH_SCARABS, {3, 6} }}}},
     { MONS_SERAPH,          { {}, {{ BAND_HOLIES, {1, 4}, true }}}},
     { MONS_IRON_GIANT,      { {}, {{ BAND_IRON_GOLEMS, {2, 3}, true }}}},

@@ -1483,6 +1483,7 @@ static int _harvest_corpses()
                 beam.draw_delay = 3;
                 beam.fire();
                 viewwindow();
+                update_screen();
             }
 
             destroy_item(item.index());
@@ -1770,7 +1771,7 @@ static void _ASMODEUS_melee_effects(item_def* /*weapon*/, actor* attacker,
 
         mgen_data mg(demon, BEH_FRIENDLY, you.pos(), MHITYOU,
                      MG_FORCE_BEH | MG_AUTOFOE);
-        mg.set_summoned(&you, SPELL_FIRE_SUMMON, summ_dur(4));
+        mg.set_summoned(&you, SPELL_HELLFIRE_COURT, summ_dur(4));
 
         if (create_monster(mg))
         {

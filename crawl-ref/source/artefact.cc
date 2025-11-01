@@ -777,8 +777,18 @@ static bool _artp_can_go_on_item(artefact_prop_type prop, int prop_val,
                     ARTP_ENHANCE_AIR, ARTP_ENHANCE_EARTH, ARTP_ENHANCE_ALCHEMY,
                     ARTP_ENHANCE_FORGECRAFT }, intrinsic_props, extant_props);
         case ARTP_REGENERATION:
-            // XXX: regen disabled on talismans because of an untransform crash
-            // related to talismans being slotless
+            // TODO: Regen is disabled on talismans because it's only available
+            // on artefact talismans. Thus, form changes only check artprops via
+            // player-equip.cc:equip_artefact_effect() and
+            // player-equip.cc:unequip_artefact_effect(), and regen is handled
+            // in player_equip():_handle_regen_item_equip(), which is called
+            // outside both of those functions. This means regen currently does
+            // *nothing* on artefact talismans that can only get regen from
+            // artprops, since they use a different codepath from *other*
+            // artefacts that can only get regen from artprops. Also, there's a
+            // hurdle to adding regen to talismans: currently, all checks for
+            // regen items' being attuned require that those items have
+            // corresponding equipment slots, and talismans are slotless.
             return item_class != OBJ_TALISMANS;
         case ARTP_DRAIN:
         case ARTP_CONTAM:

@@ -1251,11 +1251,9 @@ command_type travel()
         else if (you.running.is_explore() && Options.explore_delay > -1)
         {
 #ifdef USE_TILE
-            update_screen(Options.tile_runrest_rate);
-#else
-            update_screen();
+            if (tiles.need_redraw(Options.tile_runrest_rate))
+                tiles.redraw();
 #endif
-
             if (Options.explore_delay > 0)
                 delay(Options.explore_delay);
         }
@@ -2005,9 +2003,16 @@ void fill_travel_point_distance(const coord_def& youpos,
 
 extern map<branch_type, set<level_id> > stair_level;
 
-static void _find_parent_branch(branch_type br, branch_type *pb, int *pd)
+static void _find_parent_branch(branch_type br, branch_type *pb, int *pd, bool ignore_knowledge = false)
 {
     *pb = parent_branch(br);   // Check depth before using *pb.
+
+    // If doing internal calculations, don't rely on player knowledge of stairs.
+    if (ignore_knowledge)
+    {
+        *pd = brentry[br].depth;
+        return;
+    }
 
     if (auto levels = map_find(stair_level, br))
     {
@@ -2033,7 +2038,8 @@ static void _find_parent_branch(branch_type br, branch_type *pb, int *pd)
 // { BRANCH_SNAKE, 3 }, { BRANCH_LAIR, 5 }, { BRANCH_DUNGEON, 11 }
 // (Assuming, of course, that the vector started out empty.)
 //
-static void _trackback(vector<level_id> &vec, branch_type branch, int subdepth)
+static void _trackback(vector<level_id> &vec, branch_type branch, int subdepth,
+                       bool ignore_knowledge = false)
 {
     if (subdepth < 1)
         return;
@@ -2045,9 +2051,9 @@ static void _trackback(vector<level_id> &vec, branch_type branch, int subdepth)
     {
         branch_type pb;
         int pd;
-        _find_parent_branch(branch, &pb, &pd);
+        _find_parent_branch(branch, &pb, &pd, ignore_knowledge);
         if (pd)
-            _trackback(vec, pb, pd);
+            _trackback(vec, pb, pd, ignore_knowledge);
     }
 }
 
@@ -2075,7 +2081,10 @@ static void _track_intersect(vector<level_id> &cur, vector<level_id> &targ,
 // Returns the number of stairs the player would need to take to go from
 // the 'first' level to the 'second' level. If there's no obvious route between
 // 'first' and 'second', returns -1. If first == second, returns 0.
-int level_distance(level_id first, level_id second)
+//
+// If ignore_knowledge = true, use internal information rather than relying on
+// stairs the player knows the destination of.
+int level_distance(level_id first, level_id second, bool ignore_knowledge)
 {
     if (first == second)
         return 0;
@@ -2087,8 +2096,8 @@ int level_distance(level_id first, level_id second)
         return abs(first.depth - second.depth);
 
     // Figure out the dungeon structure between the two levels.
-    _trackback(fv, first.branch, first.depth);
-    _trackback(sv, second.branch, second.depth);
+    _trackback(fv, first.branch, first.depth, ignore_knowledge);
+    _trackback(sv, second.branch, second.depth, ignore_knowledge);
 
     level_id intersect;
     _track_intersect(fv, sv, &intersect);
@@ -2103,7 +2112,7 @@ int level_distance(level_id first, level_id second)
     {
         distance += first.depth;
 
-        _find_parent_branch(first.branch, &first.branch, &first.depth);
+        _find_parent_branch(first.branch, &first.branch, &first.depth, ignore_knowledge);
         if (!first.depth)
             return -1;
     }
@@ -2760,6 +2769,7 @@ static level_pos _travel_depth_munge(int munge_method, const string &s,
     case '?':
         show_interlevel_travel_depth_help();
         redraw_screen();
+        update_screen();
         return level_pos(targ); // no change
     case '<':
         result.id = find_up_level(result.id);
@@ -4771,6 +4781,7 @@ void runrest::stop(bool clear_delays)
     {
         viewwindow();
         print_stats();
+        update_screen();
     }
 }
 

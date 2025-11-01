@@ -31,8 +31,13 @@ end
 -- D/F opposite/adjacent vault entrances, that may or may not be there
 -- E/H placed in front of the alternate doors. become w tiles if there's no door there
 
-function ks_random_setup(e, norandomexits)
+function ks_random_setup(e, extra, norandomexits)
     e.tags("no_pool_fixup")
+    if extra then
+      e.tags("extra")
+      e.depth_weight("Depths", 5)
+      e.depth_weight("D", 10)
+    end
     -- 1/2 chance the adjacent door is there, followed by a 1/2 chance every
     -- side has a door.
     if norandomexits == nil then
@@ -393,7 +398,7 @@ function index_vaults_room_themes (e, set, hard)
                 'long sword ' .. f .. ' no_pickup/ ' ..
                 'mace ' .. f .. ' no_pickup')
     e.kitem('e = robe ' .. c .. ' / leather armour ' .. c)
-    e.kfeat('m = cache of meat')
+    e.kfeat('m = cache_of_meat')
     e.kfeat('I = rock_wall')
     e.tile('I = wall_ice_block')
     e.tile('v = dngn_metal_wall_lightblue')
@@ -411,7 +416,7 @@ function index_vaults_room_themes (e, set, hard)
            'entropy weaver w:' .. 2 + d * 3 .. ' / ' ..
            'ironbound beastmaster w:' .. -2 + d * 4)
     e.kmons('S = bush')
-    e.kfeat('F = cache of fruit')
+    e.kfeat('F = cache_of_fruit')
     e.ftile('`SF = floor_sprouting_stone')
     e.tile('T = dngn_fountain_novelty_fancy')
     e.kitem('d = animal skin / club / whip w:5 / quarterstaff w:5')

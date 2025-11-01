@@ -393,6 +393,7 @@ bool add_spell_to_memory(spell_type spell)
 #ifdef USE_TILE_LOCAL
     tiles.layout_statcol();
     redraw_screen();
+    update_screen();
 #endif
 
     return true;
@@ -420,6 +421,7 @@ bool del_spell_from_memory_by_slot(int slot)
 #ifdef USE_TILE_LOCAL
     tiles.layout_statcol();
     redraw_screen();
+    update_screen();
 #endif
 
     return true;
@@ -1780,6 +1782,9 @@ bool spell_no_hostile_in_range(spell_type spell)
 
     case SPELL_PERMAFROST_ERUPTION:
         return permafrost_targets(you, false).empty();
+
+    case SPELL_PLASMA_BEAM:
+        return plasma_beam_targets(you, pow, false).empty();
 
     default:
         break;

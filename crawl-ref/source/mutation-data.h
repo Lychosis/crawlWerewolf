@@ -589,6 +589,7 @@ static const mutation_def mut_data[] =
   TILEG_MUT_CLARITY
 },
 
+#if TAG_MAJOR_VERSION == 34
 { MUT_BERSERK, 7, 2, mutflag::bad,
   "berserk",
 
@@ -603,8 +604,8 @@ static const mutation_def mut_data[] =
   {"You feel a little more calm.",
    "You feel a little less angry.",
    ""},
-  TILEG_MUT_BERSERK,
 },
+#endif
 
 { MUT_POOR_CONSTITUTION, 10, 2, mutflag::bad,
   "poor constitution",
@@ -1642,7 +1643,7 @@ static const mutation_def mut_data[] =
 { MUT_RECKLESS, 2, 1, mutflag::bad,
    "reckless",
 
-   {"You cannot block, but deal more damage with two-handed weapons.", "", ""},
+   {"Your SH is halved, but you deal more damage with two-handed weapons.", "", ""},
    {"You feel a sudden disregard for your own safety.", "", ""},
    {"You feel a little less reckless.", "", ""},
    TILEG_MUT_RECKLESS,

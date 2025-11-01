@@ -89,6 +89,7 @@ void wizard_create_spec_object_by_name()
         mprf(MSGCH_ERROR, "Error: %s", error.c_str());
         return;
     }
+    id_floor_items();
 }
 
 void wizard_create_spec_object()
@@ -874,6 +875,7 @@ static void _debug_acquirement_stats()
             clear_messages();
             mprf("%d%% done.", 100 * (i + 1) / num_itrs);
             viewwindow();
+            update_screen();
         }
     }
 
@@ -1265,6 +1267,7 @@ static void _debug_randart_stats()
             clear_messages();
             mprf("%d%% done.", 100 * (i + 1) / num_itrs);
             viewwindow();
+            update_screen();
         }
     }
 

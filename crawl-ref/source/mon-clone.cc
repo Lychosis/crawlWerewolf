@@ -351,6 +351,10 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
         mons->props.erase(OKAWARU_DUEL_ABANDONED_KEY);
     }
 
+    // Clear the base for tentacles, if any.
+    if (mons->props.exists(BASE_POSITION_KEY))
+        mons->props.erase(BASE_POSITION_KEY);
+
     // Don't display non-functional bullseye targets
     if (mons->has_ench(ENCH_BULLSEYE_TARGET))
         mons->del_ench(ENCH_BULLSEYE_TARGET);
@@ -395,6 +399,7 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
     {
         handle_seen_interrupt(mons);
         viewwindow();
+        update_screen();
     }
 
     if (crawl_state.game_is_arena())

@@ -317,6 +317,7 @@
     Erkki Nurmi
     Mattias Nyberg
     nyra
+    Odds
     Weston Odom
     Dylan O'Donnell
     Heinrich Ody
@@ -452,6 +453,7 @@
     Zannick
     Zooko
     Zhang Haocheng
+    Brian 'buehler' Faires
 
 The Dungeon Crawl Stone Soup development team is:
     advil

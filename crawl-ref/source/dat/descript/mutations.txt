@@ -188,8 +188,8 @@ artefact. Each level of this mutation increases that chance.
 %%%%
 reckless mutation
 
-Your SH can never rise above 0, but the damage you deal with two-handed weapons
-is increased by 15%.
+Your recklessness halves your SH, but the damage you deal with two-handed
+weapons is increased by 15%.
 %%%%
 # ------ Auxes -----
 horns mutation
@@ -473,11 +473,6 @@ poor constitution mutation
 Your body reacts poorly to injury; when you suffer damage, you have a chance for
 your attacks to become weakened for a short while. The second level of this
 mutation sometimes additionally causes this to slow you as well.
-%%%%
-berserk mutation
-
-When attacking foes in melee, you sometimes enter a berserk rage. Each level of
-this mutation makes it easier for you to lose your temper.
 %%%%
 no potion heal mutation
 

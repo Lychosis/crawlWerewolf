@@ -162,7 +162,7 @@ KMONS:   O = titan / juggernaut / quicksilver dragon w:20 / \
              golden dragon w:30 / wyrmhole
 KFEAT:   O = enter_ziggurat no_mimic
 NSUBST:  _ = 1:1 / 1:2 / * = 12''''''
-NSUBST:  ; = 3:3 / * = 3'
+NSUBST:  ; = 3:3 / 1:' / * = 3''
 SHUFFLE: vm
 KPROP:   123'O = no_tele_into
 KMASK:   123'O = opaque
@@ -304,7 +304,7 @@ ENDMAP
 NAME:  ziggurat_pillar_centre_h
 TAGS:  ziggurat_pillar centered no_dump unrand no_exits
 MONS:  laughing skull w:1 / crimson imp w:31 / pandemonium lord w:1
-KFEAT: % : cache of meat / cache of fruit
+KFEAT: % : cache_of_meat / cache_of_fruit
 KFEAT: T = fountain_eyes
 MAP
 ccncc
@@ -398,7 +398,7 @@ ENDMAP
 NAME: ziggurat_pillar_centre_oklobs
 TAGS: ziggurat_pillar centered unrand no_exits
 MONS: plant, oklob plant
-KFEAT: d = cache of fruit
+KFEAT: d = cache_of_fruit
 NSUBST: 1 = 2:1 / 2:2 / 6 = 12dd / * = 1...
 : megazig_zot_traps(_G)
 MAP

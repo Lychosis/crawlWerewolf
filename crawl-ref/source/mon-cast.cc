@@ -1151,6 +1151,7 @@ static void _fire_simple_beam(monster &/*caster*/, mon_spell_slot, bolt &pbolt)
     // If a monster just came into view and immediately cast a spell,
     // we need to refresh the screen before drawing the beam.
     viewwindow();
+    update_screen();
     pbolt.fire();
 }
 
@@ -1166,6 +1167,7 @@ static void _fire_direct_explosion(monster &caster, mon_spell_slot, bolt &pbolt)
     // If a monster just came into view and immediately cast a spell,
     // we need to refresh the screen before drawing the beam.
     viewwindow();
+    update_screen();
     const actor* foe = caster.get_foe();
     const bool need_more = foe && (foe->is_player()
                                    || you.see_cell(foe->pos()));
@@ -2555,7 +2557,7 @@ bool setup_mons_cast(const monster* mons, bolt &pbolt, spell_type spell_cast,
     case SPELL_SUMMON_HOLIES:
     case SPELL_SUMMON_DRAGON:
     case SPELL_SUMMON_HYDRA:
-    case SPELL_FIRE_SUMMON:
+    case SPELL_HELLFIRE_COURT:
 #if TAG_MAJOR_VERSION == 34
     case SPELL_DEATHS_DOOR:
     case SPELL_OZOCUBUS_ARMOUR:
@@ -8106,7 +8108,7 @@ void mons_cast(monster* mons, bolt pbolt, spell_type spell_cast,
         return;
     }
 
-    case SPELL_FIRE_SUMMON:
+    case SPELL_HELLFIRE_COURT:
         sumcount2 = 1 + random2(mons->spell_hd(spell_cast) / 5 + 1);
 
         duration = min(2 + mons->spell_hd(spell_cast) / 10, 6);
@@ -9602,8 +9604,7 @@ ai_action::goodness monster_spell_goodness(monster* mon, spell_type spell)
         }
 
     case SPELL_IGNITE_POISON:
-        return ai_action::good_or_bad(
-            cast_ignite_poison(mon, 0, false, true) == spret::success);
+        return ai_action::good_or_bad(ignite_poison_net_work(mon) > 0);
 
     case SPELL_GLACIATE:
         ASSERT(foe);

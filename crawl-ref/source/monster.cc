@@ -101,6 +101,7 @@ monster::monster()
     clear_constricted();
     revealed_this_turn = false;
     revealed_at_pos = coord_def(0, 0);
+    origin_level = level_id();
 }
 
 // Empty destructor to keep unique_ptr happy with incomplete ghost_demon type.
@@ -151,6 +152,7 @@ void monster::reset()
     god             = GOD_NO_GOD;
     revealed_this_turn = false;
     revealed_at_pos = coord_def(0, 0);
+    origin_level    = level_id();
 
     mons_remove_from_grid(*this);
     target.reset();
@@ -209,6 +211,7 @@ void monster::init_with(const monster& mon)
     damage_friendly   = mon.damage_friendly;
     damage_total      = mon.damage_total;
     xp_tracking       = mon.xp_tracking;
+    origin_level      = mon.origin_level;
 
     if (mon.ghost)
         ghost.reset(new ghost_demon(*mon.ghost));
@@ -5457,6 +5460,7 @@ void monster::check_redraw(const coord_def &old, bool clear_tiles) const
             UNUSED(clear_tiles);
 #endif
         }
+        update_screen();
     }
 }
 

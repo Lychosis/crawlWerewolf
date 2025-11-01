@@ -144,6 +144,13 @@ bool check_next_floor_warning()
     return true;
 }
 
+void maybe_destroy_shaft(const coord_def &p)
+{
+    trap_def* trap = trap_at(p);
+    if (trap && trap->type == TRAP_SHAFT)
+        trap->destroy(true);
+}
+
 static void _player_change_level_reset()
 {
     you.prev_targ  = MID_NOBODY;
@@ -157,13 +164,6 @@ static void _player_change_level(level_id lev)
 {
     you.depth         = lev.depth;
     you.where_are_you = lev.branch;
-}
-
-static void _maybe_destroy_shaft(const coord_def &p)
-{
-    trap_def* trap = trap_at(p);
-    if (trap && trap->type == TRAP_SHAFT)
-        trap->destroy(true);
 }
 
 static bool _stair_moves_pre(dungeon_feature_type stair)
@@ -432,6 +432,7 @@ static void _rune_effect(dungeon_feature_type ftype)
 #ifdef USE_TILE_LOCAL
         view_add_tile_overlay(you.pos(), tileidx_zap(rune_colour(runes[2])));
         viewwindow(false);
+        update_screen();
 #else
         flash_view(UA_BRANCH_ENTRY, rune_colour(runes[2]));
 #endif
@@ -441,6 +442,7 @@ static void _rune_effect(dungeon_feature_type ftype)
         mprf("You insert the %s rune into the lock.", rune_type_name(runes[1]));
         big_cloud(CLOUD_BLUE_SMOKE, &you, you.pos(), 20, 7 + random2(7));
         viewwindow();
+        update_screen();
         mpr("Heavy smoke blows from the lock!");
         // included in default force_more_message
     }
@@ -602,7 +604,7 @@ static level_id _travel_destination(const dungeon_feature_type how,
         {
             if (known_shaft)
                 mpr("The shaft disappears in a puff of logic!");
-            _maybe_destroy_shaft(you.pos());
+            maybe_destroy_shaft(you.pos());
             return dest;
         }
 
@@ -653,7 +655,7 @@ static level_id _travel_destination(const dungeon_feature_type how,
                 mpr("The strain on the space-time continuum destroys the "
                     "shaft!");
             }
-            _maybe_destroy_shaft(you.pos());
+            maybe_destroy_shaft(you.pos());
             return dest;
         }
 
@@ -670,7 +672,7 @@ static level_id _travel_destination(const dungeon_feature_type how,
 
         // Shafts are one-time-use.
         mpr("The shaft crumbles and collapses.");
-        _maybe_destroy_shaft(you.pos());
+        maybe_destroy_shaft(you.pos());
     }
 
     // Maybe perform the entry sequence (we check that they have enough runes
@@ -1116,6 +1118,7 @@ void floor_transition(dungeon_feature_type how,
     env.map_seen.set(you.pos());
 
     viewwindow();
+    update_screen();
 
     // There's probably a reason for this. I don't know it.
     if (going_up)

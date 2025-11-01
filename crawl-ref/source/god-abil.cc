@@ -2294,7 +2294,9 @@ static void _choose_curse_knowledge()
 void ashenzari_offer_new_curse()
 {
     // No curse at full piety, since shattering resets the curse timer anyway
-    if (piety_rank() > 5)
+    // Check raw piety rather than effective piety, since we don't want to
+    // offer curses while ostracised from full piety.
+    if (piety_rank(you.raw_piety) > 5)
         return;
 
     _choose_curse_knowledge();
@@ -2468,10 +2470,10 @@ void announce_beogh_conversion_offer()
             mons_speaks_msg(m, getSpeakString("orc_priest_preaching"),
                             MSGCH_TALK);
 
-            ASSERT_RANGE(get_talent(ABIL_CONVERT_TO_BEOGH, false).hotkey,
+            ASSERT_RANGE(get_talent(ABIL_CONVERT_TO_BEOGH).hotkey,
                             'A', 'z' + 1);
             mprf("(press <w>%c</w> on the <w>%s</w>bility menu to convert to Beogh)",
-                    get_talent(ABIL_CONVERT_TO_BEOGH, false).hotkey,
+                    get_talent(ABIL_CONVERT_TO_BEOGH).hotkey,
                     command_to_string(CMD_USE_ABILITY).c_str());
             you.attribute[ATTR_SEEN_BEOGH] = 1;
 
@@ -5025,6 +5027,7 @@ static void _extra_sacrifice_code(ability_type sac)
         }
 
         redraw_screen();
+        update_screen();
         break;
     }
     case ABIL_RU_SACRIFICE_FORMS:
@@ -5229,6 +5232,7 @@ bool ru_do_sacrifice(ability_type sac)
     _ru_expire_sacrifices();
     ru_reset_sacrifice_timer(true);
     redraw_screen(); // pretty much everything could have changed
+    update_screen();
     return true;
 }
 

@@ -1641,6 +1641,16 @@ static void _append_weapon_stats(string &description, const item_def &item)
 
 static string _handedness_string(const item_def &item)
 {
+    if (you.has_mutation(MUT_NO_GRASPING))
+        return "\nYou are unable to wield it.";
+
+    if (crawl_state.need_save
+        && is_weapon_too_large(item, you.body_size(PSIZE_TORSO))
+        && !you.has_mutation(MUT_QUADRUMANOUS))
+    {
+        return "\nIt is too large for you to wield.";
+    }
+
     const bool quad = you.has_mutation(MUT_QUADRUMANOUS);
     string handname = species::hand_name(you.species);
     if (quad)
@@ -2076,18 +2086,7 @@ static string _describe_weapon(const item_def &item, bool verbose, bool monster)
     if (verbose)
     {
         description += "\n\n" + _category_string(item, monster);
-
-
-
-        // XX this is shown for felids, does that actually make sense?
         description += _handedness_string(item);
-
-        if (crawl_state.need_save
-            && is_weapon_too_large(item, you.body_size(PSIZE_TORSO))
-            && !you.has_mutation(MUT_QUADRUMANOUS))
-        {
-            description += "\nIt is too large for you to wield.";
-        }
     }
 
     if (!monster)
@@ -7275,9 +7274,9 @@ static void _maybe_note_armour_modifier(vector<vector<string>>& items,
     const int base_ac = body_armour ? you.base_ac_from(*body_armour, 100, false)
                                     : 0;
 
-    float change[3];
+    int change[3];
     for (int i = 0; i < 3; ++i)
-        change[i] = (float)(base_ac * mult[i]) / 100 / 100.0;
+        change[i] = base_ac * mult[i] / 100;
 
     vector<string> labels;
     labels.push_back("Body Armour AC");
@@ -7285,7 +7284,12 @@ static void _maybe_note_armour_modifier(vector<vector<string>>& items,
     for (int i = 0; i < 3; ++i)
     {
         if (mult[i] != 0)
-            labels.push_back(make_stringf("%+.1f (%+d%%)", change[i], mult[i]));
+        {
+            labels.push_back(_format_data_label(change[i], true, false, 100)
+                             + " ("
+                             + _format_data_label(mult[i], true, true)
+                             + ")");
+        }
         else
             labels.push_back("0");
     }

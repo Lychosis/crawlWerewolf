@@ -681,6 +681,7 @@ void move_player_to_grid(const coord_def& p, bool stepped)
     // Move the player to new location.
     you.moveto(p, true);
     viewwindow();
+    update_screen();
 
     moveto_location_effects(old_grid, stepped, old_pos);
 }
@@ -2186,11 +2187,8 @@ int player_shield_class(int scale, bool random, bool ignore_temporary)
 {
     int shield = 0;
 
-    if (!ignore_temporary
-        && you.incapacitated() || you.has_mutation(MUT_RECKLESS))
-    {
+    if (!ignore_temporary && you.incapacitated())
         return 0;
-    }
 
     const item_def *shield_item = you.shield();
     if (is_shield(shield_item))
@@ -2224,6 +2222,9 @@ int player_shield_class(int scale, bool random, bool ignore_temporary)
 
     if (!ignore_temporary && you.duration[DUR_PARRYING])
         shield += player_parrying() * 200;
+
+    if (you.has_mutation(MUT_RECKLESS))
+        shield /= 2;
 
     return random ? div_rand_round(shield * scale, 100) : ((shield * scale) / 100);
 }
@@ -2921,6 +2922,7 @@ void level_change(bool skip_attribute_increase)
         {
             // Don't want to see the dead creature at the prompt.
             redraw_screen();
+            update_screen();
 
             if (new_exp == 27)
                 mprf(MSGCH_INTRINSIC_GAIN, "You have reached level 27, the final one!");
@@ -2954,6 +2956,7 @@ void level_change(bool skip_attribute_increase)
             // In case of intrinsic ability changes.
             tiles.layout_statcol();
             redraw_screen();
+            update_screen();
 #endif
             if (!skip_attribute_increase)
                 species_stat_gain(you.species);
@@ -3038,6 +3041,7 @@ void level_change(bool skip_attribute_increase)
                     tiles.layout_statcol();
 #endif
                     redraw_screen();
+                    update_screen();
                 }
                 break;
 
@@ -3107,7 +3111,7 @@ void level_change(bool skip_attribute_increase)
                         mpr("You feel a burst of inspiration! You are finally "
                             "ready to make a one-of-a-kind gizmo!");
                         mprf("(press <w>%c</w> on the <w>%s</w>bility menu to create your gizmo)",
-                                get_talent(ABIL_INVENT_GIZMO, false).hotkey,
+                                get_talent(ABIL_INVENT_GIZMO).hotkey,
                                 command_to_string(CMD_USE_ABILITY).c_str());
                     }
                     break;
@@ -4257,9 +4261,7 @@ void contaminate_player(int change, bool controlled, bool msg)
     }
     else if (msg && new_level < old_level)
     {
-        if (old_amount > 1 && you.magic_contamination == 0)
-            mpr("Your magical contamination has completely faded away.");
-        else if (!player_harmful_contamination() && was_glowing)
+        if (!player_harmful_contamination() && was_glowing)
         {
             mprf(MSGCH_RECOVERY,
                  "Your magical contamination has faded to a safe level.");
@@ -4271,6 +4273,9 @@ void contaminate_player(int change, bool controlled, bool msg)
                 "glowing from magical contamination.");
         }
     }
+
+    if (msg && old_amount > 0 && you.magic_contamination == 0)
+        mpr("Your magical contamination has completely faded away.");
 
     if (you.magic_contamination > 0)
         learned_something_new(HINT_GLOWING);
@@ -8137,6 +8142,7 @@ bool player::do_shaft_ability()
     {
         canned_msg(MSG_NOTHING_HAPPENS);
         redraw_screen();
+        update_screen();
         return false;
     }
 }
@@ -8800,6 +8806,7 @@ void player_open_door(coord_def doorpos)
 
     update_exclusion_los(excludes);
     viewwindow();
+    update_screen();
     you.turn_is_over = true;
 }
 
