@@ -19,22 +19,22 @@ levelup_stats: []
 levelup_stat_frequency: 28
 mutations:
   1:
-      MUT_DIVINE_ATTRS: 1
-      MUT_MUTATION_RESISTANCE: 1
-      MUT_FANGS: 1
-      MUT_CLAWS: 1
-      MUT_SHAGGY_FUR: 1
-      MUT_REGENERATION: 1
-      MUT_FAST: 1
+    MUT_DIVINE_ATTRS: 1
+    MUT_MUTATION_RESISTANCE: 1
+    MUT_FANGS: 1
+    MUT_CLAWS: 1
+    MUT_SHAGGY_FUR: 1
+    MUT_REGENERATION: 1
+    MUT_FAST: 1
   5:
-      MUT_ANTIMAGIC_BITE: 1
-      MUT_FANGS: 1
-      MUT_CLAWS: 1
-      MUT_SHAGGY_FUR: 1
+    MUT_ANTIMAGIC_BITE: 1
+    MUT_FANGS: 1
+    MUT_CLAWS: 1
+    MUT_SHAGGY_FUR: 1
   11:
-      MUT_FANGS: 1
-      MUT_SHAGGY_FUR: 1
-      MUT_ACUTE_VISION: 1
+    MUT_FANGS: 1
+    MUT_SHAGGY_FUR: 1
+    MUT_ACUTE_VISION: 1
       
 
 recommended_jobs:
