@@ -820,6 +820,7 @@ static bool _vampire_make_thrall(monster* mons)
     return true;
 }
 
+static void _blorkula_bat_merge_message(monster* blork, int bat_count);
 
 /**
  * Attempt to get a deathbed conversion for the given orc.
@@ -853,6 +854,15 @@ static bool _beogh_forcibly_convert_orc(monster &mons, killer_type killer)
         {
             ctype = follower ? conv_t::vengeance_follower
                              : conv_t::vengeance;
+        }
+
+        // XXX: If Blorkula got a deathbed conversion as a bat, he'll have
+        // re-formed into an orc by now. Properly mention this just before
+        // his conversion message.
+        if (mons.type == MONS_BLORKULA_THE_ORCULA
+            && mons.props.exists(BLORKULA_DIE_FOR_REAL_KEY))
+        {
+            _blorkula_bat_merge_message(&mons, 1);
         }
 
         beogh_convert_orc(&mons, ctype);
@@ -1053,11 +1063,20 @@ void blorkula_bat_merge(monster& bat)
     }
     blork->move_to_pos(pos);
 
+    _blorkula_bat_merge_message(blork, bat_count);
+}
+
+static void _blorkula_bat_merge_message(monster* blork, int bat_count)
+{
     if (you.can_see(*blork))
     {
-        mprf(MSGCH_MONSTER_SPELL,
-             "The bats swarm back together and %s reappears in a puff of iridescent mist.",
-             blork->name(DESC_THE).c_str());
+        string msg = bat_count == 1 ? "The bat shimmers"
+                                    : "The bats swarm back together";
+
+        msg += " and " + blork->name(DESC_THE)
+            +  " reappears in a puff of iridescent mist.";
+
+        mprf(MSGCH_MONSTER_SPELL, "%s", msg.c_str());
     }
 }
 
