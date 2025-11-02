@@ -21,7 +21,7 @@ levelup_stats:
   - int
   - dex
 mutations:
-  5:
+  1:
     MUT_REGENERATION: 1
     MUT_FAST: 1
     MUT_FANGS: 1
