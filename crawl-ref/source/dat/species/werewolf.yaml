@@ -21,7 +21,7 @@ levelup_stats:
   - int
   - dex
 mutations:
-  1:
+  5:
     MUT_REGENERATION: 1
     MUT_FAST: 1
     MUT_FANGS: 1
@@ -41,6 +41,7 @@ mutations:
   13:
     MUT_ACUTE_VISION: 1
     MUT_MUTATION_RESISTANCE: 1
+    MUT_ANTIMAGIC_BITE: 1
       
 
 recommended_jobs:
