@@ -50,14 +50,6 @@ level_id actor::shaft_dest() const
     return generic_shaft_dest(level_id::current());
 }
 
-/**
- * Check if the actor is on the ground (or in water).
- */
-bool actor::ground_level() const
-{
-    return !airborne();
-}
-
 // Give hands required to wield weapon.
 hands_reqd_type actor::hands_reqd(const item_def &item, bool base) const
 {
@@ -342,10 +334,10 @@ int actor::spirit_shield(bool items) const
     return ss;
 }
 
-bool actor::rampaging() const
+int actor::rampaging() const
 {
     return wearing_ego(OBJ_ARMOUR, SPARM_RAMPAGING)
-           || scan_artefacts(ARTP_RAMPAGING);
+           + scan_artefacts(ARTP_RAMPAGING);
 }
 
 int actor::apply_ac(int damage, int max_damage, ac_type ac_rule, bool for_real) const

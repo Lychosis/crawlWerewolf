@@ -790,7 +790,7 @@ void dec_penance(int val)
 // TODO: find out what this is duplicating & deduplicate it
 static bool _need_water_walking()
 {
-    return you.ground_level() && !you.has_mutation(MUT_MERTAIL)
+    return !you.airborne() && !you.has_mutation(MUT_MERTAIL)
            && env.grid(you.pos()) == DNGN_DEEP_WATER;
 }
 
@@ -1301,8 +1301,18 @@ static set<spell_type> _vehumet_eligible_gift_spells(set<spell_type> excluded_sp
 
 static int _vehumet_weighting(spell_type spell)
 {
-    int bias = 70 + destructive_preference(spell, 10);
-    return bias;
+    skill_set skills;
+    spell_skills(spell, skills);
+    if (!skills.size())
+        return 0;
+
+    int weight = 0;
+    for (skill_type sk : skills)
+        weight += you.skill(sk, 10);
+
+    weight = weight / skills.size();
+
+    return 70 + weight;
 }
 
 static spell_type _vehumet_find_spell_gift(set<spell_type> excluded_spells)
@@ -1735,7 +1745,7 @@ static string _make_ancestor_name(gender_type gender)
     const string gender_name = gender == GENDER_MALE ? " male " :
                                gender == GENDER_FEMALE ? " female " : " ";
     const string suffix = gender_name + "name";
-    const string name = getRandNameString("ancestor", suffix);
+    const string name = getRandMonNameString("ancestor" + suffix);
     return name.empty() ? make_name() : name;
 }
 

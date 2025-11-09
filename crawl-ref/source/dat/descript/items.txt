@@ -113,7 +113,7 @@ book of air
 
 A primer on the elemental magics of Air. The great minotaur hero Vuxhurn, given
 a copy of this book while trapped atop the tower of a wizard with a particularly
-perverse sense of humor, used its pages to construct a rudimentary glider and
+perverse sense of humour, used its pages to construct a rudimentary glider and
 soared to freedom.
 %%%%
 book of annihilations
@@ -130,7 +130,7 @@ the other side.
 %%%%
 book of battle
 
-An astonishingly vain and self-aggrandizing work. The author claims credit for a
+An astonishingly vain and self-aggrandising work. The author claims credit for a
 wide swathe of weapon-augmenting magics, but seems to have misunderstood or
 misrepresented most of them. Only a few of the spells described in the book
 actually work.
@@ -210,7 +210,7 @@ wizarding community to be seen with this book in one's collection.
 %%%%
 book of decay
 
-A book of necromancy, dictated by the god Kikubaaqudgha to an unfortunate
+A book of Necromancy, dictated by the god Kikubaaqudgha to an unfortunate
 apostle across the course of a nine-day fugue. The necromancer is said to have
 finished the dread work with their own life's blood... but of course this is
 just a copy, written in almost entirely normal ink.
@@ -269,9 +269,14 @@ recommended to wear a pair of gardening gloves.
 %%%%
 book of the grave
 
-A heavy tome whose vellum smells faintly of dirt and decay. Those who touch it
-frequently report a palpable sense of unease, as if something unwholesome were
-buried between its very pages.
+A heavy tome of necromantic spells. Those who touch it frequently report a
+palpable sense of unease, as if something unwholesome were buried between its
+very pages.
+{{
+    if you.can_smell() then
+        return "Its vellum smells faintly of dirt and decay."
+    end
+}}
 %%%%
 book of hexes
 
@@ -360,9 +365,13 @@ page, clearly reserving this book for only the tackiest of wizards.
 %%%%
 book of spontaneous combustion
 
-A heavy tome whose desiccated pages smell faintly of sulphur. The ink with which
-it was written is wildly flammable and care must be taken even opening it, but
-the power of the spells described therein is undeniable.
+A heavy tome written with wildly flammable ink. Care must be taken even opening
+it, but the power of the spells described therein is undeniable.
+{{
+    if you.can_smell() then
+        return "Its desiccated pages smell faintly of sulphur."
+    end
+}}
 %%%%
 book of the spheres
 
@@ -421,9 +430,11 @@ being described.
 book of transmutation
 
 A meticulous compendium of research notes, filled with formulae for decomposing
-and reconstituting all manner of substances. The author appears to have had a
-strange obsession with becoming a spider, but even if their ultimate aim eluded
-them, many of the spells detailed therein are nonetheless quite practical.
+and reconstituting all manner of substances. It was written by one of the
+legendary alchemists among the sludge elves, before that species mysteriously
+vanished from the world. The author appears to have had a strange obsession with
+becoming a butterfly, but even if their ultimate aim eluded them, many of the
+spells detailed therein are nonetheless quite practical.
 %%%%
 book of the tundra
 

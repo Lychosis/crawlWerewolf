@@ -1957,7 +1957,7 @@ string special_conduct_title(skill_type best_skill, uint8_t skill_rank)
     }
 
     // All rune deathless felid
-    if (you.species == SP_FELID && runes_in_pack() >= 15 && you.deaths == 0)
+    if (you.species == SP_FELID && runes_in_pack() >= you.obtainable_runes && you.deaths == 0)
         return "Incurious";
 
     // A harder version of the ruthless efficiency banner
@@ -1972,13 +1972,13 @@ string special_conduct_title(skill_type best_skill, uint8_t skill_rank)
     }
 
     // all runes with a zealot without ever abandoning
-    if (runes_in_pack() >= 15 && you.char_class == JOB_CHAOS_KNIGHT
+    if (runes_in_pack() >= you.obtainable_runes && you.char_class == JOB_CHAOS_KNIGHT
         && you_worship(GOD_XOM) && you.worshipped[GOD_XOM] == 1)
     {
         return "Chaos Fanatic";
     }
 
-    if (runes_in_pack() >= 15 && you.char_class == JOB_CINDER_ACOLYTE
+    if (runes_in_pack() >= you.obtainable_runes && you.char_class == JOB_CINDER_ACOLYTE
         && you_worship(GOD_IGNIS) && you.worshipped[GOD_IGNIS] == 1)
     {
         return "Keeper of the Flame";
@@ -2070,18 +2070,12 @@ string skill_title_by_rank(skill_type best_skill, uint8_t skill_rank,
 
         case SK_SHORT_BLADES:
             if (species::is_elven(species) && skill_rank == 5)
-            {
                 result = "Blademaster";
-                break;
-            }
             break;
 
         case SK_LONG_BLADES:
             if (species == SP_MERFOLK && skill_rank == 5)
-            {
                 result = "Swordfish";
-                break;
-            }
             break;
 
         case SK_ARMOUR:
@@ -2243,7 +2237,9 @@ string skill_title_by_rank(skill_type best_skill, uint8_t skill_rank,
                 result = "Danse Macabre";
             else if ((species == SP_MERFOLK || species == SP_OCTOPODE)
                 && skill_rank == 5 && god == GOD_LUGONU)
+            {
                 result = "Abyssopelagic";
+            }
             else if (species == SP_OCTOPODE && skill_rank == 5 && is_evil_god(god))
                 result = "Leviathan";
             else if (god != GOD_NO_GOD)
@@ -2597,40 +2593,6 @@ int get_crosstrain_points(skill_type sk)
         points += you.skill_points[cross] * 2 / 5;
     return points;
 
-}
-
-/**
- * Is the provided skill one of the destructive spellschools?
- *
- * @param sk    The skill in question.
- * @return      Whether it is fire, ice, earth, air, alchemy or conjurations.
- */
-static bool _skill_is_destructive(skill_type sk)
-{
-    return sk == SK_FIRE_MAGIC || sk == SK_EARTH_MAGIC || sk == SK_AIR_MAGIC
-            || sk == SK_ICE_MAGIC || sk == SK_ALCHEMY || sk == SK_CONJURATIONS;
-}
-
-/**
- * How skilled is the player at the destructive components of a spell?
- *
- * @param spell     The type of spell in question.
- * @param scale     Scaling factor for skill.
- * @return          The player's skill at the destructive parts of a given spell.
- */
-int destructive_preference(spell_type spell, int scale)
-{
-    skill_set skill_list;
-    spell_skills(spell, skill_list);
-    int preference = 0;
-    int num_destructive = 0;
-    for (skill_type sk : skill_list)
-        if (_skill_is_destructive(sk))
-        {
-            preference += you.skill(sk, scale);
-            num_destructive++;
-        }
-    return preference / num_destructive;
 }
 
 void dump_skills(string &text)

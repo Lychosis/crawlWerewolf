@@ -454,7 +454,6 @@ struct monster_info : public monster_info_base
     bool asleep() const;
     bool incapacitated() const;
     bool airborne() const;
-    bool ground_level() const;
 
     bool is_named() const
     {
@@ -492,6 +491,8 @@ struct monster_info : public monster_info_base
     bool unravellable() const;
 
     monster* get_known_summoner() const;
+
+    bool is_stationary() const;
 
 protected:
     string _core_name() const;

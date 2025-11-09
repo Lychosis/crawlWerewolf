@@ -1789,8 +1789,7 @@ static void _add_tentacle_overlay(const coord_def pos,
     if (!in_bounds(next))
         return;
 
-    const coord_def next_showpos(grid2show(next));
-    if (!show_bounds(next_showpos))
+    if (!show_bounds(grid2show(next)))
         return;
 
     tile_flags flag;
@@ -1802,7 +1801,7 @@ static void _add_tentacle_overlay(const coord_def pos,
         case main_dir::west: flag = TILE_FLAG_TENTACLE_SE; break;
         default: die("invalid direction");
     }
-    tile_env.bg(next_showpos) |= flag;
+    tile_env.bk_bg(next) |= flag;
 
     switch (type)
     {
@@ -1814,7 +1813,7 @@ static void _add_tentacle_overlay(const coord_def pos,
         case tentacle_type::spectral_kraken: flag = TILE_FLAG_TENTACLE_SPECTRAL_KRAKEN; break;
         default: flag = TILE_FLAG_TENTACLE_KRAKEN;
     }
-    tile_env.bg(next_showpos) |= flag;
+    tile_env.bk_bg(next) |= flag;
 }
 
 static void _handle_tentacle_overlay(const coord_def pos,
@@ -2222,7 +2221,7 @@ tileidx_t tileidx_monster(const monster_info& mons)
 {
     tileidx_t ch = _tileidx_monster_no_props(mons);
 
-    if ((!mons.ground_level() && !_tentacle_tile_not_flying(ch))
+    if ((mons.airborne() && !_tentacle_tile_not_flying(ch))
         || mons.type == MONS_ORC_APOSTLE || mons.type == MONS_SACRED_LOTUS)
     {
         ch |= TILE_FLAG_FLYING;
@@ -3538,7 +3537,7 @@ tileidx_t tileidx_cloud(const cloud_info &cl)
 {
     const cloud_type type  = cl.type;
     const int colour = cl.colour;
-    const unsigned int dur = cl.duration;
+    const unsigned int variety = cl.variety;
 
     tileidx_t ch = cl.tile;
 
@@ -3552,7 +3551,7 @@ tileidx_t tileidx_cloud(const cloud_info &cl)
                 ch = tile_info.base;
                 break;
             case CTVARY_DUR:
-                ch = tile_info.base + min(dur,
+                ch = tile_info.base + min(variety,
                                           tile_main_count(tile_info.base) - 1);
                 break;
             case CTVARY_RANDOM:
@@ -3561,14 +3560,14 @@ tileidx_t tileidx_cloud(const cloud_info &cl)
                         cl.pos.y * GXM + cl.pos.x, you.frame_no);
                 break;
             case CTVARY_MUTAGENIC:
-                ch = (dur == 0 ? TILE_CLOUD_MUTAGENIC_0 :
-                      dur == 1 ? TILE_CLOUD_MUTAGENIC_1
-                               : TILE_CLOUD_MUTAGENIC_2);
+                ch = (variety == 0 ? TILE_CLOUD_MUTAGENIC_0 :
+                      variety == 1 ? TILE_CLOUD_MUTAGENIC_1
+                                   : TILE_CLOUD_MUTAGENIC_2);
                 ch += ui_random(tile_main_count(ch));
                 break;
             case CTVARY_VORTEX:
-                ch = get_vortex_phase(cl.pos) ? TILE_CLOUD_FREEZING_WINDS_0
-                                              : TILE_CLOUD_FREEZING_WINDS_1;
+                ch = variety ? TILE_CLOUD_FREEZING_WINDS_0
+                             : TILE_CLOUD_FREEZING_WINDS_1;
                 break;
         }
 

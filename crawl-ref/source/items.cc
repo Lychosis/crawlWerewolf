@@ -2070,7 +2070,7 @@ static bool _merge_stackable_item_into_inv(const item_def &it, int quant_got,
         you.last_pickup[inv_slot] = quant_got;
 
         // If we are purchasing an identified item from a shop, maybe update our
-        // item slot. (Pre-identified items on the floor will already be handle
+        // item slot. (Pre-identified items on the floor will already be handled
         // by seen_item().)
         const short old_slot = you.inv[inv_slot].slot;
         if (inventory_category_for(it) == INVENT_CONSUMABLE
@@ -4634,14 +4634,14 @@ bool get_item_by_name(item_def *item, const char* specs,
         for (const auto i : all_item_subtypes(item->base_type))
         {
             item->sub_type = i;
-            size_t pos = lowercase_string(item->name(DESC_PLAIN)).find(specs);
+            size_t pos = lowercase_string(item->name(DESC_DBNAME)).find(specs);
             if (pos != string::npos)
             {
                 // Earliest match is the winner.
                 if (pos < best_index)
                 {
                     if (create_for_real)
-                        mpr(item->name(DESC_PLAIN));
+                        mpr(item->name(DESC_DBNAME));
                     type_wanted = i;
                     best_index = pos;
                 }

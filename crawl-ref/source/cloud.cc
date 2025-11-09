@@ -674,7 +674,7 @@ static void _maybe_leave_water(const coord_def pos)
     if (env.grid(pos) != DNGN_FLOOR || !one_chance_in(5))
         return;
 
-    if (you.pos() == pos && you.ground_level())
+    if (you.pos() == pos && !you.airborne())
         mpr("The rain has left you waist-deep in water!");
     temp_change_terrain(pos, DNGN_SHALLOW_WATER,
                         random_range(500, 1000),
@@ -2188,4 +2188,19 @@ bool chaos_affects_actor(actor* victim, actor* source)
     }
 
     return obvious_effect;
+}
+
+bool get_vortex_phase(const coord_def& loc)
+{
+    coord_def center = get_cloud_originator(loc);
+    if (center.origin())
+        return ui_random(2); // source died/went away
+    else
+    {
+        int x = loc.x - center.x;
+        int y = loc.y - center.y;
+        double dir = atan2(x, y) / PI;
+        double dist = sqrt(x * x + y * y);
+        return ((int)floor(dir * 2 + dist * 0.33 - (you.frame_no % 54) / 2.7)) & 1;
+    }
 }

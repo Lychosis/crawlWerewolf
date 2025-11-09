@@ -2450,7 +2450,11 @@ static void _player_on_kill_effects(monster& mons, killer_type killer,
                                          mons.max_hit_points / 2);
         for (monster_near_iterator mi(mons.pos()); mi; ++mi)
         {
-            if (mons_aligned(&mons, *mi) && mi->hit_points < mi->max_hit_points)
+            // Don't heal the monster that just died as this can clear the
+            // damage tracking used to decide if you get XP for the kill
+            if (mons_aligned(&mons, *mi)
+                && mi->hit_points < mi->max_hit_points
+                && *mi != &mons)
             {
                 if (!visible_effect && you.can_see(**mi))
                     visible_effect = true;
@@ -3789,7 +3793,7 @@ void mons_check_pool(monster* mons, const coord_def &oldpos,
                      killer_type killer, int killnum)
 {
     // Flying monsters don't make contact with the terrain.
-    if (!mons->ground_level())
+    if (mons->airborne())
         return;
 
     dungeon_feature_type grid = env.grid(mons->pos());
