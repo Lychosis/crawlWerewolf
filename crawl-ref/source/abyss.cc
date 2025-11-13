@@ -453,7 +453,7 @@ void banished(const string &who, const int power)
     if (you_worship(GOD_XOM) && who != "Xom" && who != "wizard command"
         && who != "a distortion unwield")
     {
-        xom_maybe_reverts_banishment(false, false);
+        xom_maybe_reverts_banishment();
     }
 }
 
@@ -2026,7 +2026,7 @@ static void _corrupt_square_flavor(const corrupt_env &cenv, const coord_def &c)
         env.grid_colours(c) = floor;
 
     // if you add new features to this, you'll probably need to do some
-    // hand-tweaking in tileview.cc apply_variations.
+    // hand-tweaking in tilepick.cc apply_variations.
     // TODO: these tile assignments here seem to get overridden in
     // apply_variations, or not used at all...what gives?
     if (feat == DNGN_ROCK_WALL)

@@ -1368,7 +1368,7 @@ KITEM:  s = | w:70 / gold good_item
 KITEM:  S- = any armour randart / any weapon randart / any jewellery randart
 KMONS:  Q = three-headed hydra
 KMONS:  R = nine-headed hydra
-KMONS:  S = the Lernaean Hydra
+KMONS:  S = Lernaean Hydra
 KFEAT:  $%*|PQRS`s- = . / W w:5
 KFEAT:  t = mangrove
 NSUBST: O = s / O
@@ -10526,6 +10526,13 @@ NAME:    minivault_13
 TAGS:    ruin_abyss transparent
 DEPTH:   D:9-, Elf, Abyss
 KMONS:   F = orange crystal statue / obsidian statue / ice statue
+: if you.in_branch("Elf") then
+KMONS:   9 = air elemental / thermic dynamo / dancing weapon / \
+             deep elf annihilator / deep elf high priest
+KMONS:   8 = deep elf sorcerer / deep elf death mage / \
+             deep elf demonologist / deep elf elementalist / \
+             deep elf blademaster w:5 / deep elf master archer w:5
+: end
 ITEM:    robe good_item / scale mail good_item
 SHUFFLE: AB, CD, EH/FG
 SUBST:   F = G:99 F:1, ABCD = $'

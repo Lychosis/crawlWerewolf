@@ -1418,6 +1418,11 @@ bool mons_is_or_was_unique(const monster& mon)
               && mons_is_unique((monster_type) mon.props[ORIGINAL_TYPE_KEY].get_int());
 }
 
+bool mons_is_the(monster_type mc)
+{
+    return mons_class_flag(mc, M_NAME_THE);
+}
+
 /**
  * Is the given type one of Hepliaklqana's granted ancestors?
  *
@@ -1743,14 +1748,14 @@ void name_zombie(monster& mon, monster_type mc, const string &mon_name)
     mon.mname = mon_name;
 
     // For the Lernaean hydra: treat Lernaean as an adjective to
-    // avoid mentions of "the Lernaean hydra the X-headed hydra zombie".
+    // avoid mentions of "Lernaean hydra the X-headed hydra zombie".
     if (mc == MONS_LERNAEAN_HYDRA)
     {
         mon.mname = "Lernaean";
         mon.flags |= MF_NAME_ADJECTIVE;
     }
     // Also for the Enchantress: treat Enchantress as an adjective to
-    // avoid mentions of "the Enchantress the spriggan zombie".
+    // avoid mentions of "Enchantress the spriggan zombie".
     else if (mc == MONS_ENCHANTRESS)
     {
         mon.mname = "Enchantress";
@@ -1762,7 +1767,7 @@ void name_zombie(monster& mon, monster_type mc, const string &mon_name)
     if (starts_with(mon.mname, "shaped "))
         mon.flags |= MF_NAME_SUFFIX;
 
-    // It's unlikely there's a desc for "Duvessa the elf skeleton", but
+    // It's unlikely there's a desc for "Duvessa the elf zombie", but
     // we still want to allow it if overridden.
     if (!mon.props.exists(DBNAME_KEY))
         mon.props[DBNAME_KEY] = mons_class_name(mon.type);
@@ -3112,6 +3117,8 @@ string mons_type_name(monster_type mc, description_level_type desc)
         case DESC_PLAIN: default:             break;
         }
     }
+    else if (mons_is_the(mc))
+        result = "the ";
 
     switch (mc)
     {

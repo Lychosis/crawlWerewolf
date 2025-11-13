@@ -159,7 +159,7 @@ private:
 /**
  * What monster enum corresponds to the given Serpent of Hell name?
  *
- * @param soh_name  The name of the monster; e.g. "the Serpent of Hell dis".
+ * @param soh_name  The name of the monster; e.g. "Serpent of Hell dis".
  * @return          The corresponding enum; e.g. MONS_SERPENT_OF_HELL_DIS.
  */
 static monster_type _soh_type(string &soh_name)
@@ -188,13 +188,13 @@ static monster_type _soh_type(string &soh_name)
 
 static bool _is_soh(string name)
 {
-    return starts_with(lowercase(name), "the serpent of hell");
+    return starts_with(lowercase(name), "serpent of hell");
 }
 
 static string _soh_name(monster_type m_type)
 {
     branch_type b = serpent_of_hell_branch(m_type);
-    return string("The Serpent of Hell (") + branches[b].longname + ")";
+    return string("Serpent of Hell (") + branches[b].longname + ")";
 }
 
 static monster_type _mon_by_name(string name)
@@ -545,7 +545,8 @@ static void _recap_mon_keys(vector<string> &keys)
         if (!_is_soh(keys[i]))
         {
             monster_type type = get_monster_by_name(keys[i]);
-            keys[i] = mons_type_name(type, DESC_PLAIN);
+            // No "the Royal Jelly".
+            keys[i] = remove_prepended_the(mons_type_name(type, DESC_PLAIN));
         }
     }
 }
@@ -600,7 +601,10 @@ static void _recap_feat_keys(vector<string> &keys)
         if (type == DNGN_ENTER_SHOP)
             keys[i] = "A shop";
         else
-            keys[i] = feature_description(type, NUM_TRAPS, "", DESC_A);
+        {
+            keys[i] = feature_description(type, NUM_TRAPS, "", DESC_A,
+                                          NUM_BRANCHES);
+        }
     }
 }
 
@@ -893,7 +897,8 @@ vector<string> LookupType::matching_keys(string regex) const
 
 static string _mons_desc_key(monster_type type)
 {
-    const string name = mons_type_name(type, DESC_PLAIN);
+    // No "the Royal Jelly".
+    string name = remove_prepended_the(mons_type_name(type, DESC_PLAIN));
     if (mons_species(type) == MONS_SERPENT_OF_HELL)
         return name + " " + serpent_of_hell_flavour(type);
     return name;

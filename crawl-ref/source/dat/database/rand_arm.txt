@@ -680,6 +680,8 @@ the Gusle
 
 the Harp
 
+the Kazoo
+
 the Kettle-Drum
 
 the Lute
@@ -739,7 +741,7 @@ Chill Winds
 
 Cloud Cover
 
-Dust Devil
+Dust Devils
 
 Howling Wind
 

@@ -960,7 +960,10 @@ static bool _blorkula_bat_split(monster& blorkula, killer_type ktype)
     shuffle_array(bat_colours);
 #endif
 
+    mon_enchant vengeance_target = blorkula.get_ench(ENCH_VENGEANCE_TARGET);
     follower saved_blork = follower(blorkula);
+    if (vengeance_target.ench != ENCH_NONE)
+        saved_blork.mons.del_ench(ENCH_VENGEANCE_TARGET, true, false);
     bool placed_bat = false;
     for (int i = 0; i < num_bats; ++i)
     {
@@ -979,6 +982,11 @@ static bool _blorkula_bat_split(monster& blorkula, killer_type ktype)
             mons_add_blame(bat, "manifested out of " + blorkula.name(DESC_A, true));
             bat->flags |= (MF_NO_REWARD | MF_WAS_IN_VIEW);
             placed_bat = true;
+            if (vengeance_target.ench != ENCH_NONE)
+            {
+                bat->add_ench(vengeance_target);
+                you.duration[DUR_BEOGH_SEEKING_VENGEANCE] += 1;
+            }
         }
     }
 
@@ -1004,7 +1012,15 @@ static monster* _retrieve_saved_blorkula(monster& bat)
 {
     follower saved_blork;
     saved_blork.read_from_prop(bat.props[SAVED_BLORKULA_KEY].get_vector());
+    const bool is_vengeance_target = bat.has_ench(ENCH_VENGEANCE_TARGET);
+    if (is_vengeance_target)
+    {
+        saved_blork.mons.add_ench(bat.get_ench(ENCH_VENGEANCE_TARGET));
+        you.duration[DUR_BEOGH_SEEKING_VENGEANCE] += 1;
+    }
     monster* blork = saved_blork.place();
+    if (!blork && is_vengeance_target)
+        beogh_progress_vengeance();
     return blork;
 }
 
@@ -1531,7 +1547,7 @@ static void _make_derived_undead(monster* mons, bool quiet,
     mg.set_summoned(beh == BEH_FRIENDLY ? &you : nullptr, spell, 0, false);
     mg.set_base(mons->type);
     // Prefer to be created wherever the dead monster was, but allow placing up
-    // to 2 spaces away, if needbe.
+    // to 2 spaces away, if need be.
     mg.set_range(0, 2);
 
     if (spell == MON_SUMM_WPN_REAP)
@@ -2690,13 +2706,10 @@ item_def* monster_die(monster& mons, killer_type killer,
         if (!monster_habitable_grid(simu.base_type, mons.pos()))
             find_habitable_spot_near(mons.pos(), simu.base_type, 3, simu.pos, 0);
 
-        monster_type real_simu_type = simu.base_type;
-        // Don't use uniques' names here; their simulacra won't use them either.
-        if (mons_is_unique(simu.base_type))
-            real_simu_type = mons_species(simu.base_type);
+        // No "the Enchantress".
+        string name = remove_prepended_the(mons_type_name(simu.base_type, DESC_PLAIN));
 
-        string msg = "Your " + mons_type_name(real_simu_type, DESC_PLAIN) +
-                     " simulacrum begins to move.";
+        string msg = "Your " + name + " simulacrum begins to move.";
         schedule_make_derived_undead_fineff(simu.pos, simu,
                                             get_monster_data(simu.base_type)->HD,
                                             "the player",

@@ -381,13 +381,8 @@ monster_info::monster_info(monster_type p_type, monster_type p_base_type)
 
     if (mons_is_unique(type))
     {
-        if (type == MONS_LERNAEAN_HYDRA
-            || type == MONS_ROYAL_JELLY
-            || mons_species(type) == MONS_SERPENT_OF_HELL
-            || type == MONS_ENCHANTRESS)
-        {
+        if (mons_is_the(type))
             mb.set(MB_NAME_THE);
-        }
         else
         {
             mb.set(MB_NAME_UNQUALIFIED);
@@ -507,13 +502,8 @@ monster_info::monster_info(const monster* m, int milev)
 
     if (mons_is_unique(type))
     {
-        if (type == MONS_LERNAEAN_HYDRA
-            || type == MONS_ROYAL_JELLY
-            || mons_species(type) == MONS_SERPENT_OF_HELL
-            || type == MONS_ENCHANTRESS)
-        {
+        if (mons_is_the(type))
             mb.set(MB_NAME_THE);
-        }
         else
         {
             mb.set(MB_NAME_UNQUALIFIED);
@@ -1032,14 +1022,6 @@ string monster_info::_core_name() const
 
     if (is(MB_NAME_REPLACE))
         s = mname;
-    else if (nametype == MONS_LERNAEAN_HYDRA)
-        s = "Lernaean hydra"; // TODO: put this into mon-data.h
-    else if (nametype == MONS_ROYAL_JELLY)
-        s = "Royal Jelly";
-    else if (mons_species(nametype) == MONS_SERPENT_OF_HELL)
-        s = "Serpent of Hell";
-    else if (nametype == MONS_ENCHANTRESS)
-        s = "Enchantress";
     else if (invalid_monster_type(nametype) && nametype != MONS_PROGRAM_BUG)
         s = "INVALID MONSTER";
     else
@@ -1799,7 +1781,7 @@ bool monster_info::net_immune() const
            && mons_class_is_stationary(base_type);
 }
 
-bool monster_info::cannot_move() const
+bool monster_info::cannot_act() const
 {
     return is(MB_PARALYSED) || is(MB_PETRIFIED);
 }
@@ -1813,7 +1795,7 @@ bool monster_info::asleep() const
 bool monster_info::incapacitated() const
 {
     // Duplicates actor::incapacitated
-    return cannot_move()
+    return cannot_act()
             || asleep()
             || is(MB_CONFUSED)
             || is(MB_CAUGHT);

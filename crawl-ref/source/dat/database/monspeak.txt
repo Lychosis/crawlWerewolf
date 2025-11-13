@@ -2322,7 +2322,7 @@ Xom Crazy Yiuf
 @The_monster@ says, "It is extremely absurd to expect to be enlightened by reason, and yet to prescribe to it beforehand on which side it must incline."
 
 # The Principia Discordia
-@The_monster@ says, "The real reality is there, but everything you know about it is in your mind and yours to do with as you like."
+@The_monster@ says, "The real reality is there, but everything you KNOW about 'it' is in your mind and yours to do with as you like."
 
 VISUAL:@The_monster@ considers dialectic materialism.
 
@@ -3675,6 +3675,7 @@ w:50
 
 @The_monster@ says, "I hate explosions."
 
+@The_monster@ says, "You're supposed to blow everything up for a god who barely gives you powers?"
 %%%%
 Ashenzari Donald
 
@@ -7231,6 +7232,9 @@ Terence triumphant
 
 # Ayla, Chrono Trigger
 @The_monster@ says, "Win and live. Lose and die. It's the rule of life."
+
+# Realm of Atland; this is especially appropriate if he's wielding Throatcutter
+@The_monster@ says, "Honour does not prevent me from taking a tactical advantage."
 ## END Terence ###
 %%%%
 ##################### A coarse and lanky orc. Urug lost her eye in a fight with a harpy,

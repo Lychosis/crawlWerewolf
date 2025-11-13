@@ -436,9 +436,11 @@ bool fight_melee(actor *attacker, actor *defender, bool *did_hit, bool simu)
     // monster mid-revival (since they're still actually supposed to be there).
     if (!defender->alive())
     {
-        if (defender->is_monster()
-            && (defender->as_monster()->flags & MF_PENDING_REVIVAL))
+        if (defender->alive_or_reviving())
         {
+            // Still consume energy so we don't cause an infinite loop
+            if (monster* mon = attacker->as_monster())
+                mon->lose_energy(EUT_ATTACK);
             return true;
         }
         else
@@ -571,7 +573,8 @@ bool fight_melee(actor *attacker, actor *defender, bool *did_hit, bool simu)
             for (adjacent_iterator i(attacker->pos()); i; ++i)
             {
                 if (*i == you.pos()
-                    && !mons_aligned(attacker, &you))
+                    && !mons_aligned(attacker, &you)
+                    && you.alive())
                 {
                     attacker->as_monster()->foe = MHITYOU;
                     attacker->as_monster()->target = you.pos();
@@ -1488,9 +1491,8 @@ bool stop_attack_prompt(const monster* mon, bool beam_attack,
         return true;
 
     // Listed in the form: "your rat", "Blorkula the orcula".
-    string mon_name = mon->name(DESC_PLAIN);
-    if (starts_with(mon_name, "the ")) // no "your the Royal Jelly" nor "the the RJ"
-        mon_name = mon_name.substr(4); // strlen("the ")
+    // No "your the Royal Jelly" nor "the the Royal Jelly".
+    string mon_name = remove_prepended_the(mon->name(DESC_PLAIN));
     if (!starts_with(adj, "your"))
         adj = "the " + adj;
     mon_name = adj + mon_name;

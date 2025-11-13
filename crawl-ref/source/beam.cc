@@ -1962,11 +1962,9 @@ void bolt::apply_bolt_paralysis(monster* mons)
 {
     if (mons->paralysed() || mons->stasis())
         return;
-    // asleep monsters can still be paralysed (and will be always woken by
-    // trying to resist); the message might seem wrong but paralysis is
-    // always visible.
-    if (!mons_is_immotile(*mons)
-        && simple_monster_message(*mons, " suddenly stops moving!"))
+
+    if (!mons->is_firewood()
+        && simple_monster_message(*mons, " becomes paralysed!"))
     {
         obvious_effect = true;
     }
@@ -3146,7 +3144,7 @@ void bolt::affect_place_explosion_clouds()
             mg.set_summoned(summ, SPELL_FIRE_STORM, summ_dur(1), false, false);
 
             // Spell-summoned monsters need to have a live summoner.
-            if (summ == nullptr || !summ->alive())
+            if (summ == nullptr || !summ->alive_or_reviving())
             {
                 if (!source_name.empty())
                     mg.non_actor_summoner = source_name;
