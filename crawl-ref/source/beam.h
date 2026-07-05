@@ -21,7 +21,9 @@
 
 using std::string;
 
-#define SJ_TELEPORTITIS_SOURCE "SJ_TELEPORTITIS_SOURCE"
+// The mid of the source for a pending hostile teleport.
+// (Can be the player, if caused by teleportitis.)
+#define TELEPORTITIS_SOURCE "TELEPORTITIS_SOURCE"
 
 using std::vector;
 
@@ -29,6 +31,7 @@ using std::vector;
                                     // from remaining range
 
 class monster;
+class ranged_attack;
 
 enum mon_resist_type
 {
@@ -63,6 +66,8 @@ struct beam_tracer
     // Should the beam stop at the target if there is a friendly monster
     // after it?
     virtual bool should_stop() noexcept { return false; }
+    // How many times the player was hit by this tracer.
+    virtual int player_hit_count() noexcept { return 0; }
 
     // Called when a meaningful target is affected
     virtual void actor_affected(bool friendly_fire, int power)
@@ -70,14 +75,13 @@ struct beam_tracer
         UNUSED(friendly_fire, power);
     }
 
-    virtual void player_hit() {}
+    virtual void player_hit(bool was_friendly = true)
+    {
+        UNUSED(was_friendly);
+    }
     virtual void monster_hit(const bolt& bolt, const monster& mon)
     {
         UNUSED(bolt, mon);
-    }
-    virtual void blocked(string message)
-    {
-        UNUSED(message);
     }
 };
 
@@ -96,8 +100,6 @@ struct player_beam_tracer : beam_tracer
     const monster* god_hated_target = nullptr;
     int hit_self_count = 0;
     int foe_count = 0;
-    string blocked_message;
-    int blocked_count = 0;
 
     player_beam_tracer() {}
 
@@ -109,9 +111,9 @@ struct player_beam_tracer : beam_tracer
     bool has_hit_foe() noexcept override;
     bool should_stop() noexcept override;
     void actor_affected(bool friendly_fire, int power) noexcept override;
-    void player_hit() noexcept override;
+    void player_hit(bool was_friendly) noexcept override;
     void monster_hit(const bolt& bolt, const monster& mon) override;
-    void blocked(string message) noexcept override;
+    bool has_any_warnings() noexcept;
 };
 
 // Used to check if casting a spell might be useful
@@ -119,11 +121,15 @@ struct targeting_tracer : beam_tracer
 {
     tracer_info foe_info;
     tracer_info friend_info;
+    bool abort_for_player = false;
+    int hurt_player_count = 0;
 
     targeting_tracer() {}
 
     bool has_hit_foe() noexcept override;
     void actor_affected(bool friendly_fire, int power) noexcept override;
+    void player_hit(bool was_friendly) noexcept override;
+    int player_hit_count() noexcept override;
 
     ai_action::goodness good_to_fire(int foe_ratio) const;
 };
@@ -143,9 +149,6 @@ struct bolt
                                            // will remain the same while flavour
                                            // changes
     bool        drop_item = false;     // should drop an item when done
-    bool        item_mulches = false;  // item will mulch on hit
-    const item_def*   item = nullptr;  // item to drop
-    const item_def*   launcher = nullptr; // origin launcher, if any
     coord_def   source = {0,0};           // beam origin
     coord_def   target = {0,0};           // intended target
     dice_def    damage = dice_def(0,0);
@@ -175,6 +178,9 @@ struct bolt
     bool   is_explosion = false;
     bool   is_death_effect = false; // effect of e.g. ballistomycete spore
     bool   aimed_at_spot = false; // aimed at (x, y), should not cross
+    bool   stop_at_allies = false; // Should beam automatically stop before reaching allies
+                                   // (or neutrals that would anger your god to harm.)
+    bool   safe_to_user = false;  //
     string aux_source = "";       // source of KILL_NON_ACTOR beams
 
     bool   affects_nothing = false; // should not hit monsters or features
@@ -195,8 +201,6 @@ struct bolt
     bolt*  special_explosion = nullptr; // For exploding with a different
                                         // flavour/damage/etc than the beam
                                         // itself.
-    bool   was_missile = false;   // For determining if this was SPMSL_FLAME /
-                                  // FROST etc so that we can change mulch rate
     // Do we draw animations?
     bool   animate;
     ac_type ac_rule = ac_type::normal;   // How defender's AC affects damage.
@@ -221,6 +225,7 @@ struct bolt
     bool noise_generated = false; // a noise has already been generated at this pos
     bool passed_target = false;   // Beam progressed beyond target.
     bool in_explosion_phase = false; // explosion phase (as opposed to beam phase)
+    bool enchant_chaining_done = false; // wheather we have already chained to nearby actors
     mon_attitude_type attitude = ATT_HOSTILE; // attitude of whoever fired the bolt
     int foe_ratio = 0;           // 100* foe ratio (see mons_should_fire())
     map<mid_t, int> hit_count;   // how many times targets were affected
@@ -228,6 +233,9 @@ struct bolt
     int foes_helped = 0;             // number of foes actually helped
     int friends_hurt = 0;            // number of friends actually hurt
     int friends_helped = 0;          // number of friends actually helped
+
+    // Ranged attack to perform on each actor reached (for ranged attack beams)
+    ranged_attack* ranged_atk = nullptr;
 
     beam_tracer* tracer = nullptr;
 
@@ -238,6 +246,8 @@ struct bolt
     int       bounces = 0;        // # times beam bounced off walls
     coord_def bounce_pos = {0,0}; // position of latest wall bounce,
                                   // reset if a reflection happens
+
+    coord_def last_affected_actor_pos = {0,0};   // position of the last actor affected by this beam
 
     int   reflections = 0;        // # times beam reflected off shields
     mid_t reflector = MID_NOBODY; // latest thing to reflect beam
@@ -272,6 +282,7 @@ public:
 
     void fire();
     void fire(beam_tracer& tracer);
+    void fire_as_ranged_attack(ranged_attack& atk);
 
     // Returns member short_name if set, otherwise some reasonable string
     // for a short name, most likely the name of the beam's flavour.
@@ -299,7 +310,7 @@ public:
     bool explode(bool show_more = true, bool hole_in_the_middle = false);
     bool explode(beam_tracer& tracer, bool show_more = true,
                  bool hole_in_the_middle = false);
-    void refine_for_explosion();
+    void refine_for_explosion(const string& explode_msg = "");
     bool explosion_draw_cell(const coord_def& p);
     void explosion_affect_cell(const coord_def& p);
     void determine_affected_cells(explosion_map& m, const coord_def& delta,
@@ -308,6 +319,8 @@ public:
     void special_explode();
 
     bool self_targeted() const;
+
+    coord_def get_last_affected_pos(int step = 0);
 
     // Setup.
     void fake_flavour();
@@ -333,8 +346,10 @@ private:
     bool is_big_cloud() const; // expands into big_cloud at endpoint
     int range_used_on_hit() const;
     bool bush_immune(const monster &mons) const;
-    bool at_blocking_monster() const;
-    int apply_lighting(int base_hit, const actor &target) const;
+
+    int apply_to_hit_modifiers(int base_hit, const actor &target) const;
+
+    void do_ranged_attack(actor& target);
 
     set<string> message_cache;
     void emit_message(const char* msg);
@@ -353,7 +368,7 @@ public:
 private:
     void affect_wall();
     void digging_wall_effect();
-    void growth_wall_effect();
+    void sporangium_wall_effect();
     void burn_wall_effect();
     void affect_ground();
     void affect_place_clouds();
@@ -377,7 +392,6 @@ private:
 public:
     mon_resist_type try_enchant_monster(monster* mon, int &res_margin);
     mon_resist_type apply_enchantment_to_monster(monster* mon);
-    void apply_beam_conducts();
 private:
     void apply_bolt_paralysis(monster* mons);
     void apply_bolt_petrify(monster* mons);
@@ -404,12 +418,33 @@ private:
     // methods to change the path
     void bounce();
     void reflect();
-    bool fuzz_invis_tracer();
 public:
     void choose_ray();
 
     bool is_tracer() const noexcept { return tracer != nullptr; }
     void set_is_tracer(bool value) noexcept;
+};
+
+// Iterates over the cells affected by an explosion.
+class explosion_iterator
+{
+public:
+    explosion_iterator(coord_def origin, int radius,
+                       beam_type flavour = BEAM_NONE,
+                       spell_type spell = SPELL_NO_SPELL,
+                       mid_t source = MID_PLAYER,
+                       bool stop_at_statues = true,
+                       bool stop_at_walls = true);
+
+    operator bool() const;
+    coord_def operator*() const;
+    const coord_def* operator->() const;
+    void operator++();
+    void operator++(int);
+
+private:
+    vector<coord_def> cells;
+    size_t index = 0;
 };
 
 int mons_adjust_flavoured(monster* mons, bolt &pbolt, int hurted,
@@ -468,16 +503,12 @@ int explosion_noise(int rad);
 
 int omnireflect_chance_denom(int SH);
 
-void glaciate_freeze(monster* mon, killer_type englaciator,
-                             int kindex);
-
 void fill_chain_targets(const bolt& beam, coord_def centre,
                         vector<coord_def> &targs, bool random);
 
 bolt setup_targeting_beam(const monster &mons);
 
-bool cancel_beam_prompt(const bolt& beam, const player_beam_tracer& tracer,
-                        int beams_fired = 1);
+bool cancel_beam_prompt(const bolt& beam, const player_beam_tracer& tracer);
 
 int apply_willpower_bypass(const actor& source, int willpower);
 int apply_willpower_bypass(const monster_info& source, int willpower);

@@ -471,9 +471,7 @@ static string _item_name(item_base_type base_type, int sub_type)
     if (base_type == ITEM_SPELLBOOKS)
     {
         const int orig_type = _item_orig_sub_type(base_type, sub_type);
-        if (orig_type == BOOK_RANDART_LEVEL)
-            return "Level Artefact Book";
-        if (orig_type == BOOK_RANDART_LEVEL)
+        if (orig_type == BOOK_RANDART_THEME)
             return "Theme Artefact Book";
     }
 
@@ -1399,10 +1397,6 @@ void objstat_generate_stats()
 
     initialise_item_descriptions();
     initialise_branch_depths();
-
-    // We have to run map preludes ourselves.
-    run_map_global_preludes();
-    run_map_local_preludes();
 
     // Populate a vector of the levels ids for levels we're tabulating.
     for (branch_iterator it; it; ++it)

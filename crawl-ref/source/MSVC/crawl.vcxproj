@@ -394,6 +394,7 @@ python.exe util/gen-all.py</Command>
     <ClCompile Include="..\l-wiz.cc" />
     <ClCompile Include="..\lang-fake.cc" />
     <ClCompile Include="..\losglobal.cc" />
+    <ClCompile Include="..\l-autofight.cc" />
     <ClCompile Include="..\l-colour.cc" />
     <ClCompile Include="..\l-crawl.cc" />
     <ClCompile Include="..\l-debug.cc" />
@@ -428,6 +429,7 @@ python.exe util/gen-all.py</Command>
     <ClCompile Include="..\mon-death.cc" />
     <ClCompile Include="..\mon-ench.cc" />
     <ClCompile Include="..\mon-explode.cc" />
+    <ClCompile Include="..\mon-lurk.cc" />
     <ClCompile Include="..\movement.cc" />
     <ClCompile Include="..\ng-init-branches.cc" />
     <ClCompile Include="..\ng-setup.cc" />
@@ -436,9 +438,11 @@ python.exe util/gen-all.py</Command>
     <ClCompile Include="..\package.cc" />
     <ClCompile Include="..\pcg.cc" />
     <ClCompile Include="..\perlin.cc" />
+    <ClCompile Include="..\piety-info.cc" />
     <ClCompile Include="..\place-info.cc" />
     <ClCompile Include="..\player-act.cc" />
     <ClCompile Include="..\player-equip.cc" />
+    <ClCompile Include="..\player-notices.cc" />
     <ClCompile Include="..\player-reacts.cc" />
     <ClCompile Include="..\player-stats.cc" />
     <ClCompile Include="..\potion.cc" />
@@ -847,6 +851,7 @@ python.exe util/gen-all.py</Command>
     <ClInclude Include="..\mon-holy-type.h" />
     <ClInclude Include="..\mon-info.h" />
     <ClInclude Include="..\mon-inv-type.h" />
+    <ClInclude Include="..\mon-lurk.h" />
     <ClInclude Include="..\mon-movetarget.h" />
     <ClInclude Include="..\mon-mst.h" />
     <ClInclude Include="..\mon-pathfind.h" />
@@ -893,11 +898,13 @@ python.exe util/gen-all.py</Command>
     <ClInclude Include="..\pattern.h" />
     <ClInclude Include="..\pcg.h" />
     <ClInclude Include="..\perlin.h" />
+    <ClInclude Include="..\piety-info.h" />
     <ClInclude Include="..\place-info.h" />
     <ClInclude Include="..\place.h" />
     <ClInclude Include="..\platform.h" />
     <ClInclude Include="..\playable.h" />
     <ClInclude Include="..\player-equip.h" />
+    <ClInclude Include="..\player-notices.h" />
     <ClInclude Include="..\player-reacts.h" />
     <ClInclude Include="..\player-save-info.h" />
     <ClInclude Include="..\player-stats.h" />
@@ -999,6 +1006,7 @@ python.exe util/gen-all.py</Command>
     <ClInclude Include="..\text-tag-type.h" />
     <ClInclude Include="..\threads.h" />
     <ClInclude Include="..\throw.h" />
+    <ClInclude Include="..\tile-env.h" />
     <ClInclude Include="..\tile-flags.h" />
     <ClInclude Include="..\tile-inventory-flags.h" />
     <ClInclude Include="..\tile-player-flag-cut.h" />
@@ -1040,8 +1048,6 @@ python.exe util/gen-all.py</Command>
     <ClInclude Include="..\torment-source-type.h" />
     <ClInclude Include="..\transform.h" />
     <ClInclude Include="..\transformation.h" />
-    <ClInclude Include="..\trap-def.h" />
-    <ClInclude Include="..\trap-type.h" />
     <ClInclude Include="..\traps.h" />
     <ClInclude Include="..\travel-defs.h" />
     <ClInclude Include="..\travel.h" />

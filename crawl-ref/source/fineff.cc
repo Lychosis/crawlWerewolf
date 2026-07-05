@@ -47,6 +47,7 @@
 #include "state.h"
 #include "stringutil.h"
 #include "terrain.h"
+#include "rltiles/tiledef-main.h"
 #include "transform.h"
 #include "view.h"
 
@@ -55,7 +56,15 @@ class final_effect
 public:
     virtual ~final_effect() {}
 
-    virtual bool mergeable(const final_effect& a) const = 0;
+    bool is_mergeable(const final_effect& a)
+    {
+        // Make sure we don't merge different types of final effects
+        if (typeid(*this) != typeid(a))
+            return false;
+
+        return mergeable(a);
+    }
+
     virtual void merge(const final_effect&)
     {
     }
@@ -74,12 +83,13 @@ protected:
         posn(pos)
     {
     }
+
+    virtual bool mergeable(const final_effect& a) const = 0;
 };
 
 class mirror_damage_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void merge(const final_effect& a) override;
     void fire() override;
 
@@ -88,13 +98,14 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     int damage;
 };
 
 class anguish_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void merge(const final_effect& a) override;
     void fire() override;
 
@@ -103,13 +114,14 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     int damage;
 };
 
 class ru_retribution_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void merge(const final_effect& a) override;
     void fire() override;
 
@@ -118,49 +130,53 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     int damage;
 };
 
 class trample_follow_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
 
     trample_follow_fineff(const actor* attack, const coord_def& pos)
         : final_effect(attack, 0, pos)
     {
     }
+protected:
+    bool mergeable(const final_effect& a) const override;
 };
 
 class blink_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
 
     blink_fineff(const actor* blinker, const actor* o)
         : final_effect(o, blinker, coord_def())
     {
     }
+protected:
+    bool mergeable(const final_effect& a) const override;
 };
 
 class teleport_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
 
     teleport_fineff(const actor* defend)
         : final_effect(0, defend, coord_def())
     {
     }
+protected:
+    bool mergeable(const final_effect& a) const override;
 };
 
 class trj_spawn_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void merge(const final_effect& a) override;
     void fire() override;
 
@@ -170,13 +186,14 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     int damage;
 };
 
 class blood_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
     void merge(const final_effect& a) override;
 
@@ -185,6 +202,8 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     monster_type mtype;
     int blood;
 };
@@ -192,7 +211,6 @@ protected:
 class deferred_damage_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void merge(const final_effect& a) override;
     void fire() override;
 
@@ -203,6 +221,8 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     int damage;
     bool attacker_effects;
     bool fatal;
@@ -211,19 +231,19 @@ protected:
 class starcursed_merge_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
 
     starcursed_merge_fineff(const actor* merger)
         : final_effect(0, merger, coord_def())
     {
     }
+protected:
+    bool mergeable(const final_effect& a) const override;
 };
 
 class shock_discharge_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void merge(const final_effect& a) override;
     void fire() override;
 
@@ -234,6 +254,8 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     actor& oppressor;
     coord_def position;
     int power;
@@ -243,8 +265,6 @@ protected:
 class explosion_fineff : public final_effect
 {
 public:
-    // One explosion at a time, please.
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     explosion_fineff(const bolt& beem, string boom, string sanct,
@@ -256,6 +276,9 @@ public:
     {
     }
 protected:
+    // One explosion at a time, please.
+    bool mergeable(const final_effect&) const override { return false; }
+
     bolt beam;
     string boom_message;
     string sanctuary_message;
@@ -267,7 +290,6 @@ protected:
 class splinterfrost_fragment_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     splinterfrost_fragment_fineff(bolt beem, string _msg)
@@ -275,6 +297,8 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     bolt beam;
     string msg;
 };
@@ -285,7 +309,6 @@ protected:
 class delayed_action_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     virtual void fire() override;
 
     delayed_action_fineff(daction_type _action, const string& _final_msg)
@@ -294,6 +317,8 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     daction_type action;
     string final_msg;
 };
@@ -312,7 +337,6 @@ public:
 class rakshasa_clone_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
 
     rakshasa_clone_fineff(const actor* defend, const coord_def& pos)
@@ -320,36 +344,29 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     int damage;
 };
 
 class bennu_revive_fineff : public final_effect
 {
 public:
-    // Each trigger is from the death of a different bennu---no merging.
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
-    bennu_revive_fineff(coord_def pos, int _revives, beh_type _att,
-        unsigned short _foe, bool _duel,
-        mon_enchant _gozag_bribe)
-        : final_effect(0, 0, pos), revives(_revives), attitude(_att), foe(_foe),
-        duel(_duel), gozag_bribe(_gozag_bribe)
+    bennu_revive_fineff(const monster* bennu)
+        : final_effect(bennu, 0, bennu->pos())
     {
+        env.final_effect_monster_cache.push_back(*bennu);
     }
 protected:
-    int revives;
-    beh_type attitude;
-    unsigned short foe;
-    bool duel;
-    mon_enchant gozag_bribe;
+    // Each trigger is from the death of a different bennu---no merging.
+    bool mergeable(const final_effect&) const override { return false; }
 };
 
 class avoided_death_fineff : public final_effect
 {
 public:
-    // Each trigger is from the death of a different monster---no merging.
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     avoided_death_fineff(const actor* _def, int _hp)
@@ -357,13 +374,15 @@ public:
     {
     }
 protected:
+    // Each trigger is from the death of a different monster---no merging.
+    bool mergeable(const final_effect&) const override { return false; }
+
     int hp;
 };
 
 class infestation_death_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     infestation_death_fineff(coord_def pos, const string& _name)
@@ -371,34 +390,38 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     string name;
 };
 
 class make_derived_undead_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     make_derived_undead_fineff(coord_def pos, mgen_data _mg, int _xl,
         const string& _agent, const string& _msg,
-        bool _act_immediately)
+        function<bool ()> _should_trigger, bool _act_immediately)
         : final_effect(0, 0, pos), mg(_mg), experience_level(_xl),
-        agent(_agent), message(_msg), act_immediately(_act_immediately)
+        agent(_agent), message(_msg), should_trigger(_should_trigger),
+        act_immediately(_act_immediately)
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     mgen_data mg;
     int experience_level;
     string agent;
     string message;
+    function<bool ()> should_trigger;
     bool act_immediately;
 };
 
 class mummy_death_curse_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     mummy_death_curse_fineff(const actor* attack, const monster* source, killer_type _killer, int _pow)
@@ -410,6 +433,7 @@ public:
         dead_mummy = source->mid;
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
     const actor* fixup_attacker(const actor* a);
 
     killer_type killer;
@@ -420,7 +444,6 @@ protected:
 class summon_dismissal_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& fe) const override;
     void merge(const final_effect&) override;
     void fire() override;
 
@@ -428,12 +451,13 @@ public:
         : final_effect(0, _defender, coord_def())
     {
     }
+protected:
+    bool mergeable(const final_effect& fe) const override;
 };
 
 class spectral_weapon_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; };
     void fire() override;
 
     spectral_weapon_fineff(const actor& attack, const actor& defend,
@@ -442,34 +466,37 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     item_def* weapon;
 };
 
 class lugonu_meddle_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return true; };
     void fire() override;
 
     lugonu_meddle_fineff() : final_effect(nullptr, nullptr, coord_def()) {}
+protected:
+    bool mergeable(const final_effect&) const override { return true; }
 };
 
 class jinxbite_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&/*a*/) const override { return false; };
     void fire() override;
 
     jinxbite_fineff(const actor* defend)
         : final_effect(nullptr, defend, coord_def())
     {
     }
+protected:
+    bool mergeable(const final_effect&) const override { return false; }
 };
 
 class beogh_resurrection_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect& a) const override;
     void fire() override;
 
     beogh_resurrection_fineff(bool end_ostracism_only)
@@ -477,13 +504,14 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect& a) const override;
+
     const bool ostracism_only;
 };
 
 class dismiss_divine_allies_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     dismiss_divine_allies_fineff(const god_type _god)
@@ -491,13 +519,14 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     const god_type god;
 };
 
 class death_spawn_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return false; }
     void fire() override;
 
     death_spawn_fineff(mgen_data _mg)
@@ -505,13 +534,14 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     const mgen_data mg;
 };
 
 class detonation_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&/*a*/) const override { return false; };
     void fire() override;
 
     detonation_fineff(const coord_def& pos, const item_def* wpn)
@@ -519,28 +549,36 @@ public:
     {
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     const item_def* weapon;
 };
 
 class stardust_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&/*a*/) const override { return true; };
     void fire() override;
 
-    stardust_fineff(actor* agent, int _power, int _max)
-        : final_effect(agent, nullptr, you.pos()), power(_power), max_stars(_max)
+    stardust_fineff(actor* agent, int _power, int _max, bool _is_star_jelly)
+        : final_effect(agent, nullptr, you.pos()), power(_power), max_stars(_max),
+                                                   is_star_jelly(_is_star_jelly)
     {
+        // If this is a star jelly, cache it (even if it's not dead yet; since
+        // it may die to further damage events within the same attack action.)
+        if (is_star_jelly)
+            env.final_effect_monster_cache.push_back(*agent->as_monster());
     }
 protected:
+    bool mergeable(const final_effect&) const override { return false; }
+
     int power;
     int max_stars;
+    bool is_star_jelly;
 };
 
 class pyromania_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&/*a*/) const override { return true; };
     void fire() override;
 
     pyromania_fineff()
@@ -548,21 +586,50 @@ public:
     {
     }
 protected:
-    int count;
-    int power;
+    bool mergeable(const final_effect&) const override { return true; }
 };
 
 class celebrant_bloodrite_fineff : public final_effect
 {
 public:
-    bool mergeable(const final_effect&) const override { return true; }
     void fire() override;
 
     celebrant_bloodrite_fineff()
         : final_effect(&you, nullptr, you.pos())
     {
     }
+protected:
+    bool mergeable(const final_effect&) const override { return true; }
 };
+
+class eeljolt_fineff : public final_effect
+{
+public:
+    void fire() override;
+
+    eeljolt_fineff()
+        : final_effect(&you, nullptr, you.pos())
+    {
+    }
+protected:
+    bool mergeable(const final_effect&) const override { return true; }
+};
+
+class psychokinetic_burst_fineff : public final_effect
+{
+public:
+    void fire() override;
+
+    psychokinetic_burst_fineff(actor* agent)
+        : final_effect(agent, nullptr, you.pos())
+    {
+        ASSERT(agent->is_monster());
+        env.final_effect_monster_cache.push_back(*agent->as_monster());
+    }
+protected:
+    bool mergeable(const final_effect&) const override { return false; }
+};
+
 
 // Things to happen when the current attack/etc finishes.
 static vector<final_effect*> _final_effects;
@@ -571,7 +638,7 @@ static void _schedule_final_effect(final_effect *eff)
 {
     for (auto fe : _final_effects)
     {
-        if (fe->mergeable(*eff))
+        if (fe->is_mergeable(*eff))
         {
             fe->merge(*eff);
             delete eff;
@@ -678,12 +745,9 @@ void schedule_rakshasa_clone_fineff(const actor* defend, const coord_def& pos)
     _schedule_final_effect(new rakshasa_clone_fineff(defend, pos));
 }
 
-void schedule_bennu_revive_fineff(coord_def pos, int revives,
-                                  beh_type attitude, unsigned short foe,
-                                  bool duel, mon_enchant gozag_bribe)
+void schedule_bennu_revive_fineff(const monster* bennu)
 {
-    _schedule_final_effect(new bennu_revive_fineff(pos, revives, attitude,
-                                                   foe, duel, gozag_bribe));
+    _schedule_final_effect(new bennu_revive_fineff(bennu));
 }
 
 void schedule_avoided_death_fineff(monster* mons)
@@ -705,10 +769,12 @@ void schedule_infestation_death_fineff(coord_def pos, const string& name)
 void schedule_make_derived_undead_fineff(coord_def pos, mgen_data mg, int xl,
                                          const string& agent,
                                          const string& msg,
+                                         function<bool ()> should_trigger,
                                          bool act_immediately)
 {
     _schedule_final_effect(new make_derived_undead_fineff(pos, mg, xl, agent,
                                                           msg,
+                                                          should_trigger,
                                                           act_immediately));
 }
 
@@ -770,9 +836,9 @@ void schedule_detonation_fineff(const coord_def& pos, const item_def* wpn)
     _schedule_final_effect(new detonation_fineff(pos, wpn));
 }
 
-void schedule_stardust_fineff(actor* agent, int power, int max_stars)
+void schedule_stardust_fineff(actor* agent, int power, int max_stars, bool force_max)
 {
-    _schedule_final_effect(new stardust_fineff(agent, power, max_stars));
+    _schedule_final_effect(new stardust_fineff(agent, power, max_stars, force_max));
 }
 
 void schedule_pyromania_fineff()
@@ -785,95 +851,108 @@ void schedule_celebrant_bloodrite_fineff()
     _schedule_final_effect(new celebrant_bloodrite_fineff());
 }
 
+void schedule_eeljolt_fineff()
+{
+    _schedule_final_effect(new eeljolt_fineff());
+}
+
+void schedule_psychokinetic_burst_fineff(actor* agent)
+{
+    _schedule_final_effect(new psychokinetic_burst_fineff(agent));
+}
+
 bool mirror_damage_fineff::mergeable(const final_effect &fe) const
 {
-    const mirror_damage_fineff *o =
-        dynamic_cast<const mirror_damage_fineff *>(&fe);
-    return o && att == o->att && def == o->def;
+    const mirror_damage_fineff& o =
+        static_cast<const mirror_damage_fineff&>(fe);
+    return att == o.att && def == o.def;
 }
 
 bool anguish_fineff::mergeable(const final_effect &fe) const
 {
-    const anguish_fineff *o =
-        dynamic_cast<const anguish_fineff *>(&fe);
-    return o && att == o->att;
+    const anguish_fineff& o = static_cast<const anguish_fineff&>(fe);
+    return att == o.att;
 }
 
 bool ru_retribution_fineff::mergeable(const final_effect &fe) const
 {
-    const ru_retribution_fineff *o =
-        dynamic_cast<const ru_retribution_fineff *>(&fe);
-    return o && att == o->att && def == o->def;
+    const ru_retribution_fineff& o =
+        static_cast<const ru_retribution_fineff&>(fe);
+    return att == o.att && def == o.def;
 }
 
 bool trample_follow_fineff::mergeable(const final_effect &fe) const
 {
-    const trample_follow_fineff *o =
-        dynamic_cast<const trample_follow_fineff *>(&fe);
-    return o && att == o->att && posn == o->posn;
+    const trample_follow_fineff& o =
+        static_cast<const trample_follow_fineff&>(fe);
+    return att == o.att;
 }
 
 bool blink_fineff::mergeable(const final_effect &fe) const
 {
-    const blink_fineff *o = dynamic_cast<const blink_fineff *>(&fe);
-    return o && def == o->def && att == o->att;
+    const blink_fineff& o = static_cast<const blink_fineff&>(fe);
+    return def == o.def && att == o.att;
 }
 
 bool teleport_fineff::mergeable(const final_effect &fe) const
 {
-    const teleport_fineff *o =
-        dynamic_cast<const teleport_fineff *>(&fe);
-    return o && def == o->def;
+    const teleport_fineff& o = static_cast<const teleport_fineff&>(fe);
+    return def == o.def;
 }
 
 bool trj_spawn_fineff::mergeable(const final_effect &fe) const
 {
-    const trj_spawn_fineff *o = dynamic_cast<const trj_spawn_fineff *>(&fe);
-    return o && att == o->att && def == o->def && posn == o->posn;
+    const trj_spawn_fineff& o = static_cast<const trj_spawn_fineff&>(fe);
+    return att == o.att && def == o.def && posn == o.posn;
 }
 
 bool blood_fineff::mergeable(const final_effect &fe) const
 {
-    const blood_fineff *o = dynamic_cast<const blood_fineff *>(&fe);
-    return o && posn == o->posn && mtype == o->mtype;
+    const blood_fineff& o = static_cast<const blood_fineff&>(fe);
+    return posn == o.posn && mtype == o.mtype;
 }
 
 bool deferred_damage_fineff::mergeable(const final_effect &fe) const
 {
-    const deferred_damage_fineff *o = dynamic_cast<const deferred_damage_fineff *>(&fe);
-    return o && att == o->att && def == o->def
-           && attacker_effects == o->attacker_effects && fatal == o->fatal;
+    const deferred_damage_fineff& o =
+        static_cast<const deferred_damage_fineff&>(fe);
+    return att == o.att && def == o.def
+           && attacker_effects == o.attacker_effects && fatal == o.fatal;
 }
 
 bool starcursed_merge_fineff::mergeable(const final_effect &fe) const
 {
-    const starcursed_merge_fineff *o = dynamic_cast<const starcursed_merge_fineff *>(&fe);
-    return o && def == o->def;
+    const starcursed_merge_fineff& o =
+        static_cast<const starcursed_merge_fineff&>(fe);
+    return def == o.def;
 }
 
 bool shock_discharge_fineff::mergeable(const final_effect &fe) const
 {
-    const shock_discharge_fineff *o = dynamic_cast<const shock_discharge_fineff *>(&fe);
-    return o && def == o->def;
-}
-
-bool delayed_action_fineff::mergeable(const final_effect &) const
-{
-    return false;
+    const shock_discharge_fineff& o =
+        static_cast<const shock_discharge_fineff&>(fe);
+    return def == o.def;
 }
 
 bool rakshasa_clone_fineff::mergeable(const final_effect &fe) const
 {
-    const rakshasa_clone_fineff *o =
-        dynamic_cast<const rakshasa_clone_fineff *>(&fe);
-    return o && att == o->att && def == o->def && posn == o->posn;
+    const rakshasa_clone_fineff& o =
+        static_cast<const rakshasa_clone_fineff&>(fe);
+    return att == o.att && def == o.def && posn == o.posn;
 }
 
 bool summon_dismissal_fineff::mergeable(const final_effect &fe) const
 {
-    const summon_dismissal_fineff *o =
-        dynamic_cast<const summon_dismissal_fineff *>(&fe);
-    return o && def == o->def;
+    const summon_dismissal_fineff& o =
+        static_cast<const summon_dismissal_fineff&>(fe);
+    return def == o.def;
+}
+
+bool beogh_resurrection_fineff::mergeable(const final_effect& fe) const
+{
+    const beogh_resurrection_fineff& o =
+        static_cast<const beogh_resurrection_fineff&>(fe);
+    return ostracism_only == o.ostracism_only;
 }
 
 void mirror_damage_fineff::merge(const final_effect &fe)
@@ -881,7 +960,7 @@ void mirror_damage_fineff::merge(const final_effect &fe)
     const mirror_damage_fineff *mdfe =
         dynamic_cast<const mirror_damage_fineff *>(&fe);
     ASSERT(mdfe);
-    ASSERT(mergeable(*mdfe));
+    ASSERT(is_mergeable(*mdfe));
     damage += mdfe->damage;
 }
 
@@ -890,7 +969,7 @@ void anguish_fineff::merge(const final_effect &fe)
     const anguish_fineff *afe =
         dynamic_cast<const anguish_fineff *>(&fe);
     ASSERT(afe);
-    ASSERT(mergeable(*afe));
+    ASSERT(is_mergeable(*afe));
     damage += afe->damage;
 }
 
@@ -899,7 +978,7 @@ void ru_retribution_fineff::merge(const final_effect &fe)
     const ru_retribution_fineff *mdfe =
         dynamic_cast<const ru_retribution_fineff *>(&fe);
     ASSERT(mdfe);
-    ASSERT(mergeable(*mdfe));
+    ASSERT(is_mergeable(*mdfe));
 }
 
 void trj_spawn_fineff::merge(const final_effect &fe)
@@ -907,7 +986,7 @@ void trj_spawn_fineff::merge(const final_effect &fe)
     const trj_spawn_fineff *trjfe =
         dynamic_cast<const trj_spawn_fineff *>(&fe);
     ASSERT(trjfe);
-    ASSERT(mergeable(*trjfe));
+    ASSERT(is_mergeable(*trjfe));
     damage += trjfe->damage;
 }
 
@@ -915,7 +994,7 @@ void blood_fineff::merge(const final_effect &fe)
 {
     const blood_fineff *bfe = dynamic_cast<const blood_fineff *>(&fe);
     ASSERT(bfe);
-    ASSERT(mergeable(*bfe));
+    ASSERT(is_mergeable(*bfe));
     blood += bfe->blood;
 }
 
@@ -924,7 +1003,7 @@ void deferred_damage_fineff::merge(const final_effect &fe)
     const deferred_damage_fineff *ddamfe =
         dynamic_cast<const deferred_damage_fineff *>(&fe);
     ASSERT(ddamfe);
-    ASSERT(mergeable(*ddamfe));
+    ASSERT(is_mergeable(*ddamfe));
     damage += ddamfe->damage;
 }
 
@@ -997,12 +1076,10 @@ void trample_follow_fineff::fire()
     if (attack
         && attack->pos() != posn
         && adjacent(attack->pos(), posn)
-        && attack->is_habitable(posn))
+        && attack->is_habitable(posn)
+        && !monster_at(posn))
     {
-        const coord_def old_pos = attack->pos();
-        attack->move_to_pos(posn);
-        attack->apply_location_effects(old_pos);
-        attack->did_deliberate_movement();
+        attack->move_to(posn, MV_DELIBERATE);
     }
 }
 
@@ -1077,14 +1154,12 @@ void trj_spawn_fineff::fire()
     for (int i = 0; i < tospawn; ++i)
     {
         const monster_type jelly = royal_jelly_ejectable_monster();
-        coord_def jpos = find_newmons_square_contiguous(jelly, posn, 3, false);
-        if (!in_bounds(jpos))
-            continue;
-
-        if (monster *mons = mons_place(
-                              mgen_data(jelly, spawn_beh, jpos, foe,
+        if (monster *mons = create_monster(
+                              mgen_data(jelly, spawn_beh, posn, foe,
                                         MG_DONT_COME, GOD_JIYVA)
-                              .set_summoned(trj, 0)))
+                              .set_summoned(trj, 0)
+                              .set_range(1, LOS_RADIUS)
+                              .copy_from_parent(trj)))
         {
             // Don't allow milking the Royal Jelly.
             mons->flags |= MF_NO_REWARD | MF_HARD_RESET;
@@ -1116,7 +1191,7 @@ void trj_spawn_fineff::fire()
         mpr("One of the Royal Jelly's fragments survives.");
     else
     {
-        mprf("The dying Royal Jelly spits out %s more jellies.",
+        mprf("%s of the Royal Jelly's fragments survive.",
              number_in_words(spawned).c_str());
     }
 }
@@ -1211,7 +1286,7 @@ void starcursed_merge_fineff::fire()
             coord_def sgn = (*di - mon->pos()).sgn();
             if (mon_can_move_to_pos(mon, sgn))
             {
-                mon->move_to_pos(mon->pos()+sgn, false);
+                mon->move_to(mon->pos()+sgn, MV_DELIBERATE, true);
                 moved = true;
             }
             else if (abs(sgn.x) != 0)
@@ -1219,7 +1294,7 @@ void starcursed_merge_fineff::fire()
                 coord_def dx(sgn.x, 0);
                 if (mon_can_move_to_pos(mon, dx))
                 {
-                    mon->move_to_pos(mon->pos()+dx, false);
+                    mon->move_to(mon->pos()+dx, MV_DELIBERATE, true);
                     moved = true;
                 }
             }
@@ -1228,7 +1303,7 @@ void starcursed_merge_fineff::fire()
                 coord_def dy(0, sgn.y);
                 if (mon_can_move_to_pos(mon, dy))
                 {
-                    mon->move_to_pos(mon->pos()+dy, false);
+                    mon->move_to(mon->pos()+dy, MV_DELIBERATE, true);
                     moved = true;
                 }
             }
@@ -1237,6 +1312,7 @@ void starcursed_merge_fineff::fire()
             {
                 simple_monster_message(*mon, " shudders and withdraws towards its neighbour.");
                 mon->speed_increment -= 10;
+                mon->finalise_movement();
             }
         }
     }
@@ -1276,10 +1352,14 @@ void shock_discharge_fineff::fire()
     }
 
     bolt beam;
-    beam.flavour = BEAM_ELECTRICITY;
+    beam.flavour   = BEAM_ELECTRICITY;
+    beam.tile_beam = power < 4 ? TILE_BOLT_WEAK_ELEC : TILE_BOLT_STRONG_ELEC;
+    int dur = power < 4 ? 20 : 30;
     const string name = serpent && serpent->alive_or_reviving() ?
                         serpent->name(DESC_A, true) :
                         "a shock serpent"; // dubious
+
+    flash_tile(oppressor.pos(), CYAN, dur, beam.tile_beam);
     oppressor.hurt(serpent, final_dmg, beam.flavour, KILLED_BY_BEAM,
                    name.c_str(), shock_source.c_str());
 
@@ -1309,11 +1389,6 @@ void explosion_fineff::fire()
             mprf(MSGCH_MONSTER_DAMAGE, MDAM_DEAD, "%s", boom_message.c_str());
     }
 
-    if (typ == EXPLOSION_FINEFF_INNER_FLAME)
-        for (adjacent_iterator ai(beam.target, false); ai; ++ai)
-            if (!one_chance_in(5))
-                place_cloud(CLOUD_FIRE, *ai, 10 + random2(10), flame_agent);
-
     beam.explode(true, typ == EXPLOSION_FINEFF_PYROMANIA);
 
     if (typ == EXPLOSION_FINEFF_CONCUSSION)
@@ -1323,7 +1398,7 @@ void explosion_fineff::fire()
             actor *act = actor_at(*ai);
             if (!act
                 || act->is_stationary()
-                || act->is_monster() && never_harm_monster(&you, *act->as_monster()))
+                || !could_harm(&you, act))
             {
                 continue;
             }
@@ -1332,18 +1407,14 @@ void explosion_fineff::fire()
             if (newpos == *ai || actor_at(newpos) || !act->is_habitable(newpos))
                 continue;
 
-            act->move_to_pos(newpos);
-            if (act->is_player())
-                stop_delay(true);
+            act->move_to(newpos, MV_DEFAULT, true);
             if (you.can_see(*act))
             {
                 mprf("%s %s knocked back by the blast.",
                      act->name(DESC_THE).c_str(),
                      act->conj_verb("are").c_str());
             }
-
-            act->apply_location_effects(*ai, beam.killer(),
-                                        actor_to_death_source(beam.agent()));
+            act->finalise_movement();
         }
     }
 
@@ -1391,35 +1462,35 @@ void rakshasa_clone_fineff::fire()
 
 void bennu_revive_fineff::fire()
 {
-    // Bennu only resurrect once and immediately in the same spot,
-    // so this is rather abbreviated compared to felids.
-    // XXX: Maybe generalize felid_revives and merge the two anyway?
-
     bool res_visible = you.see_cell(posn);
 
+    const monster* orig = cached_monster_copy_by_mid(att);
 
-    monster *newmons = create_monster(mgen_data(MONS_BENNU, attitude, posn, foe,
+    monster *newmons = create_monster(mgen_data(MONS_BENNU, BEH_HOSTILE, posn, orig->foe,
                                                 res_visible ? MG_DONT_COME
-                                                            : MG_NONE));
-    if (newmons)
-        newmons->props[BENNU_REVIVES_KEY].get_byte() = revives + 1;
+                                                            : MG_NONE).copy_from_parent(orig));
+
+    if (!newmons)
+        return;
+
+    const int old_revives = orig->props.exists(BENNU_REVIVES_KEY) ? orig->props[BENNU_REVIVES_KEY].get_byte() : 0;
+    newmons->props[BENNU_REVIVES_KEY].get_byte() = old_revives + 1;
 
     // If we were dueling the original bennu, the duel continues.
-    if (duel)
+    if (orig->props.exists(OKAWARU_DUEL_TARGET_KEY))
     {
         newmons->props[OKAWARU_DUEL_TARGET_KEY] = true;
         newmons->props[OKAWARU_DUEL_CURRENT_KEY] = true;
     }
-
-    if (gozag_bribe.ench != ENCH_NONE)
-        newmons->add_ench(gozag_bribe);
 }
 
 void avoided_death_fineff::fire()
 {
-    ASSERT(defender() && defender()->is_monster());
-    defender()->as_monster()->hit_points = hp;
-    defender()->as_monster()->flags &= ~MF_PENDING_REVIVAL;
+    actor* defend = defender();
+    ASSERT(defend && defend->is_monster());
+    monster* mons = defend->as_monster();
+    mons->hit_points = hp;
+    mons->flags &= ~MF_PENDING_REVIVAL;
 }
 
 void infestation_death_fineff::fire()
@@ -1441,6 +1512,9 @@ void infestation_death_fineff::fire()
 
 void make_derived_undead_fineff::fire()
 {
+    if (!should_trigger())
+        return;
+
     monster *undead = create_monster(mg);
     if (!undead)
         return;
@@ -1470,10 +1544,9 @@ void make_derived_undead_fineff::fire()
 
 const actor *mummy_death_curse_fineff::fixup_attacker(const actor *a)
 {
-    if (a && a->is_monster() && a->as_monster()->friendly()
-        && !crawl_state.game_is_arena())
+    if (a && a->friendly() && !crawl_state.game_is_arena())
     {
-        // Mummies are smart enough not to waste curses on summons or allies.
+        // Mummies are smart enough not to waste curses on the player's summons or allies.
         return &you;
     }
     return a;
@@ -1612,13 +1685,6 @@ void jinxbite_fineff::fire()
         attempt_jinxbite_hit(*defend);
 }
 
-bool beogh_resurrection_fineff::mergeable(const final_effect &fe) const
-{
-    const beogh_resurrection_fineff *o =
-        dynamic_cast<const beogh_resurrection_fineff *>(&fe);
-    return o && ostracism_only == o->ostracism_only;
-}
-
 void beogh_resurrection_fineff::fire()
 {
     beogh_resurrect_followers(ostracism_only);
@@ -1654,7 +1720,10 @@ void stardust_fineff::fire()
 {
     actor* agent = actor_by_mid(att);
 
-    if (!agent || !agent->alive())
+    // In case the agent is dead, check for a cached copy.
+    if (!agent)
+        agent = cached_monster_copy_by_mid(att);
+    if (!agent)
         return;
 
     if (agent->is_player() && is_sanctuary(you.pos()))
@@ -1662,18 +1731,19 @@ void stardust_fineff::fire()
 
     int count = 0;
     for (actor_near_iterator ai(agent->pos(), LOS_NO_TRANS); ai; ++ai)
-    {
         if (!ai->is_firewood() && !mons_aligned(agent, *ai))
             ++count;
-    }
 
     // Don't activate or go on cooldown if there's nothing to shoot at.
     if (count == 0)
         return;
 
-    mprf("%s orb unleashes a flurry of shooting stars!", agent->name(DESC_ITS).c_str());
+    if (is_star_jelly)
+        mprf("A flurry of magic pours from %s injured body!", agent->name(DESC_ITS).c_str());
+    else
+        mprf("%s orb unleashes a flurry of shooting stars!", agent->name(DESC_ITS).c_str());
 
-    count = min(max_stars, count + 1);
+    count = is_star_jelly ? max_stars : min(max_stars, count + 1);
     const int foe = agent->is_player() ? int{MHITYOU} : agent->as_monster()->foe;
     for (int i = 0; i < count; ++i)
     {
@@ -1685,20 +1755,17 @@ void stardust_fineff::fire()
         mg.hd = power;
         mg.hp = 100;
         if (monster* mon = create_monster(mg))
-            mon->steps_remaining = 15;
+            mon->steps_remaining = 12;
     }
 
     if (agent->is_player())
         you.duration[DUR_STARDUST_COOLDOWN] = random_range(40, 70);
-    else
-        agent->as_monster()->add_ench(mon_enchant(ENCH_ORB_COOLDOWN, 0, agent, random_range(300, 500)));
+    else if (!is_star_jelly)
+        agent->as_monster()->add_ench(mon_enchant(ENCH_ORB_COOLDOWN, agent, random_range(300, 500)));
 }
 
 void pyromania_fineff::fire()
 {
-    if (is_sanctuary(you.pos()))
-        return;
-
     // Test if there's at least *something* worth hitting before exploding
     // (primarily to avoid wasting the player's time). Note: we don't check the
     // the player *wants* to hit what is there, just that there is something
@@ -1708,7 +1775,7 @@ void pyromania_fineff::fire()
     {
         if (monster* mon = monster_at(*ri))
         {
-            if (!never_harm_monster(&you, mon))
+            if (could_harm(&you, mon))
             {
                 found = true;
                 break;
@@ -1801,6 +1868,48 @@ void celebrant_bloodrite_fineff::fire()
         view_clear_overlays();
         ++shots_fired;
     }
+}
+
+void eeljolt_fineff::fire()
+{
+    do_eel_arcjolt();
+}
+
+void psychokinetic_burst_fineff::fire()
+{
+    monster* agent = monster_by_mid(att);
+
+    // In case the agent is dead, check for a cached copy.
+    if (!agent)
+        agent = cached_monster_copy_by_mid(att);
+    if (!agent)
+        return;
+
+    simple_monster_message(*agent, " unleashes a burst of psychic force!", false, MSGCH_MONSTER_SPELL);
+
+    const coord_def source = agent->pos();
+    vector<actor*> act_list;
+    for (actor_near_iterator ai(source, LOS_NO_TRANS); ai; ++ai)
+    {
+        if (ai->pos().distance_from(you.pos()) > 4 || ai->pos() == source)
+            continue;
+
+        act_list.push_back(*ai);
+    }
+
+    if (you.see_cell(source))
+        draw_ring_animation(source, LOS_RADIUS, BLUE, LIGHTBLUE, true, 5);
+
+    far_to_near_sorter sorter = { source };
+    sort(act_list.begin(), act_list.end(), sorter);
+
+    for (actor *act : act_list)
+        if (cell_see_cell(source, act->pos(), LOS_NO_TRANS)) // sanity check vs dispersal
+            act->knockback(*agent, random_range(6, 7) - grid_distance(act->pos(), source), 0, "psychic force");
+
+    for (actor *act : act_list)
+        if (!mons_aligned(agent, act) && act->willpower() != WILL_INVULN)
+            act->confuse(agent, random_range(2, 5));
 }
 
 // Effects that occur after all other effects, even if the monster is dead.

@@ -19,8 +19,9 @@ class formatted_string;
 
 #define EVOLUTION_MUTS_KEY "evolution_muts"
 
-#define HOARD_POTIONS_TIMER_KEY "hoard_potions_timer"
-#define HOARD_SCROLLS_TIMER_KEY "hoard_scrolls_timer"
+#define RENOUNCE_POTIONS_TIMER_KEY "renounce_potions_timer"
+#define RENOUNCE_SCROLLS_TIMER_KEY "renounce_scrolls_timer"
+#define TELEPORTITIS_COOLDOWN_KEY "teleportitis_cooldown"
 
 enum mutation_permanence_class
 {
@@ -51,6 +52,8 @@ bool mutate(mutation_type which_mutation, const string &reason,
 bool _delete_single_mutation_level(mutation_type mutat,
                                    const string &reason, bool transient);
 
+void use_mutation_catalyst();
+
 int mut_check_conflict(mutation_type mut, bool innate_only = false);
 bool mut_is_compatible(mutation_type mut, bool base_only = false);
 
@@ -74,7 +77,7 @@ const char* category_mutation_name(mutation_type mut);
 mutation_type mutation_from_name(string name, bool allow_category, vector<mutation_type> *partial_matches = nullptr);
 mutation_type concretize_mut(mutation_type mut, mutation_permanence_class mutclass = MUTCLASS_NORMAL);
 
-string mut_upgrade_summary(mutation_type mut);
+string innate_mut_upgrade_summary(mutation_type mut);
 int mutation_max_levels(mutation_type mut);
 string mutation_desc(mutation_type which_mutat, int level = -1,
                           bool colour = false, bool is_sacrifice = false);

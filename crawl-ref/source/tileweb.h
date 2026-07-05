@@ -46,6 +46,7 @@ struct player_info
     bool wizard;
     bool explore;
     string species;
+    string species_display_name;
     string god;
     bool under_penance;
     int piety_rank;
@@ -169,6 +170,7 @@ public:
     bool has_receivers() { return !m_dest_addrs.empty(); }
     bool is_controlled_from_web() { return m_controlled_from_web; }
 
+    wint_t try_await_input();
     /* Webtiles can receive input both via stdin, and on the
        socket. Also, while waiting for input, it should be
        able to handle other control messages (for example,
@@ -176,15 +178,10 @@ public:
 
        This function waits until input is available either via
        stdin or from a control message. If the input came from
-       a control message, it will be written into c; otherwise,
-       it still has to be read from stdin.
-
-       If block is false, await_input will immediately return,
-       even if no input is available. The return value indicates
-       whether input can be read from stdin; c will be non-zero
-       if input came via a control message.
+       a control message, it will be returned; otherwise, zero
+       will be returned and it still has to be read from stdin.
      */
-    bool await_input(wint_t& c, bool block);
+    wint_t await_input(bool(*has_console_input)());
 
     void check_for_control_messages();
 
@@ -222,15 +219,17 @@ public:
     void dump();
     void update_input_mode(mouse_mode mode, bool force=false);
 
-    void send_mcache(mcache_entry *entry, bool submerged,
+    void send_mcache(mcache_entry *entry, bool submerged, bool invis,
                      bool send = true);
-    void write_tileidx(tileidx_t t);
+    void write_tile_with_flags(tile_with_flags_t t);
 
     void zoom_dungeon(bool in);
 
     void send_doll(const dolls_data &doll, bool submerged, bool ghost);
     void send_milestone(const xlog_fields &xl);
     void send_options();
+
+    void invalidate_item(int index);
 
 protected:
     int m_sock;
@@ -318,6 +317,10 @@ protected:
     dolls_data last_player_doll;
 
     player_info m_current_player_info;
+
+    string invis_mon_desc;
+
+    string m_pending_text_input;
 
     void _send_version();
     void _send_layout();

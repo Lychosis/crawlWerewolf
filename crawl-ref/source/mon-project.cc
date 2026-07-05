@@ -53,11 +53,8 @@ spret cast_iood(actor *caster, int pow, bolt *beam, float vx, float vy,
     int mtarg = !beam ? MHITNOT :
                 beam->target == you.pos() ? int{MHITYOU} : env.mgrid(beam->target);
 
-    monster *mon = place_monster(mgen_data(orb_type,
-                (is_player) ? BEH_FRIENDLY :
-                    ((monster*)caster)->friendly() ? BEH_FRIENDLY : BEH_HOSTILE,
-                coord_def(),
-                mtarg).set_summoned(caster, SPELL_IOOD, 0, false, false), true, true);
+    monster *mon = place_monster(mgen_data(orb_type, SAME_ATTITUDE(caster), coord_def(), mtarg)
+                                 .set_summoned(caster, SPELL_IOOD, 0, false, false), true, true);
     if (!mon)
     {
         mprf(MSGCH_ERROR, "Failed to spawn projectile.");
@@ -105,8 +102,9 @@ spret cast_iood(actor *caster, int pow, bolt *beam, float vx, float vy,
         mon->props[IOOD_VY].get_float() = vy;
     }
 
-    mon->props[IOOD_KC].get_byte() = (is_player) ? KC_YOU :
-        ((monster*)caster)->friendly() ? KC_FRIENDLY : KC_OTHER;
+    mon->props[IOOD_KC].get_byte() = (is_player) ? KC_YOU
+                                                 : caster->friendly() ? KC_FRIENDLY
+                                                                      : KC_OTHER;
     mon->props[IOOD_POW].get_short() = pow;
     mon->flags &= ~MF_JUST_SUMMONED;
     mon->props[IOOD_CASTER].get_string() = caster->as_monster()
@@ -621,16 +619,6 @@ move_again:
             }
         }
 
-        // TODO remove this goto (and the other one)
-        if (mons && mons->type == MONS_BATTLESPHERE)
-        {
-            if (mon.swap_with(mons))
-                return false;
-            // if swap fails, move ahead (but it shouldn't!)
-            mon.lose_energy(EUT_MOVE);
-            goto move_again;
-        }
-
         if (victim && _iood_shielded(mon, *victim))
         {
             if (!victim->reflection())
@@ -711,99 +699,15 @@ move_again:
             return true;
     }
 
-    if (!mon.move_to_pos(pos))
+    if (!mon.move_to(pos))
     {
         _iood_stop(mon);
         return true;
     }
 
-    // move_to_pos() just trashed the coords, set them again
+    // move_to() just trashed the coords, set them again
     mon.props[IOOD_X] = x;
     mon.props[IOOD_Y] = y;
 
     return false;
-}
-
-// Reduced copy of iood_act to move the orb while the player is off-level.
-// Just goes straight and dissipates instead of hitting anything.
-static bool _iood_catchup_move(monster& mon)
-{
-    float x = mon.props[IOOD_X];
-    float y = mon.props[IOOD_Y];
-    float vx = mon.props[IOOD_VX];
-    float vy = mon.props[IOOD_VY];
-
-    if (!vx && !vy) // not initialized
-    {
-        _iood_stop(mon, false);
-        return true;
-    }
-
-    _normalize(vx, vy);
-
-    x += vx;
-    y += vy;
-
-    mon.props[IOOD_X] = x;
-    mon.props[IOOD_Y] = y;
-    mon.props[IOOD_DIST].get_int()++;
-
-    const coord_def pos(static_cast<int>(round(x)), static_cast<int>(round(y)));
-    if (!in_bounds(pos))
-    {
-        _iood_stop(mon, true);
-        return true;
-    }
-
-    if (pos == mon.pos())
-        return false;
-
-    actor *victim = actor_at(pos);
-    if (cell_is_solid(pos) || victim)
-    {
-        // Just dissipate instead of hitting something.
-        _iood_stop(mon, true);
-        return true;
-    }
-
-    if (!mon.move_to_pos(pos))
-    {
-        _iood_stop(mon);
-        return true;
-    }
-
-    // move_to_pos() just trashed the coords, set them again
-    mon.props[IOOD_X] = x;
-    mon.props[IOOD_Y] = y;
-
-    return false;
-}
-
-void iood_catchup(monster* mons, int pturns)
-{
-    monster& mon = *mons;
-    ASSERT(mons_is_projectile(*mons));
-
-    const int moves = pturns * mon.speed / BASELINE_DELAY;
-
-    // Handle some cases for IOOD only
-    if (mons_is_projectile(*mons))
-    {
-        if (moves > 50)
-        {
-            _iood_stop(mon, false);
-            return;
-        }
-
-        if (mon.props[IOOD_KC].get_byte() == KC_YOU)
-        {
-            // Left player's vision.
-            _iood_stop(mon, false);
-            return;
-        }
-    }
-
-    for (int i = 0; i < moves; ++i)
-        if (_iood_catchup_move(mon))
-            return;
 }

@@ -39,6 +39,7 @@
 #include "libutil.h"
 #include "macro.h"
 #include "makeitem.h"
+#include "map-knowledge.h"
 #include "melee-attack.h"
 #include "message.h"
 #include "misc.h"
@@ -195,6 +196,7 @@ static string _oper_name(operation_types oper)
     case OPER_TAKEOFF: return "take off";
     case OPER_REMOVE:  return "remove";
     case OPER_UNEQUIP: return "unequip";
+    case OPER_ANY: return "select";
     default:
         return "buggy";
     }
@@ -215,7 +217,7 @@ int default_osel(operation_types oper)
     case OPER_READ:
         return OBJ_SCROLLS;
     case OPER_EVOKE:
-        return OSEL_EVOKABLE;
+        return OSEL_EVOKABLE_ALL;
     case OPER_EQUIP:
         return OSEL_EQUIPABLE;
     case OPER_TAKEOFF:
@@ -930,9 +932,11 @@ static bool _can_wield_anything()
     item_def dummy_weapon;
     dummy_weapon.base_type = OBJ_WEAPONS;
     string veto_reason;
-    bool ret = can_equip_item(dummy_weapon, true, &veto_reason);
+    bool god_forbids;
+    bool ret = can_equip_item(dummy_weapon, true, &veto_reason, &god_forbids);
+    msg_channel_type veto_channel = god_forbids ? MSGCH_GOD : MSGCH_PROMPT;
     if (!veto_reason.empty())
-        mprf(MSGCH_PROMPT, "%s", veto_reason.c_str());
+        mprf(veto_channel, "%s", veto_reason.c_str());
 
     return ret;
 }
@@ -1143,11 +1147,16 @@ static item_def* _item_swap_prompt(const vector<item_def*>& candidates)
     // If our list contains only identical items, return the first without a
     // prompt.
     bool found_non_match = false;
-    for (size_t i = 0; i < candidates.size() - 1; ++i)
+    for (size_t i = 0; i < candidates.size(); ++i)
     {
         item_def* item = candidates[i];
+
+        // If this option is true, all jewellery is considered 'non-matching'
         if (item->base_type == OBJ_JEWELLERY && Options.jewellery_prompt)
-            continue;
+        {
+            found_non_match = true;
+            break;
+        }
 
         for (size_t j = i + 1; j < candidates.size(); ++j)
         {
@@ -1280,11 +1289,15 @@ bool warn_about_changing_gear(const vector<item_def*>& to_remove, item_def* to_e
             needs_delay = true;
     }
 
-    if (needs_delay && !i_feel_safe(true)
-        && !yesno("Spend multiple turns changing equipment while enemies are nearby?", true, 'n'))
+    string reason;
+    if (needs_delay && !i_feel_safe(false, false, false, true, -1, &reason))
     {
-        canned_msg(MSG_OK);
-        return false;
+        string warning = make_stringf("Spend multiple turns changing equipment while %s?", reason.c_str());
+        if (!yesno(warning.c_str(), true, 'n'))
+        {
+            canned_msg(MSG_OK);
+            return false;
+        }
     }
 
     // Check whether removing any of this sequence of items would cause us to
@@ -1318,9 +1331,11 @@ bool try_equip_item(item_def& item)
         return use_talisman(item);
 
     string reason;
-    if (!can_equip_item(item, true, &reason))
+    bool god_forbids;
+    if (!can_equip_item(item, true, &reason, &god_forbids))
     {
-        mprf(MSGCH_PROMPT, "%s", reason.c_str());
+        msg_channel_type channel = god_forbids ? MSGCH_GOD : MSGCH_PROMPT;
+        mprf(channel, "%s", reason.c_str());
         return false;
     }
 
@@ -1388,19 +1403,7 @@ bool try_equip_item(item_def& item)
             }
 
             if (candidates.size() == 1)
-            {
-                if (item.base_type == OBJ_JEWELLERY && Options.jewellery_prompt)
-                {
-                    item_def* ret = _item_swap_prompt(candidates);
-
-                    if (ret)
-                        to_remove.push_back(ret);
-                    else
-                        return false;
-                }
-                else
-                    to_remove.push_back(candidates[0]);
-            }
+                to_remove.push_back(candidates[0]);
             else
             {
                 // Save which item was selected to remove.
@@ -1880,6 +1883,7 @@ bool oni_drunken_swing()
 
     if (!targets.empty())
     {
+        bool success = false;
         if (you.weapon())
         {
             mprf("You take a swig of the potion and twirl %s.",
@@ -1895,10 +1899,11 @@ bool oni_drunken_swing()
 
             if (!attk.would_prompt_player())
             {
-                attk.launch_attack_set();
+                success |= attk.launch_attack_set(true);
                 count_action(CACT_ATTACK, ATTACK_DRUNKEN_BRAWLING);
             }
         }
+        player_attempted_attack(success);
 
         return true;
     }
@@ -1908,10 +1913,11 @@ bool oni_drunken_swing()
 
 bool drink(item_def* potion)
 {
-    string r = cannot_drink_item_reason(potion, true, true);
+    bool god_forbids = false;
+    string r = cannot_drink_item_reason(potion, true, true, false, &god_forbids);
     if (!r.empty())
     {
-        mpr(r);
+        mprf(god_forbids ? MSGCH_GOD : MSGCH_PLAIN, "%s", r.c_str());
         return false;
     }
     ASSERT(potion);
@@ -1924,12 +1930,9 @@ bool drink(item_def* potion)
         return false;
     }
 
-    bool penance = god_hates_item(*potion);
-    string prompt = make_stringf("Really quaff the %s?%s",
-                                 potion->name(DESC_DBNAME).c_str(),
-                                 penance ? " This action would place"
-                                           " you under penance!" : "");
-    if (alreadyknown && (is_dangerous_item(*potion, true) || penance)
+    string prompt = make_stringf("Really quaff the %s?",
+                                 potion->name(DESC_DBNAME).c_str());
+    if (alreadyknown && is_dangerous_item(*potion, true)
         && Options.bad_item_prompt
         && !yesno(prompt.c_str(), false, 'n'))
     {
@@ -1972,16 +1975,17 @@ bool drink(item_def* potion)
 
     // Drunken master, swing!
     // We do this *before* actually drinking the potion for nicer messaging.
+    bool did_swing = false;
     if (you.has_mutation(MUT_DRUNKEN_BRAWLING)
         && oni_likes_potion(static_cast<potion_type>(potion->sub_type)))
     {
-        oni_drunken_swing();
+        did_swing = oni_drunken_swing();
     }
 
     // Check for Delatra's gloves before potentially melding them.
     bool heal_on_id = you.unrand_equipped(UNRAND_DELATRAS_GLOVES);
 
-    if (!quaff_potion(*potion))
+    if (!quaff_potion(*potion, did_swing))
         return false;
 
     // XXX: maybe being a status-effect potion should be in item-prop.cc?
@@ -2043,7 +2047,7 @@ bool drink(item_def* potion)
 
 // XXX: there's probably a nicer way of doing this.
 // Conducts, maybe?
-bool god_hates_brand(const int brand)
+bool god_hates_brand(const brand_type brand)
 {
     if (is_good_god(you.religion) && is_evil_brand(brand))
         return true;
@@ -2090,16 +2094,19 @@ static void _rebrand_weapon(item_def& wpn)
                                                2, SPWPN_HEAVY,
                                                2, SPWPN_VENOM,
                                                2, SPWPN_PROTECTION,
+                                               2, NUM_SPECIAL_WEAPONS,
                                                1, SPWPN_DRAINING,
                                                1, SPWPN_ELECTROCUTION,
                                                1, SPWPN_SPECTRAL,
                                                1, SPWPN_VAMPIRISM,
                                                1, SPWPN_CHAOS);
+
+            if (new_brand == NUM_SPECIAL_WEAPONS)
+                new_brand = get_special_brand_for(static_cast<weapon_type>(wpn.sub_type));
         }
     }
 
     set_item_ego_type(wpn, OBJ_WEAPONS, new_brand);
-    convert2bad(wpn);
 }
 
 static string _item_name(item_def &item)
@@ -2173,6 +2180,36 @@ static void _brand_weapon(item_def &wpn)
     case SPWPN_SPECTRAL:
         flash_colour = BLUE;
         mprf("%s acquires a faint afterimage.", itname.c_str());
+        break;
+
+    case SPWPN_REBUKE:
+        flash_colour = WHITE;
+        mprf("%s quivers with indignation.", itname.c_str());
+        break;
+
+    case SPWPN_VALOUR:
+        flash_colour = WHITE;
+        mprf("%s thrums with vital power.", itname.c_str());
+        break;
+
+    case SPWPN_ENTANGLING:
+        flash_colour = LIGHTGREEN;
+        mprf("%s erupts in a tangle of vines.", itname.c_str());
+        break;
+
+    case SPWPN_SUNDERING:
+        flash_colour = LIGHTRED;
+        mprf("%s becomes viciously sharp.", itname.c_str());
+        break;
+
+    case SPWPN_CONCUSSION:
+        flash_colour = YELLOW;
+        mprf("%s begins to exert an overwhelming pressure.", itname.c_str());
+        break;
+
+    case SPWPN_DEVIOUS:
+        flash_colour = BLUE;
+        mprf("%s glints wickedly in the shadows.", itname.c_str());
         break;
 
     default:
@@ -2575,7 +2612,7 @@ static bool _scroll_will_harm(const scroll_type scr, const actor &m)
 {
     return m.alive() && scr == SCR_TORMENT
         && !m.res_torment()
-        && !never_harm_monster(&you, m.as_monster());
+        && could_harm(&you, &m);
 }
 
 static vector<string> _desc_finite_wl(const monster_info& mi)
@@ -2623,25 +2660,6 @@ public:
     }
 };
 
-class targeter_silence : public targeter_maybe_radius
-{
-    targeter_radius inner_rad;
-public:
-    targeter_silence(int r1, int r2)
-        : targeter_maybe_radius(&you, LOS_DEFAULT, r2),
-          inner_rad(&you, LOS_DEFAULT, r1)
-    {
-    }
-
-    aff_type is_affected(coord_def loc) override
-    {
-        if (inner_rad.is_affected(loc) == AFF_YES)
-            return AFF_YES;
-        else
-            return targeter_maybe_radius::is_affected(loc);
-    }
-};
-
 class targeter_poison_scroll : public targeter_radius
 {
 public:
@@ -2661,7 +2679,7 @@ aff_type targeter_poison_scroll::is_affected(coord_def loc)
     if (cell_is_solid(loc) || cloud_type_at(loc) != CLOUD_NONE)
         return AFF_NO;
     const actor* act = actor_at(loc);
-    if (act != nullptr && you.can_see(*act))
+    if (act != nullptr && you.aware_of(*act))
         return AFF_NO;
     return AFF_YES;
 }
@@ -2687,16 +2705,18 @@ static unique_ptr<targeter> _get_scroll_targeter(scroll_type which_scroll)
     {
     case SCR_FEAR:
         return find_spell_targeter(SPELL_CAUSE_FEAR, 1000, LOS_RADIUS);
-    case SCR_BUTTERFLIES: // close enough...
+    // Indicate the knockback radius differently than the butterfly radius.
+    case SCR_BUTTERFLIES:
+        return make_unique<targeter_radius>(&you, LOS_NO_TRANS, 5, 0, 0, 2);
     case SCR_SUMMONING:
         // TODO: shadow creatures targeter doesn't handle band placement very
-        // well, and this is more obvious with the scroll
-        return find_spell_targeter(SPELL_SHADOW_CREATURES, 1000, LOS_RADIUS);
+        //       well, so this is an overestimate.
+        return make_unique<targeter_maybe_radius>(&you, LOS_NO_TRANS, 5, 0, 1);
     case SCR_VULNERABILITY:
     case SCR_IMMOLATION:
         return make_unique<targeter_finite_will>();
     case SCR_SILENCE:
-        return make_unique<targeter_silence>(2, 4); // TODO: calculate from power (or simplify the calc)
+        return find_spell_targeter(SPELL_SILENCE, 30, LOS_RADIUS);
     case SCR_TORMENT:
         return make_unique<targeter_torment>();
     case SCR_POISON:
@@ -2809,6 +2829,12 @@ bool scroll_hostile_check(scroll_type which_scroll)
     return false;
 }
 
+static bool _scroll_has_forced_targeter(scroll_type scroll)
+{
+    return Options.always_use_static_scroll_targeters
+            || Options.force_scroll_targeter.count(scroll) > 0;
+}
+
 /**
  * Read the provided scroll.
  *
@@ -2820,10 +2846,12 @@ bool scroll_hostile_check(scroll_type which_scroll)
  */
 bool read(item_def* scroll, dist *target)
 {
-    string failure_reason = cannot_read_item_reason(scroll);
+    bool god_forbids = false;
+    string failure_reason = cannot_read_item_reason(scroll, true, false,
+                                                    &god_forbids);
     if (!failure_reason.empty())
     {
-        mpr(failure_reason);
+        mprf(god_forbids ? MSGCH_GOD : MSGCH_PLAIN, "%s", failure_reason.c_str());
         return false;
     }
     ASSERT(scroll);
@@ -2833,20 +2861,15 @@ bool read(item_def* scroll, dist *target)
     if (item_type_known(*scroll))
     {
         const bool hostile_check = scroll_hostile_check(which_scroll);
-        bool penance = god_hates_item(*scroll);
         string verb_object = "read the " + scroll->name(DESC_DBNAME);
-
-        string penance_prompt = make_stringf("Really %s? This action would"
-                                             " place you under penance%s!",
-                                             verb_object.c_str(),
-                                             hostile_check ? ""
-                    : " and you can't even see any enemies this would affect");
 
         targeter_radius hitfunc(&you, LOS_NO_TRANS);
 
         const bool bad_item = (is_dangerous_item(*scroll, true)
                                     || is_bad_item(*scroll))
-                            && Options.bad_item_prompt;
+                            && Options.bad_item_prompt
+                            // Don't double-prompt if we're already asking for confirmation.
+                            && !_scroll_has_forced_targeter(static_cast<scroll_type>(scroll->sub_type));
 
         if (stop_attack_prompt(hitfunc, verb_object.c_str(),
                                [which_scroll] (const actor* m)
@@ -2855,11 +2878,6 @@ bool read(item_def* scroll, dist *target)
                                },
                                nullptr, nullptr))
         {
-            return false;
-        }
-        else if (penance && !yesno(penance_prompt.c_str(), false, 'n'))
-        {
-            canned_msg(MSG_OK);
             return false;
         }
         else if (bad_item
@@ -2912,19 +2930,30 @@ bool read(item_def* scroll, dist *target)
 
     if (alreadyknown
         && scroll_has_targeter(which_scroll)
-        && which_scroll != SCR_BLINKING // blinking calls its own targeter
-        && !_scroll_targeting_check(which_scroll, target))
+        && which_scroll != SCR_BLINKING) // blinking calls its own targeter
     {
-        // a targeter can't be used for unid'd or uncancellable scrolls, so
-        // we can skip the rest of the function
-        you.turn_is_over = false;
-        return false;
+        dist force_target;
+        if (alreadyknown && !target && _scroll_has_forced_targeter(which_scroll))
+            target = &force_target;
+
+        if (!_scroll_targeting_check(which_scroll, target))
+        {
+            // a targeter can't be used for unid'd or uncancellable scrolls, so
+            // we can skip the rest of the function
+            you.turn_is_over = false;
+            return false;
+        }
     }
+
+    const bool is_loud = you.has_mutation(MUT_BOOMING_VOICE)
+                         && there_are_monsters_nearby(true, true, false);
+    const coord_def original_pos = you.pos();
 
     // For cancellable scrolls leave printing this message to their
     // respective functions.
     const string pre_succ_msg =
-            make_stringf("As you read the %s, it %s.",
+            make_stringf("As you %s the %s, it %s.",
+                          is_loud ? "thunderously recite" : "read",
                           scroll->name(DESC_QUALNAME).c_str(),
                          which_scroll == SCR_FOG ? "dissolves into smoke" : "crumbles to dust");
     if (!_is_cancellable_scroll(which_scroll))
@@ -3035,8 +3064,8 @@ bool read(item_def* scroll, dist *target)
     case SCR_TORMENT:
         torment(&you, TORMENT_SCROLL, you.pos());
 
-        // This is only naughty if you know you're doing it.
-        did_god_conduct(DID_EVIL, 10, item_type_known(*scroll));
+        if (!item_type_known(*scroll))
+            god_forgive_inadvertent_act(FORBID_EVIL);
         bad_effect = !you.res_torment();
         break;
 
@@ -3052,7 +3081,7 @@ bool read(item_def* scroll, dist *target)
             if (have_passive(passive_t::neutral_slimes) && mons_is_slime(**mi))
                 continue;
 
-            if (mi->add_ench(mon_enchant(ENCH_INNER_FLAME, 0, &you)))
+            if (mi->add_ench(mon_enchant(ENCH_INNER_FLAME, &you)))
                 had_effect = true;
         }
 
@@ -3196,6 +3225,9 @@ bool read(item_def* scroll, dist *target)
 
         count_action(CACT_USE, OBJ_SCROLLS);
         count_action(CACT_READ, scroll->sub_type);
+
+        if (is_loud)
+            noisy(40, original_pos, MID_PLAYER);
     }
 
     if (!alreadyknown
@@ -3241,9 +3273,87 @@ bool read(item_def* scroll, dist *target)
     return true;
 }
 
-string cannot_put_on_talisman_reason(const item_def& talisman, bool temp)
+class targeter_invisibility : public targeter_multimonster
+{
+public:
+    targeter_invisibility();
+    bool affects_monster(const monster_info& mon) override;
+};
+
+targeter_invisibility::targeter_invisibility()
+    : targeter_multimonster(&you)
+{
+}
+
+bool targeter_invisibility::affects_monster(const monster_info& mon)
+{
+    return !mon.is(MB_FIREWOOD) && !mon.can_see_invisible();
+}
+
+static vector<string> _desc_see_invis(const monster_info& mi)
+{
+    vector<string> r;
+    if (mi.can_see_invisible())
+        r.push_back("can see invisible");
+    else if (!mi.is(MB_CANT_SEE_YOU))
+    {
+        if (!you.backlit())
+            r.push_back("will become unable to see you");
+        else
+            r.push_back("cannot see invisible");
+    }
+    return r;
+}
+
+// Show a targeter indicating what monsters would lose sight of the player if
+// they went invisible right now, and return false if the player wishes to cancel.
+bool invisibility_target_check(const char* prompt)
+{
+    bool found_any = false;
+    bool found_susceptible = false;
+    for (monster_near_iterator mi(&you); mi; ++mi)
+    {
+        if (!mi->wont_attack() && !mi->is_firewood())
+        {
+            found_any = true;
+            if (!mi->can_see_invisible())
+            {
+                found_susceptible = true;
+                break;
+            }
+        }
+    }
+
+    // Allow the player to go invisible outside of LoS of enemies with no prompt.
+    // However, going invisible in LoS of only enemies with sInv is more likely
+    // to be a mistake.
+    if (!found_any)
+        return true;
+    if (!found_susceptible)
+        return yesno("You can't see any enemy this would conceal you from. Use anyway?", true, 'n');
+
+    direction_chooser_args args;
+    unique_ptr<targeter> hitfunc = make_unique<targeter_invisibility>();
+    args.get_desc_func = _desc_see_invis;
+    args.mode = TARG_ANY;
+    args.self = confirm_prompt_type::cancel;
+    args.hitfunc = hitfunc.get();
+    args.target_prefix = prompt;
+    scroll_targeting_behaviour beh;
+    args.behaviour = &beh;
+
+    dist target;
+    direction(target, args);
+    return target.isValid && !target.isCancel;
+}
+
+string cannot_put_on_talisman_reason(const item_def& talisman, bool temp,
+                                     bool* god_forbids)
 {
     ASSERT(talisman.base_type == OBJ_TALISMANS);
+
+    if (god_forbids)
+        *god_forbids = false;
 
     if (talisman.sub_type == TALISMAN_PROTEAN)
     {
@@ -3259,6 +3369,17 @@ string cannot_put_on_talisman_reason(const item_def& talisman, bool temp)
     }
 
     const transformation trans = form_for_talisman(talisman);
+    if (god_forbids_form(you.religion, trans))
+    {
+        if (god_forbids)
+            *god_forbids = true;
+
+        if (you_worship(GOD_OKAWARU))
+            return "you have forsworn all allies in Okawaru's name.";
+
+        return make_stringf("%s forbids the use of this talisman.",
+                            uppercase_first(god_name(you.religion)).c_str());
+    }
     const string form_unreason = cant_transform_reason(trans, false, temp);
     if (!form_unreason.empty())
         return lowercase_first(form_unreason);
@@ -3268,8 +3389,6 @@ string cannot_put_on_talisman_reason(const item_def& talisman, bool temp)
 
     if (trans == transformation::hive)
     {
-        if (you_worship(GOD_OKAWARU))
-            return "you have forsworn all allies in Okawaru's name.";
         if (you.get_mutation_level(MUT_NO_LOVE))
             return "you are loveless.";
     }
@@ -3279,10 +3398,12 @@ string cannot_put_on_talisman_reason(const item_def& talisman, bool temp)
 
 bool use_talisman(item_def& talisman)
 {
-    string reason = cannot_put_on_talisman_reason(talisman);
+    bool god_forbids;
+    string reason = cannot_put_on_talisman_reason(talisman, true, &god_forbids);
     if (!reason.empty())
     {
-        mpr(reason);
+        msg_channel_type channel = god_forbids ? MSGCH_GOD : MSGCH_PLAIN;
+        mprf(channel, "%s", reason.c_str());
         return false;
     }
 
@@ -3299,7 +3420,7 @@ bool use_talisman(item_def& talisman)
         const talisman_type new_type = random_choose(TALISMAN_RIMEHORN,
                                                      TALISMAN_SCARAB,
                                                      TALISMAN_MEDUSA,
-                                                     TALISMAN_MAW);
+                                                     TALISMAN_SPORE);
 
         mprf("%s responds to your shapeshifting skill and transforms into a %s!",
              real_item.name(DESC_YOUR).c_str(), talisman_type_name(new_type).c_str());
@@ -3324,8 +3445,6 @@ bool use_talisman(item_def& talisman)
 
     count_action(CACT_FORM, (int)trans);
     start_delay<TransformDelay>(trans, &real_item);
-    if (god_despises_item(real_item, you.religion))
-        excommunication();
     you.turn_is_over = true;
     return true;
 }

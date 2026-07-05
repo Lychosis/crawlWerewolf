@@ -88,14 +88,6 @@ InvEntry::InvEntry(const item_def &i)
     else
         text = i.name(DESC_A, false);
 
-    if (item_is_stationary_net(i))
-    {
-        actor *trapped = actor_at(i.pos);
-        text += make_stringf(" (holding %s)",
-                            trapped ? trapped->name(DESC_A).c_str()
-                                    : "nobody"); // buggy net, but don't crash
-    }
-
     if (i.base_type != OBJ_GOLD && in_inventory(i))
         add_hotkey(i.slot);
     else
@@ -348,7 +340,7 @@ void InvMenu::set_title(const string &s)
             case 2: str = "Scrolls: "; break;
             case 3: str = "Evocable Items: "; break;
         }
-        str += "    (Left/Right to switch category)";
+        str += "    (Left/Right/Tab to switch category)";
         set_title(new InvTitle(this, str, title_annotate));
         return;
     }
@@ -449,6 +441,22 @@ void InvMenu::set_page(int page)
     }
     get_selected(&sel);
     update_title();
+}
+
+void InvMenu::hover_item(const item_def* item)
+{
+    for (size_t i = 0; i < items.size(); ++i)
+    {
+        InvEntry *inv = dynamic_cast<InvEntry*>(items[i]);
+        if (!inv)
+            continue;
+
+        if (inv->item->link == item->link)
+        {
+            set_hovered(i, true);
+            break;
+        }
+    }
 }
 
 bool InvMenu::process_command(command_type cmd)
@@ -609,6 +617,7 @@ string no_selectables_message(int item_selector)
     case OSEL_LAUNCHING:
         return "You aren't carrying any items that might be thrown or fired.";
     case OSEL_EVOKABLE:
+    case OSEL_EVOKABLE_ALL:
         if (you.get_mutation_level(MUT_NO_ARTIFICE)) // iffy
             return "You cannot evoke magical items.";
         return "You aren't carrying any items that you can evoke.";
@@ -633,7 +642,6 @@ string no_selectables_message(int item_selector)
     case OSEL_UNCURSED_WORN_RINGS:
         return "You aren't wearing any uncursed rings.";
     case OSEL_QUIVER_ACTION:
-    case OSEL_QUIVER_ACTION_FORCE:
         return "You don't have any quiverable items.";
     }
 
@@ -1140,7 +1148,7 @@ int InvMenu::getkey() const
         return mkey;
 
     // this is sort of a mess. It seems to be converting a lot of keys to ' '
-    // so that invprompt_flag::escape_only can work right, but it almost
+    // so that alternate ways of exiting menus can work right, but it almost
     // certainly has other effects. Needless to say, it makes modifying key
     // handling in specific menus pretty annoying, but I don't dare touch it
     // right now.
@@ -1264,16 +1272,13 @@ vector<SelItem> select_items(const vector<const item_def*> &items,
 bool item_is_selected(const item_def &i, int selector)
 {
     const object_class_type itype = i.base_type;
-    if (selector == OSEL_ANY || selector == itype
-                                && itype != OBJ_ARMOUR)
-    {
+    if (selector == OSEL_ANY || selector == itype)
         return true;
-    }
 
     switch (selector)
     {
     case OBJ_ARMOUR:
-        return itype == OBJ_ARMOUR && can_equip_item(i, true);
+        return itype == OBJ_ARMOUR;
 
     case OSEL_WORN_ARMOUR:
         return itype == OBJ_ARMOUR && item_is_equipped(i);
@@ -1285,8 +1290,7 @@ bool item_is_selected(const item_def &i, int selector)
         return itype == OBJ_MISSILES || itype == OBJ_WEAPONS;
 
     case OSEL_LAUNCHING:
-        return itype == OBJ_MISSILES
-                        && is_launched(&you, i) != launch_retval::FUMBLED
+        return itype == OBJ_MISSILES && is_throwable(&you, i)
                 || itype == OBJ_WEAPONS && is_range_weapon(i)
                                         && item_is_equipped(i);
 
@@ -1332,13 +1336,11 @@ bool item_is_selected(const item_def &i, int selector)
             // However, we do want to allow selecting ammo/launchers under
             // confusion...
             // XX should the primary weapon be allowed here?
-            return a->is_valid()
-                && (a->is_targeted()
-                    || you.confused() && item_is_selected(i, OSEL_LAUNCHING));
+            return a && a->is_valid()
+                     && (a->is_targeted()
+                         || you.confused() && item_is_selected(i, OSEL_LAUNCHING));
         }
         return false;
-    case OSEL_QUIVER_ACTION_FORCE:
-        return in_inventory(i) && quiver::slot_to_action(i.link, true)->is_valid();
 
     case OSEL_WORN_JEWELLERY_OR_TALISMAN:
         return item_is_equipped(i) && item_is_selected(i, OSEL_JEWELLERY_OR_TALISMAN);
@@ -1460,6 +1462,10 @@ static int _invent_select(const char *title = nullptr,
         menu.cycle_page(1);
     }
 
+    // If this is the 'F'ire menu, pre-select the last item the player fired.
+    if (item_selector == OSEL_QUIVER_ACTION && you.last_fired >= 0)
+        menu.hover_item(&you.inv[you.last_fired]);
+
     menu.show(true);
 
     if (items)
@@ -1471,6 +1477,12 @@ static int _invent_select(const char *title = nullptr,
 void display_inventory()
 {
 
+    if (inv_count() < 1)
+    {
+        canned_msg(MSG_NOTHING_CARRIED);
+        return;
+    }
+
     int flags = MF_SINGLESELECT | MF_ALLOW_FORMATTING | MF_SECONDARY_SCROLL;
     if (Options.show_paged_inventory)
         flags |= MF_PAGED_INVENTORY;
@@ -1480,6 +1492,10 @@ void display_inventory()
     InvMenu menu(flags);
     menu.load_inv_items(Options.show_paged_inventory ? OSEL_GEAR : OSEL_ANY, -1);
     menu.set_type(menu_type::describe);
+
+    // Jump to the first non-empty page.
+    if ((flags & MF_PAGED_INVENTORY) && menu.item_count(false) == 0)
+        menu.cycle_page(1);
 
     menu.show(true);
     if (!crawl_state.doing_prev_cmd_again)
@@ -1491,7 +1507,7 @@ void display_inventory()
 
 static string _drop_menu_titlefn(const Menu*, const string &)
 {
-    return "Drop what? (Left/Right to switch category) " + slot_description() + " (_ for help)";
+    return "Drop what? (Left/Right/Tab to switch category) " + slot_description() + " (_ for help)";
 }
 
 /**
@@ -1590,7 +1606,7 @@ static bool _has_warning_inscription(const item_def& item,
                     return true;
                 else if (item.base_type == OBJ_ARMOUR && r[i+1] == 'T')
                     return true;
-                else if (is_weapon(item) && r[i+i] == 'w')
+                else if (is_weapon(item) && r[i+1] == 'w')
                     return true;
             }
             else if (oper == OPER_EQUIP)
@@ -1599,7 +1615,7 @@ static bool _has_warning_inscription(const item_def& item,
                     return true;
                 else if (item.base_type == OBJ_ARMOUR && r[i+1] == 'W')
                     return true;
-                else if (is_weapon(item) && r[i+i] == 'w')
+                else if (is_weapon(item) && r[i+1] == 'w')
                     return true;
             }
         }
@@ -1613,9 +1629,8 @@ static bool _has_warning_inscription(const item_def& item,
 bool maybe_warn_about_removing(const item_def& item)
 {
     string prompt;
-    bool penance = false;
 
-    if (!needs_handle_warning(item, OPER_UNEQUIP, penance))
+    if (!needs_handle_warning(item, OPER_UNEQUIP))
         return true;
 
     if (item.base_type == OBJ_WEAPONS || item.base_type == OBJ_STAVES)
@@ -1630,8 +1645,6 @@ bool maybe_warn_about_removing(const item_def& item)
         prompt += "and destroy ";
     prompt += item.name(DESC_INVENTORY);
     prompt += "?";
-    if (penance)
-        prompt += " This could place you under penance!";
     return yesno(prompt.c_str(), false, 'n');
 }
 
@@ -1675,7 +1688,7 @@ bool needs_notele_warning(const item_def &item, operation_types oper)
 }
 
 bool needs_handle_warning(const item_def &item, operation_types oper,
-                          bool &penance, bool check_inscriptions)
+                          bool check_inscriptions)
 {
     if (check_inscriptions && _has_warning_inscription(item, oper))
         return true;
@@ -1689,20 +1702,8 @@ bool needs_handle_warning(const item_def &item, operation_types oper,
         return true;
     }
 
-    if (oper == OPER_EVOKE && god_hates_item(item))
-    {
-        penance = true;
-        return true;
-    }
-
     if (needs_notele_warning(item, oper))
         return true;
-
-    if (oper == OPER_ATTACK && god_hates_item(item))
-    {
-        penance = true;
-        return true;
-    }
 
     if ((oper == OPER_EQUIP || oper == OPER_UNEQUIP))
     {
@@ -1736,9 +1737,8 @@ bool needs_handle_warning(const item_def &item, operation_types oper,
 bool check_warning_inscriptions(const item_def& item,
                                  operation_types oper)
 {
-    bool penance = false;
     if (item.defined()
-        && needs_handle_warning(item, oper, penance))
+        && needs_handle_warning(item, oper))
     {
         if (oper == OPER_UNEQUIP)
         {
@@ -1754,10 +1754,6 @@ bool check_warning_inscriptions(const item_def& item,
         if (needs_notele_warning(item, oper))
             prompt += " while about to teleport";
         prompt += "?";
-        if (god_despises_item(item, you.religion))
-            prompt += " You'd be excommunicated if you did!";
-        else if (penance)
-            prompt += " This could place you under penance!";
         return yesno(prompt.c_str(), false, 'n');
     }
 
@@ -1767,12 +1763,10 @@ bool check_warning_inscriptions(const item_def& item,
 /**
  * Prompts the user for an item.
  *
- * Prompts the user for an item, handling the '?' and '*' listings,
- * and returns the inventory slot to the caller (which if
- * must_exist is true (the default) will be an assigned item), with
+ * Prompts the user for an item, and returns the inventory slot to the caller
+ * (which if must_exist is true (the default) will be an assigned item), with
  * a positive quantity.
  *
- * Note: Does not check if the item is appropriate.
  *
  * @param prompt           The question to ask the user.
  * @param mtype            The menu type.
@@ -1784,8 +1778,6 @@ bool check_warning_inscriptions(const item_def& item,
  * @param flags            See comments on invent_prompt_flags.
  * @param other_valid_char A character that, if not '\0', will cause
  *                         PROMPT_GOT_SPECIAL to be returned when pressed.
- * @param type_out         Output: OSEL_ANY if the user was in `*`, type_expect
- *                         otherwise. Ignored if nullptr.
  *
  * @return  the inventory slot of an item or one of the following special values
  *          - PROMPT_ABORT:       if the player hits escape.
@@ -1796,15 +1788,12 @@ int prompt_invent_item(const char *prompt,
                        menu_type mtype, int type_expect,
                        operation_types oper,
                        invent_prompt_flags flags,
-                       const char other_valid_char,
-                       const char *view_all_prompt,
-                       int *type_out)
+                       const char other_valid_char)
 {
     const bool do_warning = !(flags & invprompt_flag::no_warning);
     const bool allow_list_known = !(flags & invprompt_flag::hide_known);
     const bool must_exist = !(flags & invprompt_flag::unthings_ok);
     const bool auto_list = !(flags & invprompt_flag::manual_list);
-    const bool allow_easy_quit = !(flags & invprompt_flag::escape_only);
 
     if (!any_items_of_type(type_expect) && type_expect != OSEL_WIELD
         && type_expect != OSEL_QUIVER_ACTION)
@@ -1817,7 +1806,6 @@ int prompt_invent_item(const char *prompt,
     int keyin = 0;
     int ret = PROMPT_ABORT;
 
-    int current_type_expected = type_expect;
     bool need_redraw = false;
     bool need_prompt = true;
     bool need_getch  = true;
@@ -1826,15 +1814,8 @@ int prompt_invent_item(const char *prompt,
     {
         need_prompt = false;
         need_getch = false;
-
-        if (any_items_of_type(type_expect))
-            keyin = '?';
-        else
-            keyin = '*';
+        keyin = '?';
     }
-
-    if (keyin == '*')
-        current_type_expected = OSEL_ANY;
 
     // ugh, why is this done manually
     while (true)
@@ -1846,11 +1827,7 @@ int prompt_invent_item(const char *prompt,
         }
 
         if (need_prompt)
-        {
-            mprf(MSGCH_PROMPT, "%s (<w>?</w> for menu, <w>Esc</w> to quit)",
-                 current_type_expected == OSEL_ANY && view_all_prompt
-                 ? view_all_prompt : prompt);
-        }
+            mprf(MSGCH_PROMPT, "%s (<w>?</w> for menu, <w>Esc</w> to quit)", prompt);
         else
             flush_prev_message();
 
@@ -1871,24 +1848,19 @@ int prompt_invent_item(const char *prompt,
 
         // Item chosen by menu.
         item_def* chosen = nullptr;
-        // TODO: it seems like for some uses of this function, `*` shouldn't
-        // be allowed at all, e.g. evoke.
         if (keyin == '?' || keyin == '*')
         {
             // The "view inventory listing" mode.
             vector< SelItem > items;
             const auto last_keyin = keyin;
-            current_type_expected = keyin == '*' ? OSEL_ANY : type_expect;
             int mflags = MF_SINGLESELECT | MF_ANYPRINTABLE | MF_SECONDARY_SCROLL;
             if (other_valid_char == '-')
                 mflags |= MF_SPECIAL_MINUS;
 
             while (true)
             {
-                keyin = _invent_select(
-                    current_type_expected == OSEL_ANY && view_all_prompt
-                        ? view_all_prompt : prompt,
-                    mtype, current_type_expected, -1, mflags, nullptr, &items);
+                keyin = _invent_select(prompt,
+                    mtype, type_expect, -1, mflags, nullptr, &items);
 
                 if (allow_list_known && keyin == '\\')
                 {
@@ -1950,7 +1922,7 @@ int prompt_invent_item(const char *prompt,
                     break;
             }
         }
-        else if (key_is_escape(keyin) || allow_easy_quit && keyin == ' ')
+        else if (key_is_escape(keyin) || keyin == ' ')
         {
             ret = PROMPT_ABORT;
             break;
@@ -1970,11 +1942,8 @@ int prompt_invent_item(const char *prompt,
 
             if (must_exist && !you.inv[ret].defined())
                 mpr("You don't have any such object.");
-            else if (must_exist && !item_is_selected(you.inv[ret],
-                                                     current_type_expected))
-            {
-                mpr("That's the wrong kind of item! (Use * to select it.)");
-            }
+            else if (must_exist && !item_is_selected(you.inv[ret], type_expect))
+                mpr("That's the wrong kind of item!");
             else if (!do_warning || check_warning_inscriptions(you.inv[ret], oper))
                 break;
         }
@@ -1983,19 +1952,14 @@ int prompt_invent_item(const char *prompt,
             ret = you.last_unequip;
             break;
         }
-        else if (!isspace(keyin))
+        else
         {
             // We've got a character we don't understand...
             canned_msg(MSG_HUH);
-        }
-        else
-        {
             // We're going to loop back up, so don't draw another prompt.
             need_prompt = false;
         }
     }
-    if (type_out)
-        *type_out = current_type_expected;
 
     return ret;
 }

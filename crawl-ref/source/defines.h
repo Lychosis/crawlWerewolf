@@ -62,7 +62,7 @@ enum extra_monster_index_type
 #define PAN_MONS_ALLOC 10
 #define MAX_MONS_ALLOC 20
 
-#define MAX_SUBTYPES   60
+#define MAX_SUBTYPES   64
 
 // max size of item list {dlb}:
 #define MAX_ITEMS 2000
@@ -153,9 +153,6 @@ const int ICEMAIL_TIME = 30 * BASELINE_DELAY;
 
 // This value is used to mark immune levels of WL
 const int WILL_INVULN = 5000;
-
-// This is the damage amount used to signal insta-death
-const int INSTANT_DEATH = -9999;
 
 // Maximum enchantment on weapons/secondary armours
 // Note: use armour_max_enchant(item) to get the correct limit for item
@@ -305,7 +302,6 @@ const char * const THUNDERBOLT_AIM_KEY     = "thunderbolt_aim";
 #define REAPING_DAMAGE_KEY "reaping_damage"
 #define REAPER_KEY "reaper"
 #define BAND_LEADER_KEY "band_leader"
-#define ZIN_ID_KEY "zin_id"
 #define BLAME_KEY "blame"
 #define NO_ANNOTATE_KEY "no_annotate"
 #define BENNU_REVIVES_KEY "bennu_revives"
@@ -314,12 +310,11 @@ const char * const THUNDERBOLT_AIM_KEY     = "thunderbolt_aim";
 #define FAKE_MON_KEY "fake"
 #define MMOV_KEY "mmov"
 #define BATTLESPHERE_KEY "battlesphere"
-#define FOE_APPROACHING_KEY "foe_approaching"
-#define FAUX_PAS_KEY "foe_pos"
 #define SWOOP_COOLDOWN_KEY "swoop_cooldown"
 #define OUTWARDS_KEY "outwards"
 #define INWARDS_KEY "inwards"
 #define BASE_POSITION_KEY "base_position"
+#define TREE_POSITION_KEY "tree_position"
 #define SUMMON_ID_KEY "summon_id"
 #define FLAY_BLOOD_KEY "flay_blood"
 #define IDEAL_RANGE_KEY "ideal_range"
@@ -349,6 +344,7 @@ const char * const THUNDERBOLT_AIM_KEY     = "thunderbolt_aim";
 #define STICKY_FLAME_AUX_KEY "sticky_flame_aux"
 #define STICKY_FLAME_POWER_KEY "sticky_flame_pow"
 #define WATER_HOLDER_KEY "water_holder"
+#define WATER_HOLDER_NAME_KEY "water_holder_name"
 #define WATER_HOLD_SUBSTANCE_KEY "water_hold_substance"
 #define BLINKITIS_SOURCE_KEY "disjunctioner"
 #define BLINKITIS_AUX_KEY "disjunction_aux"

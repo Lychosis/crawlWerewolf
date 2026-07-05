@@ -23,7 +23,7 @@ WEIGHT:  1
 # Terrain includes zot traps, and per-hell clouds, liquid, statues.
 NSUBST:  . = 2:1 / 1:0 / 2:9 / 4 = 0:3 1:1 / 1 = 9:6 / 2:1 / *:.
 NSUBST:  . = 1:^ / 1:^~ / 1:F~ / 4 = F~~ / 1:{ / 1:} / *:.
-KFEAT:   ^ = zot trap
+KFEAT:   ^ = trap_zot
 : if you.in_branch("Geh") then
 MONS:    zombie / draugr
 MONS:    brimstone fiend / oni incarcerator
@@ -87,8 +87,7 @@ KPROP:   l = no_cloud_gen
 KMONS:   1 = ice fiend
 KMONS:   2 = wendigo band / nargun
 KMONS:   34 = frost giant / shard shrike w:5
-KMONS:   56 = reaper ; halberd itemname:scythe tile:wpn_scythe wtile:scythe \
-         ego:freezing pre_id
+:    kmons("56 = reaper ; " .. scythe("freezing"))
 KMONS:   7 = simulacrum
 SUBST:   l = w, W = .
 :  else -- Zot
@@ -339,7 +338,7 @@ ENDMAP
 NAME:  nicolae_hells_seeping_fissure
 TAGS:  transparent luniq allow_dup no_monster_gen
 DEPTH: Dis, !Dis:$, Geh, !Geh:$, Coc, !Coc:$, Tar, !Tar:$
-KFEAT: ^ = shaft trap
+KFEAT: ^ = shaft
 {{
   if is_validating() then return end
   local cloudtypes =

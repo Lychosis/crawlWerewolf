@@ -15,8 +15,8 @@
 #include "mgen-enum.h"
 #include "mon-enum.h"
 #include "monster-type.h"
+#include "spell-type.h"
 #include "tag-version.h"
-#include "trap-type.h"
 
 using std::vector;
 
@@ -89,18 +89,21 @@ monster_type pick_random_monster(level_id place,
                                  level_id *final_place = nullptr,
                                  bool allow_ood = true);
 
-conduct_type god_hates_monster(monster_type type);
-conduct_type god_hates_monster(const monster &mon);
+bool god_hates_monster(monster_type type);
+bool god_hates_monster(const monster &mon);
 bool mons_can_hate(monster_type type);
 void check_lovelessness(monster &mon);
 
 bool find_habitable_spot_near(const coord_def& where, monster_type mon_type,
                               int radius, coord_def& result, int exclude_radius = -1,
-                              const actor* in_sight_of = nullptr);
+                              const actor* in_sight_of = nullptr,
+                              bool no_sanctuary = true);
 bool you_can_see_habitable_spot_near(coord_def pos, habitat_type habitat,
-                                     int max_radius, int exclude_radius = 0);
+                                     int max_radius, int exclude_radius = 0,
+                                     spell_type ignore_summons_of = SPELL_NO_SPELL);
 bool you_can_see_habitable_spot_near(habitat_type habitat, int max_radius,
-                                     int exclude_radius = 0);
+                                     int exclude_radius = 0,
+                                     spell_type ignore_summons_of = SPELL_NO_SPELL);
 
 monster_type random_demon_by_tier(int tier);
 monster_type summon_any_demon(monster_type dct, bool use_local_demons = false);
@@ -117,7 +120,8 @@ bool has_non_solid_adjacent(coord_def pos);
 coord_def find_newmons_square(monster_type mons_class, const coord_def &p,
                               int preferred_radius = 2, int max_radius = 2,
                               int exclude_radius = -1,
-                              const actor* in_sight_of = nullptr);
+                              const actor* in_sight_of = nullptr,
+                              bool no_sanctuary = true);
 coord_def find_newmons_square_contiguous(monster_type mons_class,
                                          const coord_def &start,
                                          int maxdistance = 3,

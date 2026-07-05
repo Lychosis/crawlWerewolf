@@ -95,6 +95,7 @@ jobs.o \
 json.o \
 kills.o \
 known-items.o \
+l-autofight.o \
 l-colour.o \
 l-crawl.o \
 l-debug.o \
@@ -155,6 +156,7 @@ mon-ench.o \
 mon-explode.o \
 mon-gear.o \
 mon-info.o \
+mon-lurk.o \
 mon-movetarget.o \
 mon-pathfind.o \
 mon-pick.o \
@@ -185,11 +187,13 @@ package.o \
 pattern.o \
 pcg.o \
 perlin.o \
+piety-info.o \
 place-info.o \
 place.o \
 playable.o \
 player-act.o \
 player-equip.o \
+player-notices.o \
 player-reacts.o \
 player-stats.o \
 player.o \
@@ -565,7 +569,6 @@ timed-effect-type.h.o \
 torment-source-type.h.o \
 transformation.h.o \
 transform.h.o \
-trap-type.h.o \
 travel-defs.h.o \
 tutorial.h.o \
 uncancel.h.o \

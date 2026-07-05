@@ -17,7 +17,8 @@ struct cloud_struct
     int           excl_rad;
 
     cloud_struct() : pos(), type(CLOUD_NONE), decay(0), spread_rate(0),
-                     whose(KC_OTHER), killer(KILL_NONE), excl_rad(-1)
+                     whose(KC_OTHER), killer(KILL_NONE), source(MID_NOBODY),
+                     excl_rad(-1)
     {
     }
     cloud_struct(coord_def p, cloud_type c, int d, int spread, kill_category kc,
@@ -79,7 +80,6 @@ bool place_cloud(cloud_type cl_type, const coord_def& ctarget,
                  bool do_conducts = true);
 
 void manage_clouds();
-void run_cloud_spreaders(int dur);
 string desc_cloud_damage(cloud_type cl_type, bool vs_player);
 void actor_apply_cloud(actor *act);
 bool actor_cloud_immune(const actor &act, const cloud_struct &cloud);

@@ -6,6 +6,7 @@
 #include "l-libs.h"
 
 #include "cluautil.h"
+#include "god-conduct.h"
 #include "religion.h"
 #include "spl-util.h"
 #include "spl-zap.h"
@@ -49,7 +50,7 @@ LUAFN(l_spells_letter)
 LUAFN(l_spells_level)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, spell_difficulty(spell));
+    PLUARET(integer, spell_difficulty(spell));
 }
 
 /*** The MP cost of the spell.
@@ -60,7 +61,7 @@ LUAFN(l_spells_level)
 LUAFN(l_spells_mana_cost)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, spell_mana(spell));
+    PLUARET(integer, spell_mana(spell));
 }
 
 /*** The current range of the spell.
@@ -71,7 +72,7 @@ LUAFN(l_spells_mana_cost)
 LUAFN(l_spells_range)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, spell_range(spell, &you));
+    PLUARET(integer, spell_range(spell, &you));
 }
 
 /*** The maximum range of the spell.
@@ -82,7 +83,7 @@ LUAFN(l_spells_range)
 LUAFN(l_spells_max_range)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, calc_spell_range(spell, spell_power_cap(spell), true));
+    PLUARET(integer, calc_spell_range(spell, spell_power_cap(spell), true));
 }
 
 /*** The minimum range of the spell.
@@ -93,7 +94,7 @@ LUAFN(l_spells_max_range)
 LUAFN(l_spells_min_range)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, calc_spell_range(spell, 0, true));
+    PLUARET(integer, calc_spell_range(spell, 0, true));
 }
 
 
@@ -129,8 +130,8 @@ LUAFN(l_spells_path)
     coord_def aim = player2grid(a);
 
     coord_def s;
-    s.x = lua_isnumber(ls, 4) ? lua_tonumber(ls, 4) : 0;
-    s.y = lua_isnumber(ls, 5) ? lua_tonumber(ls, 5) : 0;
+    s.x = lua_isnumber(ls, 4) ? lua_tointeger(ls, 4) : 0;
+    s.y = lua_isnumber(ls, 5) ? lua_tointeger(ls, 5) : 0;
     coord_def src = player2grid(s);
 
     bolt beam;
@@ -154,9 +155,9 @@ LUAFN(l_spells_path)
     {
         coord_def p = grid2player(g);
         lua_createtable(ls, 2, 0);
-        lua_pushnumber(ls, p.x);
+        lua_pushinteger(ls, p.x);
         lua_rawseti(ls, -2, 1);
-        lua_pushnumber(ls, p.y);
+        lua_pushinteger(ls, p.y);
         lua_rawseti(ls, -2, 2);
         lua_rawseti(ls, -2, ++index);
     }
@@ -172,7 +173,7 @@ LUAFN(l_spells_path)
 LUAFN(l_spells_fail)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, failure_rate_to_int(raw_spell_fail(spell)));
+    PLUARET(integer, failure_rate_to_int(raw_spell_fail(spell)));
 }
 
 /*** The miscast severity of the spell as a number in [0,5].
@@ -189,7 +190,7 @@ LUAFN(l_spells_fail)
 LUAFN(l_spells_fail_severity)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, fail_severity(spell));
+    PLUARET(integer, fail_severity(spell));
 }
 
 /*** The current spellpower (as an integer percentage 0-100).
@@ -200,7 +201,7 @@ LUAFN(l_spells_fail_severity)
 LUAFN(l_spells_power_perc)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, spell_power_percent(spell));
+    PLUARET(integer, spell_power_percent(spell));
 }
 
 /*** The current spellpower (in bars).
@@ -211,7 +212,7 @@ LUAFN(l_spells_power_perc)
 LUAFN(l_spells_power)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, power_to_barcount(calc_spell_power(spell)));
+    PLUARET(integer, power_to_barcount(calc_spell_power(spell)));
 }
 
 /*** The maximum spellpower (in bars).
@@ -222,7 +223,7 @@ LUAFN(l_spells_power)
 LUAFN(l_spells_max_power)
 {
     spell_type spell = spell_by_name(luaL_checkstring(ls, 1), false);
-    PLUARET(number, power_to_barcount(spell_power_cap(spell)));
+    PLUARET(integer, power_to_barcount(spell_power_cap(spell)));
 }
 
 /*** Does this spell take a direction or target?
@@ -303,7 +304,7 @@ LUAFN(l_spells_god_hates)
         const char *godname = luaL_checkstring(ls, 2);
         god = str_to_god(godname);
     }
-    PLUARET(boolean, god_hates_spell(spell, god));
+    PLUARET(boolean, god_forbids_spell(spell, god));
 }
 
 /*** Cast a spell at a target. If the target is not provided, enters interactive
@@ -355,7 +356,7 @@ static int l_spells_describe(lua_State *ls)
 }
 
 
-static const struct luaL_reg spells_clib[] =
+static const struct luaL_Reg spells_clib[] =
 {
     { "memorised"     , l_spells_memorised },
     { "letter"        , l_spells_letter },
@@ -383,5 +384,7 @@ static const struct luaL_reg spells_clib[] =
 
 void cluaopen_spells(lua_State *ls)
 {
-    luaL_openlib(ls, "spells", spells_clib, 0);
+    lua_newtable(ls);
+    luaL_setfuncs(ls, spells_clib, 0);
+    lua_setglobal(ls, "spells");
 }

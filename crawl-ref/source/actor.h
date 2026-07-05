@@ -4,6 +4,7 @@
 
 #include "artefact-prop-type.h"
 #include "beam-type.h"
+#include "caught-type.h"
 #include "conduct-type.h"
 #include "constrict-type.h"
 #include "energy-use-type.h"
@@ -11,6 +12,7 @@
 #include "item-prop-enum.h"
 #include "kill-method-type.h"
 #include "mon-holy-type.h"
+#include "movement-type.h"
 #include "random-var.h"
 #include "ouch.h"
 #include "pronoun-type.h"
@@ -53,23 +55,12 @@ public:
     virtual bool is_firewood() const = 0;
     virtual bool is_peripheral() const = 0;
 
-    // [ds] Low-level moveto() - moves the actor without updating relevant
-    // grids, such as env.mgrid.
-    virtual void moveto(const coord_def &c, bool clear_net = true,
-                        bool clear_constrict = true) = 0;
-
-    // High-level actor movement. If in doubt, use this. Returns false if the
-    // actor cannot be moved to the target, possibly because it is already
-    // occupied.
-    virtual bool move_to_pos(const coord_def &c, bool clear_net = true,
-                             bool force = false, bool clear_constrict = true) = 0;
-
-    virtual void apply_location_effects(const coord_def &oldpos,
-                                        killer_type killer = KILL_NONE,
-                                        int killernum = -1) = 0;
-
-    // Handles sticky flame / barbs on deliberate movement.
-    virtual void did_deliberate_movement() = 0;
+    virtual bool move_to(const coord_def& newpos, movement_type flags = MV_DEFAULT,
+                         bool defer_finalisation = false) = 0;
+    virtual void finalise_movement(const actor* to_blame = nullptr) = 0;
+    void trigger_movement_effects(movement_type mvflags = MV_DEFAULT,
+                                  const actor* to_blame = nullptr);
+    void clear_deferred_move();
 
     virtual void set_position(const coord_def &c);
     const coord_def& pos() const { return position; }
@@ -90,7 +81,6 @@ public:
     virtual int       get_hit_dice() const = 0;
     virtual int       get_experience_level() const = 0;
 
-    virtual bool shove(const char* feat_name = "") = 0;
     virtual bool can_pass_through_feat(dungeon_feature_type grid) const = 0;
     virtual bool can_pass_through(int x, int y) const;
     virtual bool can_pass_through(const coord_def &c) const;
@@ -102,8 +92,6 @@ public:
     virtual size_type body_size(size_part_type psize = PSIZE_TORSO,
                                 bool base = false) const = 0;
 
-    virtual brand_type damage_brand(int which_attack = -1) = 0;
-    virtual vorpal_damage_type damage_type(int which_attack = -1) = 0;
     virtual item_def *weapon(int which_attack = -1) const = 0;
     const item_def *primary_weapon() const
     {
@@ -111,9 +99,11 @@ public:
     }
     virtual item_def *offhand_weapon() const { return nullptr; }
     virtual random_var attack_delay(const item_def *projectile = nullptr,
-                                    bool rescale = true) const = 0;
+                                    bool include_temp = true) const = 0;
+    virtual random_var melee_attack_delay() const = 0;
     virtual int has_claws(bool allow_tran = true) const = 0;
     virtual item_def *shield() const = 0;
+    virtual item_def *offhand_item() const = 0;
     virtual item_def *body_armour() const = 0;
     virtual int wearing(object_class_type obj_type, int sub_type,
                         bool count_plus = 0, bool check_attuned = false) const = 0;
@@ -145,7 +135,7 @@ public:
     virtual bool can_see_invisible() const = 0;
     virtual bool invisible() const = 0;
     virtual bool nightvision() const = 0;
-    virtual int reach_range() const = 0;
+    virtual int reach_range(bool include_weapon = true) const = 0;
 
     // Would looker be able to see the actor when in LOS?
     virtual bool visible_to(const actor *looker) const = 0;
@@ -157,6 +147,11 @@ public:
     // Can the actor actually see the target?
     virtual bool can_see(const actor &target) const;
 
+    // Can the actor either see the target or (if the actor is the player) have
+    // enough information to confidently determine their location despite them
+    // being invisible?
+    virtual bool aware_of(const actor &target) const;
+
     // Visibility as required by messaging. In usual play:
     //   Does the player know what's happening to the actor?
     bool observable() const;
@@ -165,13 +160,13 @@ public:
     virtual bool is_fiery() const = 0;
     virtual bool is_skeletal() const = 0;
     virtual bool can_mutate() const = 0;
-    virtual bool can_safely_mutate(bool temp = true) const = 0;
+    virtual bool can_safely_mutate(bool include_temp = true) const = 0;
     virtual bool can_polymorph() const = 0;
-    virtual bool has_blood(bool temp = true) const = 0;
-    virtual bool has_bones(bool temp = true) const = 0;
+    virtual bool has_blood(bool include_temp = true) const = 0;
+    virtual bool has_bones(bool include_temp = true) const = 0;
     virtual bool is_stationary() const = 0;
     virtual bool malmutate(const actor* source, const string &reason = "") = 0;
-    virtual bool polymorph(int dur, bool allow_immobile = true) = 0;
+    virtual bool polymorph(int dur) = 0;
     virtual bool doom(int amount) = 0;
     virtual bool drain(const actor *agent, bool quiet = false,
                        int pow = 3) = 0;
@@ -181,10 +176,11 @@ public:
                       string source = "",
                       string aux = "",
                       bool cleanup_dead = true,
-                      bool attacker_effects = true) = 0;
+                      bool attacker_effects = true,
+                      bool is_attack_damage = false) = 0;
     virtual bool heal(int amount) = 0;
     virtual void banish(const actor *agent, const string &who = "",
-                        const int power = 0, bool force = false) = 0;
+                        bool force = false) = 0;
     virtual void blink(bool ignore_stasis = false) = 0;
     virtual void teleport(bool right_now = false,
                           bool wizard_tele = false) = 0;
@@ -203,8 +199,10 @@ public:
     virtual void diminish(const actor *attacker, int pow) = 0;
     virtual bool strip_willpower(actor *attacker, int dur,
                                  bool quiet = false) = 0;
+    virtual bool drain_magic(actor *attacker, int pow) = 0;
     virtual void daze(int duration) = 0;
     virtual void vitrify(const actor *attacker, int duration, bool quiet = false) = 0;
+    virtual bool floodify(const actor *attacker, int duration, const char* substance = "water") = 0;
     virtual void expose_to_element(beam_type element, int strength = 0,
                                    const actor* source = nullptr,
                                    bool slow_cold_blood = true) = 0;
@@ -222,7 +220,7 @@ public:
     virtual bool can_feel_fear(bool include_unknown) const = 0;
 
     virtual int  skill(skill_type sk, int scale = 1, bool real = false,
-                       bool temp = true) const = 0;
+                       bool include_temp = true) const = 0;
     int  skill_rdiv(skill_type sk, int mult = 1, int div = 1) const;
 
     virtual int heads() const = 0;
@@ -239,7 +237,7 @@ public:
     int apply_ac(int damage, int max_damage = 0,
                  ac_type ac_rule = ac_type::normal,
                  bool for_real = true) const;
-    virtual int evasion(bool ignore_temporary = false,
+    virtual int evasion(bool include_temp = true,
                         const actor *attacker = nullptr) const = 0;
     virtual bool shielded() const = 0;
     virtual int shield_block_limit() const;
@@ -247,15 +245,15 @@ public:
     virtual int shield_bonus() const = 0;
     virtual int shield_bypass_ability(int tohit) const = 0;
     virtual void shield_block_succeeded(actor *attacker);
-    virtual bool missile_repulsion() const = 0;
+    virtual int missile_repulsion() const = 0;
 
     virtual monster_type mons_species(bool zombie_base = false) const = 0;
 
-    virtual mon_holy_type holiness(bool temp = true, bool incl_form = true) const = 0;
-    virtual bool undead_or_demonic(bool temp = true) const = 0;
+    virtual mon_holy_type holiness(bool include_temp = true, bool incl_form = true) const = 0;
+    virtual bool undead_or_demonic(bool include_temp = true) const = 0;
     virtual bool holy_wrath_susceptible() const;
     virtual bool is_holy() const = 0;
-    virtual bool is_nonliving(bool temp = true, bool incl_form = true) const = 0;
+    virtual bool is_nonliving(bool include_temp = true, bool incl_form = true) const = 0;
     virtual bool evil() const;
     virtual int  how_chaotic(bool check_spells_god = false) const = 0;
     virtual bool is_unbreathing() const = 0;
@@ -267,8 +265,8 @@ public:
     virtual int res_steam() const = 0;
     virtual int res_cold() const = 0;
     virtual int res_elec() const = 0;
-    virtual int res_poison(bool temp = true) const = 0;
-    virtual bool res_miasma(bool temp = true) const = 0;
+    virtual int res_poison(bool include_temp = true) const = 0;
+    virtual bool res_miasma(bool include_temp = true) const = 0;
     virtual bool res_water_drowning() const = 0;
     virtual bool res_sticky_flame() const = 0;
     virtual int res_holy_energy() const = 0;
@@ -276,15 +274,16 @@ public:
     virtual int res_negative_energy(bool intrinsic_only = false) const = 0;
     virtual bool res_torment() const = 0;
     virtual bool res_polar_vortex() const = 0;
-    virtual bool res_petrify(bool temp = true) const = 0;
+    virtual bool res_petrify(bool include_temp = true) const = 0;
     virtual bool res_constrict() const = 0;
     virtual int res_blind() const = 0;
     int get_res(int res) const;
     virtual int willpower() const = 0;
     virtual int check_willpower(const actor* source, int power) const;
-    virtual bool no_tele(bool blink = false, bool temp = true) const = 0;
+    virtual bool no_tele(bool blink = false, bool include_temp = true) const = 0;
     virtual int inaccuracy() const;
     int inaccuracy_penalty() const;
+    virtual int slaying(bool throwing = false, bool random = true) const = 0;
     virtual bool antimagic_susceptible() const = 0;
 
     bool has_notele_item(vector<const item_def *> *matches = nullptr) const;
@@ -297,6 +296,7 @@ public:
     virtual bool no_cast(bool items = true) const;
     virtual bool reflection(bool items = true) const;
     virtual int extra_harm(bool items = true) const;
+    virtual bool sunder_is_ready() const = 0;
 
     virtual bool rmut_from_item() const;
     virtual bool evokable_invis() const;
@@ -315,16 +315,25 @@ public:
     virtual int  dragon_level() const;
 
     virtual bool paralysed() const = 0;
+    virtual bool cannot_move() const = 0;
     virtual bool cannot_act() const = 0;
+    virtual bool helpless() const = 0;
     virtual bool confused() const = 0;
-    virtual bool caught() const = 0;
     virtual bool asleep() const { return false; }
+    virtual bool is_silenced() const = 0;
+
+    virtual bool caught() const = 0;
+    caught_type  caught_by() const;
+    virtual void struggle_against_net() = 0;
+    virtual bool trap_in_web() = 0;
+    virtual bool trap_in_net(bool real, bool quiet = false) = 0;
+    virtual void stop_being_caught(bool drop_net = false) = 0;
 
     // self_halo: include own halo (actually if self_halo = false
     //            and has a halo, returns false; so if you have a
     //            halo you're not affected by others' halos for this
     //            purpose)
-    virtual bool backlit(bool self_halo = true, bool temp = true) const = 0;
+    virtual bool backlit(bool self_halo = true, bool include_temp = true) const = 0;
     virtual bool umbra() const = 0;
     // Within any actor's halo?
     virtual bool haloed() const;
@@ -345,8 +354,6 @@ public:
 
     virtual bool liquefied_ground() const = 0;
 
-    virtual bool handle_trap();
-
     virtual void god_conduct(conduct_type /*thing_done*/, int /*level*/) { }
 
     virtual bool incapacitated() const
@@ -360,6 +367,9 @@ public:
     virtual bool wont_attack() const = 0;
     virtual mon_attitude_type temp_attitude() const = 0;
     virtual mon_attitude_type real_attitude() const = 0;
+    bool friendly() const;
+    bool neutral() const;
+    bool good_neutral() const;
 
     virtual bool has_spell(spell_type spell) const = 0;
 
@@ -377,48 +387,51 @@ public:
     // Constriction stuff:
 
     mid_t constricted_by;
+    constrict_type constricted_type;
     int escape_attempts;
 
     // mids of all actors we are constricting.
     // Freed and set to nullptr when empty.
     vector<mid_t> *constricting;
 
-    void start_constricting(actor &whom);
+    // Volatile state related to movement finalisation (should not be serialised)
+    bool move_needs_finalisation;
+    coord_def last_move_pos;
+    movement_type last_move_flags;
+
+    void start_constricting(actor &whom, constrict_type type, int duration = 0);
 
     void stop_constricting(mid_t whom, bool intentional = false,
-                           bool quiet = false, const string& escape_verb = "");
+                           bool quiet = false, const string& escape_verb = "break");
     void stop_constricting_all(bool intentional = false, bool quiet = false);
-    void stop_directly_constricting_all(bool intentional = false,
-                                        bool quiet = false);
-    void stop_being_constricted(bool quiet = false, const string& escape_verb = "");
+    void stop_directly_constricting_all(bool entangling_only = false);
+    void stop_being_constricted(bool quiet = false, const string& escape_verb = "break");
 
     virtual bool attempt_escape() = 0;
 
     bool can_constrict(const actor &defender, constrict_type typ) const;
-    bool can_engulf(const actor &defender) const;
     bool has_invalid_constrictor(bool move = false) const;
     void clear_invalid_constrictions(bool move = false);
     void handle_constriction();
     bool is_constricted() const;
-    constrict_type get_constrict_type() const;
     bool is_constricting() const;
     bool is_constricting(const actor &victim) const;
-    int num_constricting() const;
+    int num_constricting(constrict_type type = CONSTRICT_MELEE) const;
     virtual bool has_usable_tentacle() const = 0;
     virtual int constriction_damage(constrict_type typ) const = 0;
-    virtual bool clear_far_engulf(bool force = false, bool moved = false) = 0;
 
     // Be careful using this, as it doesn't keep the constrictor in sync.
-    void clear_constricted();
+    virtual void clear_constricted();
 
     string describe_props() const;
 
     string resist_margin_phrase(int margin) const;
 
     void collide(coord_def newpos, const actor *agent, int damage);
-    bool knockback(const actor &cause, int dist, int pow, string source_name);
+    bool knockback(const actor &cause, int dist, int pow, string source_name,
+                   coord_def source = coord_def());
     coord_def stumble_pos(coord_def targ) const;
-    void stumble_away_from(coord_def targ, string src = "");
+    bool stumble_away_from(coord_def targ, string src = "");
 
     static const actor *ensure_valid_actor(const actor *act);
     static actor *ensure_valid_actor(actor *act);
@@ -426,7 +439,7 @@ public:
 private:
     void constriction_damage_defender(actor &defender);
     void end_constriction(mid_t whom, bool intentional, bool quiet,
-                          const string& escape_verb = "");
+                          const string& escape_verb = "break");
 };
 
 bool actor_slime_wall_immune(const actor *actor);

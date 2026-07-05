@@ -58,15 +58,15 @@ void tile_new_level(bool first_time, bool init_unseen)
     for (unsigned int x = 0; x < GXM; x++)
         for (unsigned int y = 0; y < GYM; y++)
         {
-            unsigned int tile = tile_env.bk_bg[x][y];
-            if ((tile & TILE_FLAG_NEW_STAIR)
+            tile_with_flags_t tile = tile_env.bk_bg[x][y];
+            if ((tile.has_flag(TILE_FLAG_NEW_STAIR))
                 && !is_unknown_stair(coord_def(x,y)))
             {
-                tile_env.bk_bg[x][y] &= ~TILE_FLAG_NEW_STAIR;
+                tile_env.bk_bg[x][y].remove_flag(TILE_FLAG_NEW_STAIR);
             }
-            else if ((tile & TILE_FLAG_NEW_TRANSPORTER)
+            else if ((tile.has_flag(TILE_FLAG_NEW_TRANSPORTER))
                      && !is_unknown_transporter(coord_def(x,y)))
-                tile_env.bk_bg[x][y] &= ~TILE_FLAG_NEW_TRANSPORTER;
+                tile_env.bk_bg[x][y].remove_flag(TILE_FLAG_NEW_TRANSPORTER);
         }
 
     tiles.clear_minimap();
@@ -242,6 +242,13 @@ void tile_default_flv(branch_type br, tile_flavour &flv)
         break;
 
     case BRANCH_ZIGGURAT:
+        flv.wall  = TILE_WALL_VAULT;
+        if (you.zigs_completed > 0)
+            flv.floor = TILE_FLOOR_ETCHED;
+        else
+            flv.floor = TILE_FLOOR_VAULT;
+        return;
+
     case BRANCH_BAZAAR:
     case BRANCH_TROVE:
         flv.wall  = TILE_WALL_VAULT;
@@ -284,6 +291,11 @@ void tile_default_flv(branch_type br, tile_flavour &flv)
     case BRANCH_VOLCANO:
         flv.wall  = TILE_WALL_VOLCANIC;
         flv.floor = TILE_FLOOR_ROUGH_RED;
+        return;
+
+    case BRANCH_GULCH:
+        flv.wall  = TILE_WALL_GULCH_BRICK;
+        flv.floor = TILE_FLOOR_GULCH;
         return;
 
     case BRANCH_WIZLAB:
@@ -363,120 +375,84 @@ void tile_init_flavour()
 
 // 11111333333   55555555
 //   222222444444   6666666666
-static void _get_dungeon_wall_tiles_by_depth(int depth, vector<tileidx_t>& t)
+static void _get_dungeon_wall_tiles_by_depth(int depth,
+                                             vector<pair<tileidx_t, int>>& t)
 {
     if (crawl_state.game_is_sprint() || crawl_state.game_is_arena())
     {
-        t.push_back(TILE_WALL_CATACOMBS);
+        t.emplace_back(TILE_WALL_CATACOMBS, 1);
         return;
     }
     if (depth <= 5)
-        t.push_back(TILE_WALL_BRICK_DARK_1);
+        t.emplace_back(TILE_WALL_BRICK_DARK_1, 460);
     if (depth > 2 && depth <= 8)
     {
-        t.push_back(TILE_WALL_BRICK_DARK_2);
-        t.push_back(TILE_WALL_BRICK_DARK_2_TORCH);
+        t.emplace_back(TILE_WALL_BRICK_DARK_2, 440);
+        t.emplace_back(TILE_WALL_BRICK_DARK_2_TORCH, 20);
     }
     if (depth > 5 && depth <= 11)
-        t.push_back(TILE_WALL_BRICK_DARK_3);
+        t.emplace_back(TILE_WALL_BRICK_DARK_3, 464);
+    int torch_4_weight = 0;
     if (depth > 8)
     {
-        t.push_back(TILE_WALL_BRICK_DARK_4);
-        t.push_back(TILE_WALL_BRICK_DARK_4_TORCH);
+        t.emplace_back(TILE_WALL_BRICK_DARK_4, 452);
+        torch_4_weight += 40;
     }
+    // Torches are more common on D:$
     if (depth == brdepth[BRANCH_DUNGEON])
-        t.push_back(TILE_WALL_BRICK_DARK_4_TORCH);  // torches are more common on D:14...
+        torch_4_weight += 40;
+
+    if (torch_4_weight)
+        t.emplace_back(TILE_WALL_BRICK_DARK_4_TORCH, torch_4_weight);
 }
 
-static void _get_depths_wall_tiles_by_depth(int depth, vector<tileidx_t>& t)
+static void _get_depths_wall_tiles_by_depth(int depth,
+                                            vector<pair<tileidx_t, int>>& t)
 {
-    t.push_back(TILE_WALL_BRICK_DARK_6_TORCH);
     if (depth <= 3)
-        t.push_back(TILE_WALL_BRICK_DARK_5);
+        t.emplace_back(TILE_WALL_BRICK_DARK_5, 476);
     if (depth > 3)
-        t.push_back(TILE_WALL_BRICK_DARK_6);
+        t.emplace_back(TILE_WALL_BRICK_DARK_6, 464);
+
+    int torch_weight = 60;
+    // Torches are more common on Depths:$
     if (depth == brdepth[BRANCH_DEPTHS])
-        t.push_back(TILE_WALL_BRICK_DARK_6_TORCH);  // ...and on Depths:$
+        torch_weight += 60;
+    t.emplace_back(TILE_WALL_BRICK_DARK_6_TORCH, torch_weight);
 }
 
-static int _find_variants(tileidx_t idx, int variant, vector<int> &out)
-{
-    const int count = tile_dngn_count(idx);
-    out.reserve(count);
-    if (count == 1)
-    {
-        out.push_back(1);
-        return 1;
-    }
-
-    int total = 0;
-    int curr_prob = 0;
-    for (int i = 0; i < count; ++i)
-    {
-        int last_prob = curr_prob;
-        curr_prob = tile_dngn_probs(idx + i);
-        if (tile_dngn_dominoes(idx + i) == variant)
-        {
-            int weight = curr_prob - last_prob;
-            total += weight;
-            out.push_back(weight);
-        }
-        else
-            out.push_back(0);
-    }
-    if (!total)
-    {
-        out.clear();
-        out.push_back(tile_dngn_probs(idx));
-        for (int i = 1; i < count; ++i)
-            out.push_back(tile_dngn_probs(idx + i) - tile_dngn_probs(idx + i - 1));
-        return tile_dngn_probs(idx + count - 1);
-    }
-    return total;
-}
-
-tileidx_t pick_dngn_tile(tileidx_t idx, int value, int domino)
+tileidx_t pick_dngn_tile(tileidx_t idx, int value)
 {
     ASSERT_LESS(idx, TILE_DNGN_MAX);
-    static vector<int> weights;
-    weights.clear();
-
-    int total = _find_variants(idx, domino, weights);
-    if (weights.size() == 1)
+    const unsigned int count = tile_dngn_count(idx);
+    if (count == 1)
         return idx;
-    int rand = value % total;
-
-    for (size_t i = 0; i < weights.size(); ++i)
+    const int total_weight = tile_dngn_probs(idx + count - 1);
+    int rand = value % total_weight;
+    for (unsigned int i = 0; i < count; ++i)
     {
-        rand -= weights[i];
-        if (rand < 0)
+        int weight = tile_dngn_probs(idx + i);
+        if (rand < weight)
             return idx + i;
     }
-
     return idx;
 }
 
-static tileidx_t _pick_dngn_tile_multi(vector<tileidx_t> candidates, int value)
+static tileidx_t _pick_dngn_tile_multi(
+                                const vector<pair<tileidx_t, int>>& candidates,
+                                int rand)
 {
-    ASSERT(!candidates.empty());
-
     int total = 0;
-    for (tileidx_t tidx : candidates)
-    {
-        const unsigned int count = tile_dngn_count(tidx);
-        total += tile_dngn_probs(tidx + count - 1);
-    }
-    int rand = value % total;
+    for (const pair<tileidx_t, int>& candidate : candidates)
+        total += candidate.second;
 
-    for (tileidx_t tidx : candidates)
+    int rand1 = rand % total;
+
+    for (const pair<tileidx_t, int>& candidate : candidates)
     {
-        const unsigned int count = tile_dngn_count(tidx);
-        for (unsigned int j = 0; j < count; ++j)
-        {
-            if (rand < tile_dngn_probs(tidx + j))
-                return tidx + j;
-        }
-        rand -= tile_dngn_probs(tidx + count - 1);
+        if (rand1 < candidate.second)
+            return candidate.first;
+        rand1 -= candidate.second;
     }
 
     // Should never reach this place
@@ -496,6 +472,81 @@ static bool _same_door_at(dungeon_feature_type feat, const coord_def &gc)
            && (feat_is_sealed(feat) || feat_is_sealed(door));
 }
 
+unsigned short tile_door_connect(coord_def gc)
+{
+    dungeon_feature_type feat = env.grid(gc);
+    if (!feat_is_door(feat))
+        return 0;
+
+    // Check for gates.
+    bool door_left  = _same_door_at(feat, coord_def(gc.x - 1, gc.y));
+    bool door_right = _same_door_at(feat, coord_def(gc.x + 1, gc.y));
+    bool door_up    = _same_door_at(feat, coord_def(gc.x, gc.y - 1));
+    bool door_down  = _same_door_at(feat, coord_def(gc.x, gc.y + 1));
+
+    if (!door_left && !door_right && !door_up && !door_down)
+        return 0;
+
+    tileidx_t target;
+    if (door_left && door_right)
+        target = TILE_DNGN_GATE_CLOSED_MIDDLE;
+    else if (door_up && door_down)
+        target = TILE_DNGN_VGATE_CLOSED_MIDDLE;
+    else if (door_left)
+        target = TILE_DNGN_GATE_CLOSED_RIGHT;
+    else if (door_right)
+        target = TILE_DNGN_GATE_CLOSED_LEFT;
+    else if (door_up)
+        target = TILE_DNGN_VGATE_CLOSED_DOWN;
+    else
+        target = TILE_DNGN_VGATE_CLOSED_UP;
+
+    // NOTE: This requires that closed gates and open gates
+    // are positioned in the tile set relative to their
+    // door counterpart.
+    return (unsigned short)(target - TILE_DNGN_CLOSED_DOOR);
+}
+
+static void _init_feat_flavour(tileidx_t& flavour, dungeon_feature_type feat)
+{
+    if (feat_is_stone_stair(feat))
+    {
+        const bool up = feat_stair_direction(feat) == CMD_GO_UPSTAIRS;
+        if (player_in_branch(BRANCH_SHOALS))
+        {
+            flavour = up ? TILE_DNGN_SHOALS_STAIRS_UP
+                         : TILE_DNGN_SHOALS_STAIRS_DOWN;
+        }
+        else if (player_in_branch(BRANCH_VAULTS))
+        {
+            if (you.depth == branches[BRANCH_VAULTS].numlevels - 1 && !up)
+                flavour = TILE_DNGN_METAL_STAIRS_DOWN;
+            else if (you.depth == branches[BRANCH_VAULTS].numlevels && up)
+                flavour = TILE_DNGN_METAL_STAIRS_UP;
+        }
+        else if (player_in_branch(BRANCH_ZOT))
+        {
+            if (you.depth == branches[BRANCH_VAULTS].numlevels - 1 && !up)
+                flavour = TILE_DNGN_ZOT_STAIRS_DOWN;
+            else if (you.depth == branches[BRANCH_VAULTS].numlevels && up)
+                flavour = TILE_DNGN_ZOT_STAIRS_UP;
+        }
+        else if (player_in_branch(BRANCH_SLIME) && !you.royal_jelly_dead)
+        {
+            if (up)
+                flavour = TILE_DNGN_SLIMY_STAIRS_UP;
+            else
+                flavour = TILE_DNGN_SLIMY_STAIRS_DOWN;
+        }
+    }
+    else if (feat_is_escape_hatch(feat) && player_in_branch(BRANCH_TOMB))
+    {
+        const bool up = feat_stair_direction(feat) == CMD_GO_UPSTAIRS;
+        flavour = up ? TILE_DNGN_ONE_WAY_STAIRS_UP
+                     : TILE_DNGN_ONE_WAY_STAIRS_DOWN;
+    }
+}
+
 void tile_init_flavour(const coord_def &gc, const int domino)
 {
     if (!map_bounds(gc))
@@ -510,10 +561,11 @@ void tile_init_flavour(const coord_def &gc, const int domino)
     if (!tile_env.flv(gc).floor)
     {
         tileidx_t floor_base = tile_env.default_flavour.floor;
+        floor_base = tile_dngn_apply_domino(floor_base, domino);
         int colour = env.grid_colours(gc);
         if (colour)
             floor_base = tile_dngn_coloured(floor_base, colour);
-        tile_env.flv(gc).floor = pick_dngn_tile(floor_base, rand1, domino);
+        tile_env.flv(gc).floor = pick_dngn_tile(floor_base, rand1);
     }
     else if (tile_env.flv(gc).floor != TILE_HALO_GRASS
              && tile_env.flv(gc).floor != TILE_HALO_GRASS2
@@ -528,12 +580,18 @@ void tile_init_flavour(const coord_def &gc, const int domino)
         if ((player_in_branch(BRANCH_DUNGEON) || player_in_branch(BRANCH_DEPTHS))
             && tile_env.default_flavour.wall == TILE_WALL_NORMAL)
         {
-            vector<tileidx_t> tile_candidates;
+            vector<pair<tileidx_t, int>> tile_candidates;
             if (player_in_branch(BRANCH_DEPTHS))
                 _get_depths_wall_tiles_by_depth(you.depth, tile_candidates);
             else
                 _get_dungeon_wall_tiles_by_depth(you.depth, tile_candidates);
-            tile_env.flv(gc).wall = _pick_dngn_tile_multi(tile_candidates, rand2);
+            int rand3 = hash_with_seed(INT_MAX, seed, 2);
+            tileidx_t wall = _pick_dngn_tile_multi(tile_candidates, rand3);
+            // XXX: this should be for any animated tile not just torches
+            if (is_torch_tile(wall))
+                tile_env.flv(gc).wall = wall;
+            else
+                tile_env.flv(gc).wall = pick_dngn_tile(wall, rand2);
         }
         else
         {
@@ -545,75 +603,29 @@ void tile_init_flavour(const coord_def &gc, const int domino)
         }
     }
     else
-        tile_env.flv(gc).wall = pick_dngn_tile(tile_env.flv(gc).wall, rand2);
-
-    if (feat_is_stone_stair(env.grid(gc)) && (player_in_branch(BRANCH_SHOALS) ||
-                                              player_in_branch(BRANCH_VAULTS) ||
-                                              player_in_branch(BRANCH_ZOT)))
     {
-        const bool up = feat_stair_direction(env.grid(gc)) == CMD_GO_UPSTAIRS;
-        if (player_in_branch(BRANCH_SHOALS))
-        {
-            tile_env.flv(gc).feat = up ? TILE_DNGN_SHOALS_STAIRS_UP
-                                       : TILE_DNGN_SHOALS_STAIRS_DOWN;
-        }
-        else if (player_in_branch(BRANCH_VAULTS))
-        {
-            if (you.depth == branches[BRANCH_VAULTS].numlevels - 1 && !up)
-                tile_env.flv(gc).feat = TILE_DNGN_METAL_STAIRS_DOWN;
-            else if (you.depth == branches[BRANCH_VAULTS].numlevels && up)
-                tile_env.flv(gc).feat = TILE_DNGN_METAL_STAIRS_UP;
-        }
-        else if (player_in_branch(BRANCH_ZOT))
-        {
-            if (you.depth == branches[BRANCH_VAULTS].numlevels - 1 && !up)
-                tile_env.flv(gc).feat = TILE_DNGN_ZOT_STAIRS_DOWN;
-            else if (you.depth == branches[BRANCH_VAULTS].numlevels && up)
-                tile_env.flv(gc).feat = TILE_DNGN_ZOT_STAIRS_UP;
-        }
+        // XXX: this should be for any animated tile not just torches
+        tileidx_t wall = tile_env.flv(gc).wall;
+        if (!is_torch_tile(wall))
+            tile_env.flv(gc).wall = pick_dngn_tile(wall, rand2);
     }
 
-    if (feat_is_escape_hatch(env.grid(gc)) && player_in_branch(BRANCH_TOMB))
-    {
-        const bool up = feat_stair_direction(env.grid(gc)) == CMD_GO_UPSTAIRS;
-        tile_env.flv(gc).feat = up ? TILE_DNGN_ONE_WAY_STAIRS_UP
-                                   : TILE_DNGN_ONE_WAY_STAIRS_DOWN;
-    }
 
-    if (feat_is_door(env.grid(gc)))
-    {
-        // Check for gates.
-        bool door_left  = _same_door_at(env.grid(gc), coord_def(gc.x - 1, gc.y));
-        bool door_right = _same_door_at(env.grid(gc), coord_def(gc.x + 1, gc.y));
-        bool door_up    = _same_door_at(env.grid(gc), coord_def(gc.x, gc.y - 1));
-        bool door_down  = _same_door_at(env.grid(gc), coord_def(gc.x, gc.y + 1));
+    _init_feat_flavour(tile_env.flv(gc).feat, env.grid(gc));
 
-        if (door_left || door_right || door_up || door_down)
-        {
-            tileidx_t target;
-            if (door_left && door_right)
-                target = TILE_DNGN_GATE_CLOSED_MIDDLE;
-            else if (door_up && door_down)
-                target = TILE_DNGN_VGATE_CLOSED_MIDDLE;
-            else if (door_left)
-                target = TILE_DNGN_GATE_CLOSED_RIGHT;
-            else if (door_right)
-                target = TILE_DNGN_GATE_CLOSED_LEFT;
-            else if (door_up)
-                target = TILE_DNGN_VGATE_CLOSED_DOWN;
-            else
-                target = TILE_DNGN_VGATE_CLOSED_UP;
-
-            // NOTE: This requires that closed gates and open gates
-            // are positioned in the tile set relative to their
-            // door counterpart.
-            tile_env.flv(gc).special = target - TILE_DNGN_CLOSED_DOOR;
-        }
-        else
-            tile_env.flv(gc).special = 0;
-    }
-    else if (!tile_env.flv(gc).special)
+    if (!tile_env.flv(gc).special)
         tile_env.flv(gc).special = hash_with_seed(256, seed, 10);
+}
+
+void tile_init_remembered_flavour(coord_def pos)
+{
+    dungeon_feature_type feat = env.map_knowledge(pos).feat();
+    if (!env.map_knowledge(pos).feat_known() && env.map_forgotten)
+        feat = (*env.map_forgotten)(pos).feat();
+    tileidx_t tile = tile_env.remembered_flavour.feat_flavour(pos);
+    _init_feat_flavour(tile, feat);
+    unsigned short idx = tile_env.remembered_flavour.feat_flavour_idx(pos);
+    tile_env.remembered_flavour.set_feat_flavour(pos, tile, idx);
 }
 
 enum SpecialIdx
@@ -894,15 +906,13 @@ void tile_draw_map_cells()
         }
 }
 
-static tileidx_t _get_floor_bg(const coord_def& gc)
+static tile_with_flags_t _get_floor_bg(const coord_def& gc)
 {
-    tileidx_t bg = TILE_DNGN_UNSEEN | tileidx_unseen_flag(gc);
+    tile_with_flags_t bg(TILE_DNGN_UNSEEN, tileidx_unseen_flag(gc));
 
     if (map_bounds(gc))
     {
-        // XXX: We don't invalidate tile_env.bk_bg when we should, so partially
-        // mitigate this by calculating the flavour when accessing it.
-        bg = tileidx_feature_no_flavour(gc);
+        bg = tileidx_feature_for_cache(gc);
 
         if (is_unknown_stair(gc)
             && env.map_knowledge(gc).feat() != DNGN_ENTER_ZOT
@@ -930,7 +940,7 @@ void tile_draw_floor()
             if (!you.see_cell(gc))
                 continue;
 
-            tileidx_t bg = _get_floor_bg(gc);
+            tile_with_flags_t bg = _get_floor_bg(gc);
 
             // init tiles
             tile_env.bk_bg(gc) = bg;
@@ -953,7 +963,7 @@ void tile_forget_map(const coord_def &gc)
 static void _tile_place_item(const coord_def &gc, const item_def &item,
                              bool more_items)
 {
-    tileidx_t t = tileidx_item(item);
+    tile_with_flags_t t = tileidx_item(item);
     if (more_items)
         t |= TILE_FLAG_S_UNDER;
 
@@ -965,38 +975,17 @@ static void _tile_place_item(const coord_def &gc, const item_def &item,
 
 static void _tile_place_item_marker(const coord_def &gc, const item_def &item)
 {
-    tile_env.bk_fg(gc) = ((tileidx_t)tile_env.bk_fg(gc)) | TILE_FLAG_S_UNDER;
+    tile_with_flags_t fg = tile_env.bk_fg(gc);
+    tile_env.bk_fg(gc) = fg | TILE_FLAG_S_UNDER;
 
     if (item_needs_autopickup(item))
         tile_env.bk_bg(gc) |= TILE_FLAG_CURSOR3;
 }
 
-/**
- * Place the tile for an unseen monster's disturbance.
- *
- * @param gc    The disturbance's map position.
-**/
-static void _tile_place_invisible_monster(const coord_def &gc)
-{
-    const map_cell& cell = env.map_knowledge(gc);
-
-    // Shallow water has its own modified tile for disturbances
-    // see tileidx_feature
-    // That tile is hidden by clouds though
-    if (cell.feat() != DNGN_SHALLOW_WATER || cell.cloud() != CLOUD_NONE)
-        tile_env.bk_fg(gc) = TILE_UNSEEN_MONSTER;
-    else
-        tile_env.bk_fg(gc) = 0;
-
-    if (env.map_knowledge(gc).item())
-        _tile_place_item_marker(gc, *env.map_knowledge(gc).item());
-}
-
 static void _tile_place_monster(const coord_def &gc, const monster_info& mon)
 {
-    tileidx_t t    = tileidx_monster(mon);
-    tileidx_t t0   = t & TILE_FLAG_MASK;
-    tileidx_t flag = t & (~TILE_FLAG_MASK);
+    tile_with_flags_t t = tileidx_monster(mon);
+    tileidx_t t0 = t.tile();
 
     if (mons_class_is_stationary(mon.type)
         && mon.type != MONS_TRAINING_DUMMY)
@@ -1013,10 +1002,19 @@ static void _tile_place_monster(const coord_def &gc, const monster_info& mon)
     else
     {
         tileidx_t mcache_idx = mcache.register_monster(mon);
-        t = flag | (mcache_idx ? mcache_idx : t0);
+        t0 = mcache_idx ? mcache_idx : t0;
+        t.set_tile(t0);
     }
 
     tile_env.bk_fg(gc) = t;
+
+    if (env.map_knowledge(gc).old_invisible_monster())
+    {
+        tile_env.bk_bg(gc) |= TILE_FLAG_REMEMBERED_INVIS;
+        tile_with_flags_t fg = tile_env.bk_fg(gc);
+        tile_env.bk_fg(gc) = fg | TILE_FLAG_REMEMBERED_INVIS;
+    }
+
     if (!you.see_cell(gc))
         return;
     set<tileidx_t> status_icons = status_icons_for(mon);
@@ -1057,7 +1055,7 @@ static void _tile_place_monster(const coord_def &gc, const monster_info& mon)
 void tile_reset_fg(const coord_def &gc)
 {
     // remove autopickup cursor, it will be added back if necessary
-    tile_env.bk_bg(gc) &= ~TILE_FLAG_CURSOR3;
+    tile_env.bk_bg(gc).remove_flag(TILE_FLAG_CURSOR3);
     tile_draw_map_cell(gc, true);
     tiles.update_minimap(gc);
 }
@@ -1077,9 +1075,8 @@ void tile_draw_map_cell(const coord_def& gc, bool foreground_only)
 
     const map_cell& cell = env.map_knowledge(gc);
 
-    if (cell.invisible_monster())
-        _tile_place_invisible_monster(gc);
-    else if (cell.monsterinfo())
+    tile_env.bk_fg(gc) = 0;
+    if (cell.monsterinfo())
         _tile_place_monster(gc, *cell.monsterinfo());
     else if (cell.item())
     {
@@ -1088,8 +1085,6 @@ void tile_draw_map_cell(const coord_def& gc, bool foreground_only)
         else
             _tile_place_item(gc, *cell.item(), (cell.flags & MAP_MORE_ITEMS) != 0);
     }
-    else
-        tile_env.bk_fg(gc) = 0;
 
     // Always place clouds now they have their own layer
     if (cell.cloud() != CLOUD_NONE)
@@ -1098,34 +1093,44 @@ void tile_draw_map_cell(const coord_def& gc, bool foreground_only)
         tile_env.bk_cloud(gc) = 0;
 }
 
-void tile_wizmap_terrain(const coord_def &gc)
+#ifndef USE_TILE_WEB
+static bool _tile_has_cycling_misc_animation(tileidx_t tile)
 {
-    tile_env.bk_bg(gc) = _get_floor_bg(gc);
+    if (!Options.tile_misc_anim)
+        return false;
+    // Wizlab entries, conduits, and harlequin traps both have spinning
+    // sequential cycle tile animations. The Jiyva altar, meanwhile, drips.
+    return tile == TILE_DNGN_PORTAL_WIZARD_LAB
+           || tile == TILE_DNGN_EXIT_NECROPOLIS
+           || tile == TILE_DNGN_ALTAR_JIYVA
+           || tile == TILE_DNGN_TRAP_HARLEQUIN
+           || tile >= TILE_ARCANE_CONDUIT && tile < TILE_DNGN_SARCOPHAGUS_SEALED
+           || is_torch_tile(tile);
 }
 
-static bool _is_torch(tileidx_t basetile)
+static bool _tile_has_random_misc_animation(tileidx_t tile)
 {
-    return basetile == TILE_WALL_BRICK_DARK_2_TORCH
-           || basetile == TILE_WALL_BRICK_DARK_4_TORCH
-           || basetile == TILE_WALL_BRICK_DARK_6_TORCH;
+    if (!Options.tile_misc_anim)
+        return false;
+    // This includes branch / portal entries and exits, altars, runelights, and
+    // fountains in the first range, and some randomly-animated weighted
+    // vault statues in the second statues.
+    return tile >= TILE_DNGN_ENTER_ZOT_CLOSED && tile < TILE_DNGN_CACHE_OF_FRUIT
+           || tile >= TILE_DNGN_SILVER_STATUE && tile < TILE_ARCANE_CONDUIT
+           || tile >= TILE_WALL_STONE_CRACKLE_1 && tile <= TILE_WALL_STONE_CRACKLE_4;
 }
+#endif
 
 // Updates the "flavour" of tiles that are animated.
 // Unfortunately, these are all hard-coded for now.
-void tile_apply_animations(tileidx_t bg, tile_flavour *flv)
+void tile_apply_animations(tileidx_t bg_idx, tile_flavour *flv)
 {
-#ifndef USE_TILE_WEB
-    tileidx_t bg_idx = bg & TILE_FLAG_MASK;
+    if (bg_idx == TILE_WALL_NORMAL)
+        bg_idx = flv->wall;
 
-    // Wizlab entries, conduits, and harlequin traps both have spinning
-    // sequential cycle tile animations. The Jiyva altar, meanwhile, drips.
-    if (bg_idx == TILE_DNGN_PORTAL_WIZARD_LAB || bg_idx == TILE_DNGN_EXIT_NECROPOLIS
-       || bg_idx == TILE_DNGN_ALTAR_JIYVA || bg_idx == TILE_DNGN_TRAP_HARLEQUIN
-       || (bg_idx >= TILE_ARCANE_CONDUIT && bg_idx < TILE_DNGN_SARCOPHAGUS_SEALED)
-        && Options.tile_misc_anim)
-    {
+#ifndef USE_TILE_WEB
+    if (_tile_has_cycling_misc_animation(bg_idx))
         flv->special = (flv->special + 1) % tile_dngn_count(bg_idx);
-    }
     else if (bg_idx == TILE_DNGN_LAVA && Options.tile_water_anim)
     {
         // Lava tiles are four sets of four tiles (the second and fourth
@@ -1139,31 +1144,17 @@ void tile_apply_animations(tileidx_t bg, tile_flavour *flv)
     {
         flv->special = random2(256);
     }
-    // This includes branch / portal entries and exits, altars, runelights, and
-    // fountains in the first range, and some randomly-animated weighted
-    // vault statues in the second statues.
-    else if (((bg_idx >= TILE_DNGN_ENTER_ZOT_CLOSED && bg_idx < TILE_DNGN_CACHE_OF_FRUIT)
-             || (bg_idx >= TILE_DNGN_SILVER_STATUE && bg_idx < TILE_ARCANE_CONDUIT))
-             || (bg_idx >= TILE_WALL_STONE_CRACKLE_1 && bg_idx <= TILE_WALL_STONE_CRACKLE_4)
-             && Options.tile_misc_anim)
-    {
+    else if (_tile_has_random_misc_animation(bg_idx))
         flv->special = random2(256);
-    }
-    else if (bg_idx == TILE_WALL_NORMAL && Options.tile_misc_anim)
-    {
-        tileidx_t basetile = tile_dngn_basetile(flv->wall);
-        if (_is_torch(basetile))
-            flv->wall = basetile + (flv->wall - basetile + 1) % tile_dngn_count(basetile);
-    }
 #else
-    UNUSED(bg, flv);
+    UNUSED(bg_idx, flv);
 #endif
 }
 
 static bool _suppress_blood(tileidx_t bg_idx)
 {
     tileidx_t basetile = tile_dngn_basetile(bg_idx);
-    return _is_torch(basetile);
+    return is_torch_tile(basetile);
 }
 
 // If the top tile is a corpse, don't draw blood underneath.
@@ -1186,6 +1177,15 @@ static uint8_t _get_direction_index(const coord_def& delta)
     return 0;
 }
 
+static unsigned int _pick_floor_tile(tileidx_t base_tile, coord_def gc)
+{
+    unsigned int count = tile_dngn_count(base_tile);
+    uint32_t seed = you.where_are_you + (you.depth << 8)
+                    + (gc.x << 16) + (gc.y << 24);
+    unsigned int offset = hash_with_seed(count, seed, you.birth_time);
+    return base_tile + offset;
+}
+
 void tile_apply_properties(const coord_def &gc, packed_cell &cell)
 {
     if (is_excluded(gc))
@@ -1199,7 +1199,9 @@ void tile_apply_properties(const coord_def &gc, packed_cell &cell)
     if (!map_bounds(gc))
         return;
 
-    apply_variations(tile_env.flv(gc), &cell.bg, gc);
+    tileidx_t bg_tile = cell.bg.tile();
+    apply_variations(tile_env.flv(gc), &bg_tile, gc);
+    cell.bg.set_tile(bg_tile);
 
     const map_cell& mc = env.map_knowledge(gc);
 
@@ -1223,7 +1225,7 @@ void tile_apply_properties(const coord_def &gc, packed_cell &cell)
     if (mc.flags & MAP_LIQUEFIED)
         cell.is_liquefied = true;
     else if (print_blood && (feat_suppress_blood(mc.feat())
-                             || _suppress_blood((cell.bg) & TILE_FLAG_MASK)))
+                             || _suppress_blood(bg_tile)))
     {
         print_blood = false;
     }
@@ -1292,17 +1294,22 @@ void tile_apply_properties(const coord_def &gc, packed_cell &cell)
     cell.flv = tile_env.flv(gc);
 
     if (mc.flags & MAP_CORRODING && !feat_is_wall(feat))
-        cell.flv.floor = TILE_FLOOR_SLIME_ACIDIC;
+        cell.flv.floor = _pick_floor_tile(TILE_FLOOR_SLIME_ACIDIC, gc);
     else if (mc.flags & MAP_ICY)
-        cell.flv.floor = TILE_FLOOR_ICY;
+        cell.flv.floor = _pick_floor_tile(TILE_FLOOR_ICY, gc);
     else if ((env.pgrid(gc) & FPROP_SEISMOROCK) && you.see_cell(gc)
              && feat_has_dry_floor(env.grid(gc)))
     {
         // Use the id of the underlying tile to randomize the rock appearance.
-        tileidx_t tile = TILE_FLOOR_SEISMOROCK
-                            + cell.bg % tile_dngn_count(TILE_FLOOR_SEISMOROCK);
+        // XXX: This doesn't look great when the underlying tile is animated.
+        unsigned int tile_count = tile_dngn_count(TILE_FLOOR_SEISMOROCK);
+        tileidx_t offset = (tileidx_t)(cell.bg.value % tile_count);
+        tileidx_t tile = TILE_FLOOR_SEISMOROCK + offset;
 
         cell.add_overlay(tile);
     }
+
+    if (you.did_east_wind && grid_distance(you.pos(), gc) <= 2 && !cell_is_solid(gc))
+        cell.add_overlay(TILE_OVERLAY_EAST_WIND);
 }
 #endif

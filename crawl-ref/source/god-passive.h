@@ -41,8 +41,8 @@ enum class passive_t
     /// You avoid explore-based traps.
     avoid_traps,
 
-    /// You have innate see invisible.
-    sinv,
+    /// You have innate see invisible and lurkers are revealed.
+    see_unseen,
 
     /// You have innate clarity.
     clarity,
@@ -299,22 +299,23 @@ monster* dithmenos_get_player_shadow();
 monster* create_player_shadow(coord_def pos, bool friendly = true,
                               spell_type spell_known = SPELL_NO_SPELL);
 void dithmenos_shadow_melee(actor* target);
-void dithmenos_shadow_shoot(const dist &d, const item_def &item);
+void dithmenos_shadow_shoot(const coord_def& targ, missile_type thrown_projectile = NUM_MISSILES);
 void dithmenos_shadow_spell(spell_type spell);
 
 void uskayaw_prepares_audience();
 void uskayaw_bonds_audience();
 
-void wu_jian_trigger_serpents_lash(bool wall_jump, const coord_def& old_pos);
+void wu_jian_trigger_serpents_lash(bool wall_jump);
 void wu_jian_heaven_tick();
 void wu_jian_decrement_heavenly_storm();
 void wu_jian_end_heavenly_storm();
 monster *wu_jian_wall_jump_monster_at(const coord_def &pos);
 bool wu_jian_wall_jump_triggers_attacks(const coord_def &pos);
-bool wu_jian_wall_jump_effects();
+void wu_jian_wall_jump_effects();
 bool wu_jian_has_momentum(wu_jian_attack_type);
 bool wu_jian_post_move_effects(bool did_wall_jump,
-                               const coord_def& initial_position);
+                               const coord_def& initial_position,
+                               bool allow_lunge = true);
 bool wu_jian_move_triggers_attacks(coord_def new_pos);
 
 void makhleb_tyrant_buff();

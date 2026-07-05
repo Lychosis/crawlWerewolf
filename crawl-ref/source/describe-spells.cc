@@ -13,6 +13,7 @@
 #include "english.h"
 #include "externs.h"
 #include "god-abil.h"
+#include "god-conduct.h"
 #include "invent.h"
 #include "libutil.h"
 #include "menu.h"
@@ -299,7 +300,7 @@ static int _spell_colour(spell_type spell, const item_def* const source_item)
         return COL_USELESS;
     }
 
-    if (god_hates_spell(spell, you.religion))
+    if (god_forbids_spell(spell, you.religion))
         return COL_FORBIDDEN;
 
     if (you.experience_level < spell_difficulty(spell)
@@ -370,8 +371,8 @@ static string _range_string(const spell_type &spell, const monster_info *mon_own
         return "";
 
     int minrange = 0;
-    if (spell == SPELL_CALL_DOWN_LIGHTNING || spell == SPELL_FLASHING_BALESTRA)
-        minrange = 2;
+    if (spell == SPELL_CALL_DOWN_LIGHTNING || spell == SPELL_FLASHING_BALESTRA || spell == SPELL_BECKONING_GALE)
+        minrange = 3;
 
     const bool in_range = has_range
                     && crawl_state.need_save
@@ -429,6 +430,8 @@ static dice_def _spell_damage(spell_type spell, int hd, int pow)
             return detonation_catalyst_damage(pow, false);
         case SPELL_BOULDER:
             return boulder_damage(pow, false);
+        case SPELL_LAUNCH_SPORANGIUM:
+            return mon_explode_dam(MONS_CAUSTIC_SPORANGIUM, 1);
 
         // This is the per-turn *sticky flame* damage against the player.
         // The spell has no impact damage and otherwise uses different numbers
@@ -479,6 +482,8 @@ static colour_t _spell_colour(spell_type spell)
             return LIGHTCYAN;
         case SPELL_BECKONING_GALE:
             return LIGHTGRAY;
+        case SPELL_LAUNCH_SPORANGIUM:
+            return YELLOW;
         default:
             break;
     }
@@ -540,7 +545,7 @@ static string _effect_string(spell_type spell, const monster_info *mon_owner,
     if (spell == SPELL_BRAIN_BITE)
         return "4-8*"; // >_>
 
-    if (spell == SPELL_DRAINING_GAZE)
+    if (spell == SPELL_ANTIMAGIC_GAZE)
         return make_stringf("0-%d MP", pow / 8); // >_> >_>
 
     if (spell == SPELL_WIND_BLAST)
@@ -767,7 +772,7 @@ static void _write_book(const spellbook_contents &book,
         tiles.json_write_string("title", dith_marker + spell_title(spell));
         tiles.json_write_int("colour", _spell_colour(spell, source_item));
         tiles.json_write_name("tile");
-        tiles.write_tileidx(tileidx_spell(spell));
+        tiles.json_write_int(tileidx_spell(spell));
 
         // don't crash if we have more spells than letters.
         auto entry = find_if(spell_map.begin(), spell_map.end(),

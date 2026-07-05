@@ -536,6 +536,27 @@ mystic_chasm5
 mystic_chasm6
 mystic_chasm7
 
+%weight 14
+necro_squares00 FLOOR_NECRO_SQUARES
+necro_squares01
+necro_squares02
+necro_squares03
+%weight 6
+necro_squares04
+necro_squares05
+necro_squares06
+necro_squares07
+%weight 4
+necro_squares08
+necro_squares09
+%weight 2
+necro_squares10
+necro_squares11
+necro_squares12
+necro_squares13
+necro_squares14
+necro_squares15
+
 %sdir dngn/floor/grass
 %weight 12
 grass0 FLOOR_GRASS
@@ -638,10 +659,14 @@ floor_nerves5
 floor_nerves6
 
 %variation FLOOR_NERVES blue
-%hue 0 240
-%hue 15 255
-%hue 17 257
-%hue 18 258
+%hue 0 225
+%hue 15 218
+%hue 17 219
+%hue 18 215
+%lum 0 3
+%lum 15 3
+%lum 17 3
+%lum 18 3
 %repeat FLOOR_NERVES FLOOR_NERVES_BLUE
 %resetcol
 
@@ -940,29 +965,26 @@ gauntlet2
 gauntlet3
 
 %weight 10
-%domino 0
 crypt_domino_1a FLOOR_CRYPT
 %weight 2
 crypt_domino_1b
+%domino FLOOR_CRYPT 1
+crypt_domino_2a FLOOR_CRYPT_B
+%domino FLOOR_CRYPT 2
+crypt_domino_3a FLOOR_CRYPT_C
+%domino FLOOR_CRYPT 3
 %weight 10
-%domino 1
-crypt_domino_2a
-%domino 2
-crypt_domino_3a
-%domino 3
-crypt_domino_4a
+crypt_domino_4a FLOOR_CRYPT_D
 %weight 2
 crypt_domino_4b
-%weight 10
-%domino 4
-crypt_domino_5a
-%domino 5
-crypt_domino_6a
-%domino 6
-crypt_domino_7a
-%domino 7
-crypt_domino_8a
-%domino 0
+%domino FLOOR_CRYPT 4
+crypt_domino_5a FLOOR_CRYPT_E
+%domino FLOOR_CRYPT 5
+crypt_domino_6a FLOOR_CRYPT_F
+%domino FLOOR_CRYPT 6
+crypt_domino_7a FLOOR_CRYPT_G
+%domino FLOOR_CRYPT 7
+crypt_domino_8a FLOOR_CRYPT_H
 
 zot_diamonds0 FLOOR_ZOT_DIAMONDS
 zot_diamonds1
@@ -1114,6 +1136,15 @@ demonic_red9
 %resetcol
 
 %weight 10
+swirlstone0 FLOOR_SWIRLSTONE
+swirlstone1
+swirlstone2
+swirlstone3
+swirlstone4
+swirlstone5
+swirlstone6
+swirlstone7
+
 green_bones01 FLOOR_GREEN_BONES
 green_bones02
 green_bones03
@@ -1140,6 +1171,36 @@ necropolis_grass_1 FLOOR_NECROPOLIS_GRASS
 necropolis_grass_2
 necropolis_grass_3
 necropolis_grass_4
+
+%weight 24
+floor_gulch0 FLOOR_GULCH
+floor_gulch1
+floor_gulch2
+floor_gulch3
+%weight 4
+floor_gulch4
+floor_gulch5
+%weight 3
+floor_gulch6
+%weight 2
+floor_gulch7
+floor_gulch8
+%weight 1
+floor_gulch9
+
+%weight 7
+floor_gulch_trash0 FLOOR_GULCH_TRASH
+floor_gulch_trash1
+floor_gulch_trash2
+%weight 3
+floor_gulch_trash3
+floor_gulch_trash4
+floor_gulch_trash5
+%weight 2
+floor_gulch_trash6
+floor_gulch_trash7
+
+floor_gulch_catalyst FLOOR_GULCH_CATALYST
 
 studio0 FLOOR_STUDIO
 studio1
@@ -1194,6 +1255,7 @@ endless_salt3
 %sdir dngn/floor
 ## from here on multiple tile definitions are CHANGEABLE, i.e. they may
 ## change from turn to turn
+%weight 1
 lava00 DNGN_LAVA
 lava01
 lava02
@@ -1246,14 +1308,20 @@ shallow_water DNGN_SHALLOW_WATER
 shallow_water2
 shallow_water_disturbance DNGN_SHALLOW_WATER_DISTURBANCE
 shallow_water_disturbance2
+%variation DNGN_DEEP_WATER green
+%variation DNGN_DEEP_WATER lightgreen
 %weight 2
 deep_water_murky DNGN_DEEP_WATER_MURKY
 %weight 1
 deep_water_murky2
+%variation DNGN_SHALLOW_WATER green
+%variation DNGN_SHALLOW_WATER lightgreen
 %weight 3
 shallow_water_murky DNGN_SHALLOW_WATER_MURKY
 %weight 1
 shallow_water_murky2
+%variation DNGN_SHALLOW_WATER_DISTURBANCE green
+%variation DNGN_SHALLOW_WATER_DISTURBANCE lightgreen
 shallow_water_murky_disturbance DNGN_SHALLOW_WATER_MURKY_DISTURBANCE
 shallow_water_murky_disturbance2
 %weight 120
@@ -1277,6 +1345,12 @@ starwater_11
 
 toxic_bog1 DNGN_TOXIC_BOG
 toxic_bog2
+toxic_bog3
+toxic_bog4
+toxic_bog5
+toxic_bog6
+toxic_bog7
+toxic_bog8
 
 grey_dirt_bb SHORE_N
 grey_dirt_bl SHORE_W
@@ -1293,6 +1367,8 @@ shallow_bord_bl DNGN_WAVE_SW
 shallow_bord_lft DNGN_WAVE_W
 shallow_bord_tl DNGN_WAVE_NW
 
+%variation DNGN_WAVE_N green
+%variation DNGN_WAVE_N lightgreen
 murky_bord_top MURKY_WAVE_N
 murky_bord_tr MURKY_WAVE_NE
 murky_bord_rgt MURKY_WAVE_E

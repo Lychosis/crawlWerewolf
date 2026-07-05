@@ -314,8 +314,8 @@ function choose_mset_3(e)
     e.kmons("1 = jelly w:15 / endoplasm / slime creature w:30 /\
                glass eye w:2 / golden eye w:5 / void ooze w:2 /\
                eye of devastation w:5 / shining eye w:5 / acid blob w:5 /\
-               rockslime / azure jelly w:5 / great orb of eyes w:5 /\
-               glowing orange brain w:2")
+               rockslime / star jelly w:5 / azure jelly w:5 /\
+               great orb of eyes w:5 / glowing orange brain w:2")
 -- Snake
   elseif rnd < 14 then
     e.kmons("1 = ball python / adder / water moccasin / naga /\
@@ -385,8 +385,8 @@ function choose_mset_3(e)
 -- Dragon
   elseif rnd < 81 then
     e.kmons("1 = swamp drake / rime drake / acid dragon / steam dragon /\
-               death drake / swamp dragon / fire dragon / ice dragon / wyvern /\
-               hydra")
+                 death drake w:5 / swamp dragon / fire dragon /\
+                 ice dragon / wyvern / hydra / mongrel wurm w:5")
 -- Ranged
   elseif rnd < 83 then
     e.kmons("1 = centaur / yaktaur / cyclops / centaur warrior w:6 /\
@@ -443,11 +443,11 @@ function choose_mset_4(e)
 local rnd = crawl.random2(142)
 -- Slime
   if rnd < 9 then
-    e.kmons("1 = jelly w:5 / slime creature w:30 /\
-               glass eye w:2 / golden eye w:4 / void ooze w:2 /\
+    e.kmons("1 = jelly w:5 / slime creature w:25 / colossal amoeba w:5 /\
+               glass eye w:2 / golden eye w:4 / void ooze w:4 / slymdra w:4 /\
                eye of devastation w:5 / shining eye w:4 / acid blob /\
-               rockslime / azure jelly / great orb of eyes w:4 /\
-               glowing orange brain w:2")
+               rockslime / azure jelly / star jelly / great orb of eyes w:4 /\
+               morphogenic ooze w:2 / eye of draining w:2")
 -- Snake
   elseif rnd < 14 then
     e.kmons("1 = anaconda / mana viper / shock serpent / naga mage /\
@@ -457,7 +457,8 @@ local rnd = crawl.random2(142)
 -- Lair
   elseif rnd < 19 then
     e.kmons("1 = caustic shrike / hellephant / spriggan druid / skyshark /\
-                 torpor snail / hydra / catoblepas / dire elephant")
+                 torpor snail / hydra / catoblepas / dire elephant /\
+                 sewage sovereign w:5")
 -- Spider
   elseif rnd < 26 then
     e.kmons("1 = place:Spider:$ w:70 / ghost moth w:5 / broodmother /\
@@ -475,7 +476,7 @@ local rnd = crawl.random2(142)
 -- "Forest"
   elseif rnd < 47 then
     e.kmons("1 = caustic shrike / dire elephant / thorn hunter / eleionoma /\
-                 satyr / alderking w:3 / spriggan defender /\
+                 satyr / fungal shambler w:3 / alderking w:3 / spriggan defender /\
                  spriggan air mage / spriggan druid w:3 / spriggan berserker")
 -- Shoals
   elseif rnd < 52 then
@@ -525,9 +526,9 @@ local rnd = crawl.random2(142)
 -- Dragon
   elseif rnd < 90 then
     e.kmons("1 = swamp drake / rime drake / acid dragon / steam dragon /\
-               death drake / swamp dragon / fire dragon / ice dragon /\
-               shadow dragon / iron dragon / quicksilver dragon /\
-               golden dragon / wyrmhole / wyvern / hydra")
+                 death drake / swamp dragon / fire dragon / ice dragon /\
+                 shadow dragon / iron dragon / quicksilver dragon /\
+                 golden dragon / wyrmhole / wyvern / hydra / mongrel wurm")
 -- Ranged
   elseif rnd < 93 then
     e.kmons("1 = Vashnia, centaur / yaktaur / cyclops / centaur warrior /\
@@ -766,6 +767,7 @@ KITEM:    F = demon whip mundane pre_id plus:5, \
               giant spiked club mundane pre_id plus:5
 KITEM:    G = dagger mundane pre_id plus:5, \
               rapier mundane pre_id plus:5, \
+              athame mundane pre_id plus:5, \
               quick blade mundane pre_id plus:5
 KITEM:    H = demon blade mundane pre_id plus:5, \
               double sword mundane pre_id plus:5, \
@@ -821,7 +823,7 @@ KITEM:    T = storm_bow pre_id, \
               devastator pre_id, \
               firestarter pre_id
 KITEM:    S = quill talisman, inkwell talisman, lupine talisman, \
-              blade talisman, serpent talisman, spider talisman, \
+              eel talisman, serpent talisman, spider talisman, \
               wellspring talisman, fortress talisman
 KFEAT:    ^ = granite_statue
 KFEAT:    & = granite_statue

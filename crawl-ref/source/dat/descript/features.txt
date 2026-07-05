@@ -38,8 +38,8 @@ surroundings.
 %%%%
 A white marble altar of Elyvilon
 
-An altar to Elyvilon the Healer, made from purest white marble and topped by a
-sculpture of the Chalice of Purification.
+An altar to Elyvilon the Healer, made from invigorated white marble and topped
+by a sculpture of the Chalice of Purification.
 %%%%
 A blossoming altar of Fedhas
 
@@ -228,12 +228,12 @@ walls.
 %%%%
 A slime covered rock wall
 
-A rock wall coated with bright green slime. It is acidic to the touch; just
-standing near it is enough to cause temporary corrosion.
+A rock wall coated with acidic green slime; just standing near it is enough to
+cause temporary corrosion.
 %%%%
 A metal wall
 
-A wall of bluish-grey metal. As every dungeon electrician knows, it will ground
+A wall of shiny grey metal. As every dungeon electrician knows, it will ground
 even magical bolts of lightning.
 %%%%
 A rock wall
@@ -276,6 +276,38 @@ A metal staircase leading up
 A staircase leading up from the grand vaults containing the silver rune of Zot,
 whose wealth attracts the most powerful champions from across the Dungeon to its
 defence.
+%%%%
+A slimy stone staircase leading down
+
+A stone staircase leading further down.
+
+{{
+    if you.god() == "Jiyva" then
+        return "It is slick with slippery slime, but that is no obstacle for one " ..
+               "such as yourself who has embraced the way of all slime."
+    else
+        return "It is slick with slippery slime which will make it impossible " ..
+               "for you to climb back up again until the power ruling this place " ..
+               "is destroyed (or you choose to join it). However, being coated in " ..
+               "this slime will greatly increase your HP and MP regenaration for " ..
+               "short while afterward."
+    end
+}}
+%%%%
+A slimy stone staircase leading up
+
+A stone staircase leading back up.
+
+{{
+    if you.god() == "Jiyva" then
+        return "It is slick with slippery slime, but that is no obstacle for one " ..
+               "such as yourself who has embraced the way of all slime."
+    else
+        return "It is slick with slippery slime, making it impossible for you to " ..
+               "climb until the power ruling this place is destroyed (or you choose " ..
+               "to join it)."
+    end
+}}
 %%%%
 A tree
 
@@ -446,6 +478,22 @@ A statue of an orb of entropy
 
 A statue of a terrifying globe of profound nothingness, said to dwell within the
 Realm of Zot.
+%%%%
+A patch of mould
+
+A dense carpet of colourful mould, rustling with fecundity. The towering fungi
+which sprout from it can grow back in the blink of an eye, no matter how many
+times they are cut down.
+%%%%
+a purified mutation catalyst
+
+An experimental arcane still, brewing some incomplete- if refined- mutagenic
+serum. Breaking this open will bathe you in mystic mists, imparting upon you one
+beneficial mutation (excluding those that could restrict equipment slots).
+%%%%
+an empty mutation catalyst
+
+A complex arcane still, cracked open and fully emptied of its contents.
 %%%%
 ########################################################################
 ### Branch entrances and exits
@@ -817,9 +865,17 @@ will avoid stepping on it.
 %%%%
 A dispersal trap
 
-Anyone stepping on this trap will translocate themself and anyone else in view
+Anyone stepping on this trap will translocate themselves and anyone else in view
 to a new location nearby. Hostile monsters may trigger this trap, but your
 allies will avoid stepping on it.
+
+After triggering, it cannot be triggered again for several turns.
+%%%%
+A dispersal trap (recharging)
+
+[[A dispersal trap]]
+
+It is currently recharging and will become active again in a short while.
 %%%%
 A harlequin's trap
 
@@ -942,6 +998,11 @@ A salt-encrusted arch, covered with carved entreaties to the good gods to
 contain the evils sealed therein. Whatever protections this arch once offered
 have finally succumbed to the ravages of time, and a bitter breeze pours forth
 from the distant land beyond.
+%%%%
+A mutagenic drain
+
+A passage leading to a gutter gulch, gradually rusting away. Entering it will
+inflict three temporary mutations upon you, or decompose you if you're undead.
 %%%%
 A magical portal
 
@@ -1325,6 +1386,27 @@ A set of bottled spirits
 A mix of various alcoholic drinks with worn-down labels. Unfortunately, the
 preservative magic sealing each bottle makes it impossible to sample from them
 without smashing their bottles open.
+%%%%
+A djembe set
+
+A drum ensemble whose rhythm serves as peaceful recreation here in the depths of
+the earth.
+%%%%
+A caliginous standard
+
+A murky flag of dark conquest shimmering with vile energies, planted in the name
+of some grand despoiling crusade.
+%%%%
+a skull pike
+
+Bones are a common sight in the Dungeon, but skulls left impaled in a shrike's
+manner on display send a more deliberate message to trespassers: the pike has
+room for one more skull, and whoever set it up is happy to help relieve its
+owner of theirs.
+%%%%
+An assortment of trash
+
+A scattered mess of fragmented, crumbling garbage, caked in ashes and dirt.
 %%%%
 # Graveyards, Crypt, Necropolis.
 A mourning vase

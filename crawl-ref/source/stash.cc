@@ -236,40 +236,28 @@ static bool _grid_is_interesting(const coord_def& pos)
         return true;
     }
 
-    const auto trap = get_trap_type(pos);
-    if (trap == TRAP_UNASSIGNED)
+    if (!feat_is_trap(feat))
         return false;
 
     // Certain traps we want to put in stashes, since they help navigate
     // within or across levels, or can be used tactically (alarm), or might
     // release goodies (plate).
-    return trap == TRAP_PLATE
-        || trap == TRAP_DISPERSAL
-        || trap == TRAP_TELEPORT
-        || trap == TRAP_TELEPORT_PERMANENT
-        || trap == TRAP_GOLUBRIA
-        || trap == TRAP_ALARM
-        || trap == TRAP_SHAFT;
-}
-
-bool Stash::unmark_trapping_nets()
-{
-    bool changed = false;
-    for (auto &item : items)
-        if (item_is_stationary_net(item))
-            item.net_placed = false, changed = true;
-    return changed;
+    return feat == DNGN_TRAP_PLATE
+        || feat == DNGN_TRAP_DISPERSAL
+        || feat == DNGN_TRAP_TELEPORT
+        || feat == DNGN_TRAP_TELEPORT_PERMANENT
+        || feat == DNGN_PASSAGE_OF_GOLUBRIA
+        || feat == DNGN_TRAP_ALARM
+        || feat == DNGN_TRAP_SHAFT;
 }
 
 void Stash::update()
 {
     feat = DNGN_FLOOR;
-    trap = TRAP_UNASSIGNED;
     feat_desc = "";
     if (_grid_is_interesting(pos))
     {
         feat = env.grid(pos);
-        trap = get_trap_type(pos);
         feat_desc = feature_description_at(pos, false, DESC_A);
     }
 
@@ -404,14 +392,13 @@ vector<stash_search_result> Stash::matches_search(
     if (feat != DNGN_FLOOR)
     {
         const string fdesc = feature_description();
-        if (!fdesc.empty() && search.matches(prefix + " " + fdesc))
+        if (!fdesc.empty() && search.matches(prefix + " " + fdesc + " feature"))
         {
             stash_search_result res;
             res.match_type = MATCH_FEATURE;
             res.match = fdesc;
             res.primary_sort = fdesc;
             res.feat = feat;
-            res.trap = trap;
             results.push_back(res);
         }
     }
@@ -535,7 +522,6 @@ void Stash::save(writer& outf) const
     marshallByte(outf, pos.y);
 
     marshallByte(outf, feat);
-    marshallByte(outf, trap);
 
     marshallString(outf, feat_desc);
 
@@ -556,7 +542,11 @@ void Stash::load(reader& inf)
     pos.y = unmarshallByte(inf);
 
     feat =  static_cast<dungeon_feature_type>(unmarshallUByte(inf));
-    trap =  static_cast<trap_type>(unmarshallUByte(inf));
+
+#if TAG_MAJOR_VERSION == 34
+    if (inf.getMinorVersion() < TAG_MINOR_NO_TRAP_DEF)
+        unmarshallUByte(inf);
+#endif
     feat_desc = unmarshallString(inf);
 
     uint8_t flags = unmarshallUByte(inf);
@@ -767,14 +757,6 @@ bool LevelStashes::update_stash(const coord_def& c)
     if (s->empty())
         kill_stash(*s);
     return true;
-}
-
-bool LevelStashes::unmark_trapping_nets(const coord_def &c)
-{
-    if (Stash *s = find_stash(c))
-        return s->unmark_trapping_nets();
-    else
-        return false;
 }
 
 void LevelStashes::move_stash(const coord_def& from, const coord_def& to)
@@ -1006,14 +988,6 @@ void StashTracker::move_stash(const coord_def& from, const coord_def& to)
 {
     if (LevelStashes *lev = find_current_level())
         lev->move_stash(from, to);
-}
-
-bool StashTracker::unmark_trapping_nets(const coord_def &c)
-{
-    if (LevelStashes *lev = find_current_level())
-        return lev->unmark_trapping_nets(c);
-    else
-        return false;
 }
 
 void StashTracker::remove_level(const level_id &place)
@@ -1268,6 +1242,21 @@ static bool _compare_by_name(const stash_search_result& lhs,
     }
 }
 
+// helper for search_stashes
+static bool _compare_by_type(const stash_search_result& lhs,
+                             const stash_search_result& rhs)
+{
+    if (lhs.match_type != rhs.match_type)
+        return lhs.match_type < rhs.match_type;
+    else if (lhs.match_type == MATCH_ITEM && rhs.match_type == MATCH_ITEM
+             && lhs.item.base_type != rhs.item.base_type)
+    {
+        return lhs.item.base_type < rhs.item.base_type;
+    }
+    else
+        return _compare_by_name(lhs, rhs);
+}
+
 static vector<stash_search_result> _inventory_search(const base_pattern &search)
 {
     vector<stash_search_result> results;
@@ -1315,7 +1304,7 @@ static vector<stash_search_result> _stash_filter_duplicates(vector<stash_search_
     out.reserve(in.size());
     // TODO: any problems doing this in place?
     // Everything gets resorted before display.
-    stable_sort(in.begin(), in.end(), _compare_by_name);
+    stable_sort(in.begin(), in.end(), _compare_by_type);
 
     for (const stash_search_result &res : in)
     {
@@ -1465,20 +1454,20 @@ void StashTracker::search_stashes(string search_term)
                                   _is_useless_result),
                         dedup_results.end());
 
-    bool sort_by_dist = true;
+    stash_sort_mode sort_mode = STASH_SORT_TYPE;
     bool filter_useless = true;
     bool default_execute = true;
     while (true)
     {
         bool again;
-        // Note that sort_by_dist and filter_useless can be modified by the
+        // Note that sort_mode and filter_useless can be modified by the
         // following call if requested by the user. Also, "results" will be
         // sorted by the call as appropriate:
         if (filter_useless)
         {
             // use the deduplicated results if we are filtering useless items
             again = display_search_results(dedup_results,
-                                           sort_by_dist,
+                                           sort_mode,
                                            filter_useless,
                                            default_execute,
                                            search,
@@ -1489,7 +1478,7 @@ void StashTracker::search_stashes(string search_term)
         else
         {
             again = display_search_results(results,
-                                           sort_by_dist,
+                                           sort_mode,
                                            filter_useless,
                                            default_execute,
                                            search,
@@ -1697,7 +1686,7 @@ bool StashSearchMenu::examine_index(int i)
 // Returns true to request redisplay if display method was toggled
 bool StashTracker::display_search_results(
     vector<stash_search_result> &results_in,
-    bool& sort_by_dist,
+    stash_sort_mode& sort_mode,
     bool& filter_useless,
     bool& default_execute,
     base_pattern* search,
@@ -1706,12 +1695,16 @@ bool StashTracker::display_search_results(
 {
     vector<stash_search_result> * results = &results_in;
 
-    if (sort_by_dist)
+    if (sort_mode == STASH_SORT_DIST)
         stable_sort(results->begin(), results->end(), _compare_by_distance);
-    else
+    else if (sort_mode == STASH_SORT_NAME)
         stable_sort(results->begin(), results->end(), _compare_by_name);
+    else if (sort_mode == STASH_SORT_TYPE)
+        stable_sort(results->begin(), results->end(), _compare_by_type);
 
-    StashSearchMenu stashmenu(sort_by_dist ? "dist" : "name",
+    StashSearchMenu stashmenu(sort_mode == STASH_SORT_DIST ? "dist"
+                              : sort_mode == STASH_SORT_TYPE ? "type"
+                                                             : "name",
                               filter_useless ? "hide" : "show");
     stashmenu.set_tag("stash");
     stashmenu.action_cycle = Menu::CYCLE_TOGGLE;
@@ -1727,7 +1720,7 @@ bool StashTracker::display_search_results(
     stashmenu.set_title(mtitle);
 
     bool need_here_subtitle = stashmenu.menu_action == Menu::ACT_EXECUTE
-                                                            && sort_by_dist;
+                                                        && sort_mode == STASH_SORT_DIST;
     bool need_there_subtitle = false;
     StashMenuEntry *first_hdr = nullptr;
 
@@ -1816,8 +1809,6 @@ bool StashTracker::display_search_results(
         }
         else if (res.shop)
             me->add_tile(tile_def(tileidx_shop(&res.shop->shop)));
-        else if (feat_is_trap(res.feat))
-            me->add_tile(tile_def(tileidx_trap(res.trap)));
         else if (feat_is_runed(res.feat))
         {
             // Handle large doors and huge gates
@@ -1860,7 +1851,10 @@ bool StashTracker::display_search_results(
     default_execute = stashmenu.menu_action == Menu::ACT_EXECUTE;
     if (stashmenu.request_toggle_sort_method)
     {
-        sort_by_dist = !sort_by_dist;
+        if (sort_mode < STASH_SORT_DIST)
+            sort_mode = static_cast<stash_sort_mode>(sort_mode + 1);
+        else
+            sort_mode = STASH_SORT_TYPE;
         return true;
     }
     if (stashmenu.request_toggle_filter_useless)

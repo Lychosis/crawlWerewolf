@@ -21,8 +21,10 @@
 #include "kill-dump-options-type.h"
 #include "lang-t.h"
 #include "level-gen-type.h"
+#include "longwalk-range-mode.h"
 #include "maybe-bool.h"
 #include "mon-dam-level-type.h"
+#include "mon-util.h"
 #include "mpr.h"
 #include "newgame-def.h"
 #include "pattern.h"
@@ -498,7 +500,7 @@ public:
     // Whether exclusions and exclusion radius are visible in the viewport.
     bool        always_show_exclusions;
 
-    int         autopickup_on; // can be -1, 0, or 1. XX refactor as enum
+    bool        autopickup_on;
     bool        autopickup_starting_ammo;
     bool        default_manual_training;
     bool        default_show_all_skills;
@@ -511,6 +513,9 @@ public:
     FixedBitVector<NUM_OBJECT_CLASSES> autopickups; // items to autopickup
     bool        auto_switch;     // switch melee&ranged weapons according to enemy range
     travel_open_doors_type travel_open_doors; // open doors while exploring
+    longwalk_range_mode longwalk_range; // Maximum distance type for longwalking.
+    int         longwalk_range_constant; // Distance used when longwalk_range is constant.
+    string      longwalk_range_option; // Raw longwalk_range string, parsed on set.
     bool        easy_unequip;    // allow auto-removing of armour / jewellery
     bool        equip_unequip;   // Make 'W' = 'T', and 'P' = 'R'.
     bool        jewellery_prompt; // Always prompt for slot when changing jewellery.
@@ -537,6 +542,8 @@ public:
                                                    // static spell targeters
     bool        always_use_static_ability_targeters; // whether to always use
                                                      // static ability targeters
+    bool        always_use_static_scroll_targeters; // whether to always use
+                                                    // static targets for scrolls
 
     int         colour[16];      // macro fg colours to other colours
     unsigned    background_colour; // select default background colour
@@ -545,6 +552,7 @@ public:
     msg_colour_type channels[NUM_MESSAGE_CHANNELS];  // msg channel colouring
     vector<string> use_animations_option;
     use_animations_type use_animations; // which animations to show
+    bool        alt_shatter_animation; // whether to use shockwave or screenshake
     bool        darken_beyond_range; // whether to darken squares out of range
     bool        show_blood; // whether to show blood or not
     int         food_snacking_frequency; // how often walking on food makes one eat
@@ -603,6 +611,9 @@ public:
                                              // targeter for
     unordered_set<int> force_ability_targeter; // ability types to always use a
                                                // targeter for
+    unordered_set<int> force_scroll_targeter; // scroll types to always use a
+                                              // targeter for
+    bool        show_invis_targeter;  // Whether to show a targeter for going invisible
 
     bool        flush_input[NUM_FLUSH_REASONS]; // when to flush input buff
 
@@ -644,6 +655,12 @@ public:
     FixedVector<char, NUM_POTIONS> potion_shortcuts;
     FixedVector<char, NUM_SCROLLS> scroll_shortcuts;
     FixedVector<char, NUM_WANDS + NUM_MISCELLANY + NUM_BAUBLES> evokable_shortcuts;
+
+    vector<string> monster_alert_option;
+    FixedVector<bool, NUM_MONSTERS> monster_alert;    // Whether to force_more on first seeing each monster type
+    bool monster_alert_uniques;                       // Whether to force_more on first seeing any unique
+    bool monster_alert_unusual;                       // Whether to force_more on first seeing any monster it unusual items
+    mon_threat_level_type monster_alert_min_threat;   // What is the minimum threat level to warn on?
 
     bool        pickup_thrown;  // Pickup thrown missiles
     int         travel_delay;   // How long to pause between travel moves
@@ -811,6 +828,9 @@ public:
 
     bool        rest_wait_ancestor;// Stop resting only if the ancestor's HP
                                    // is fully restored.
+
+    bool        rest_wait_ignore_mp; // Completely disregard depleted MP when
+                                     // resting
 
     int         rest_wait_percent; // Stop resting after restoring this
                                    // fraction of HP or MP
@@ -985,6 +1005,7 @@ private:
     void set_fire_order_spell(const string &s, bool append, bool remove);
     void set_fire_order_ability(const string &s, bool append, bool remove);
     void set_menu_sort(const string &field);
+    void set_longwalk_range(const string &field);
     void update_enemy_hp_colour();
     void new_dump_fields(const string &text, bool add = true,
                          bool prepend = false);
@@ -1009,9 +1030,12 @@ private:
     void remove_force_spell_targeter(const string &s);
     void add_force_ability_targeter(const string &s, bool prepend);
     void remove_force_ability_targeter(const string &s);
+    void add_force_scroll_targeter(const string &s, bool prepend);
+    void remove_force_scroll_targeter(const string &s);
 
     void update_consumable_shortcuts();
     void process_unusual_items();
+    void update_monster_alerts();
 
     static const string interrupt_prefix;
 

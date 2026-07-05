@@ -30,8 +30,6 @@ enum class invprompt_flag
     unthings_ok        = 1 << 2,
     /// Don't start in the '?' list InvMenu.
     manual_list        = 1 << 3,
-    /// Only allow exiting with escape, not also space.
-    escape_only        = 1 << 4,
 };
 DEF_BITFIELD(invent_prompt_flags, invprompt_flag);
 
@@ -132,6 +130,8 @@ public:
     void set_preselect(const vector<SelItem> *pre);
     void set_type(menu_type t);
 
+    void hover_item(const item_def* item);
+
     // Sets function to annotate the title with meta-information if needed.
     // If you set this, do so *before* calling set_title, or it won't take
     // effect.
@@ -206,9 +206,7 @@ int prompt_invent_item(const char *prompt,
                        int type_expect,
                        operation_types oper = OPER_ANY,
                        invent_prompt_flags flags = invprompt_flag::none,
-                       const char other_valid_char = '\0',
-                       const char *view_all_prompt = nullptr,
-                       int *type_out = nullptr);
+                       const char other_valid_char = '\0');
 
 vector<SelItem> select_items(
                         const vector<const item_def*> &items,
@@ -240,6 +238,6 @@ void list_charging_evokers(FixedVector<item_def*, NUM_MISCELLANY> &evokers);
 bool item_is_wieldable(const item_def &item);
 bool needs_notele_warning(const item_def &item, operation_types oper);
 bool needs_handle_warning(const item_def &item, operation_types oper,
-                          bool &penance, bool check_inscriptions = true);
+                          bool check_inscriptions = true);
 item_def *digit_inscription_to_item(char digit, operation_types oper);
 operation_types generalize_oper(operation_types oper);

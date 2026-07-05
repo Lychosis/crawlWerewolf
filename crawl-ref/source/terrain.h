@@ -37,6 +37,7 @@ bool cell_is_solid(const coord_def &c);
 bool cell_is_invalid_target(const coord_def &c);
 bool cell_is_runed(const coord_def &p);
 
+bool feat_is_floor(dungeon_feature_type feat);
 bool feat_is_malign_gateway_suitable(dungeon_feature_type feat);
 bool feat_is_wall(dungeon_feature_type feat);
 bool feat_is_opaque(dungeon_feature_type feat);
@@ -46,6 +47,7 @@ bool feat_has_dry_floor(dungeon_feature_type feat);
 bool feat_is_door(dungeon_feature_type feat);
 bool feat_is_closed_door(dungeon_feature_type feat);
 bool feat_is_open_door(dungeon_feature_type feat);
+bool feat_is_clear_door(dungeon_feature_type feat);
 bool feat_is_sealed(dungeon_feature_type feat);
 bool feat_is_runed(dungeon_feature_type feat);
 bool feat_is_statuelike(dungeon_feature_type feat);
@@ -126,10 +128,9 @@ void dungeon_terrain_changed(const coord_def &pos,
                              dungeon_feature_type feat = DNGN_UNSEEN,
                              bool preserve_features = false,
                              bool preserve_items = false,
-                             bool temporary = false,
                              bool wizmode = false,
-                             unsigned short flv_nfeat = 0,
-                             unsigned short flv_nfeat_idx = 0);
+                             bool preserve_mimics = false);
+void dungeon_change_base_terrain(coord_def pos, dungeon_feature_type nfeat);
 
 // Moves everything on the level at src to dst.
 void dgn_move_entities_at(coord_def src,
@@ -163,11 +164,13 @@ void dgn_check_terrain_items(const coord_def &pos, bool preserve_items,
                              bool keep_in_sight = false);
 
 dungeon_feature_type orig_terrain(coord_def pos);
+dungeon_feature_type orig_terrain_no_mimic(coord_def pos);
 void temp_change_terrain(coord_def pos, dungeon_feature_type newfeat, int dur,
                          terrain_change_type type = TERRAIN_CHANGE_GENERIC,
                          int mid = MID_NOBODY);
 bool revert_terrain_change(coord_def pos,
-                           terrain_change_type ctype = NUM_TERRAIN_CHANGE_TYPES);
+                           terrain_change_type ctype = NUM_TERRAIN_CHANGE_TYPES,
+                           bool expire = true);
 bool is_temp_terrain(coord_def pos);
 
 bool plant_forbidden_at(const coord_def &p, bool connectivity_only = false);
@@ -189,3 +192,5 @@ void frigid_walls_damage(int delay);
 
 void descent_crumble_stairs();
 void descent_reveal_stairs();
+
+dungeon_feature_type feat_at_no_mimic(coord_def pos);

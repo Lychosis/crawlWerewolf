@@ -18,6 +18,10 @@
 #include "spl-util.h"
 #include "ui.h"
 
+#ifdef USE_TILE_WEB
+    #include "tileweb.h"
+#endif
+
 static void _adjust_spell();
 static void _adjust_ability();
 
@@ -142,11 +146,7 @@ static void _adjust_spell()
         // without spells from this menu.
         // XX this does not really work well with new menu code
         if (keyin == '?' || keyin == '*')
-        {
             keyin = list_spells(true, false, false, false, "adjust it to");
-            if (keyin < 'a' || keyin > 'Z')
-                continue;
-        }
     }
 
     const int input_2 = keyin;
@@ -292,7 +292,7 @@ void swap_inv_slots(item_def& to_adjust, int to_slot, bool verbose)
     }
 
     if (new_quiver >= 0)
-        you.quiver_action.replace(quiver::slot_to_action(new_quiver, true));
+        you.quiver_action.replace(quiver::slot_to_action(new_quiver));
     you.m_quiver_history.maybe_swap(from_slot, to_slot);
 
     if (verbose)
@@ -329,9 +329,21 @@ void swap_inv_slots(item_def& to_adjust, int to_slot, bool verbose)
         you.last_unequip = to_slot;
     else if (you.last_unequip == to_slot)
         you.last_unequip = from_slot;
+    if (you.last_fired == from_slot)
+        you.last_fired = to_slot;
+    if (you.last_fired == to_slot)
+        you.last_fired = from_slot;
 
     if (you.cur_talisman == from_slot)
         you.cur_talisman = to_slot;
     else if (you.cur_talisman == to_slot)
         you.cur_talisman = from_slot;
+
+// Mark the swapped items as dirty so webtiles will update them properly, even
+// in the case that they otherwise appear identical (eg: artefacts of the same
+// base type and plus).
+#ifdef USE_TILE_WEB
+    tiles.invalidate_item(from_slot);
+    tiles.invalidate_item(to_slot);
+#endif
 }

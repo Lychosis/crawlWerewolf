@@ -114,6 +114,7 @@ LOCAL_SRC_FILES := $(SDL_PATH)/src/main/android/SDL_android_main.c \
     $(CRAWL_PATH)/json.cc \
     $(CRAWL_PATH)/kills.cc \
     $(CRAWL_PATH)/known-items.cc \
+    $(CRAWL_PATH)/l-autofight.cc \
     $(CRAWL_PATH)/l-colour.cc \
     $(CRAWL_PATH)/l-crawl.cc \
     $(CRAWL_PATH)/l-debug.cc \
@@ -175,6 +176,7 @@ LOCAL_SRC_FILES := $(SDL_PATH)/src/main/android/SDL_android_main.c \
     $(CRAWL_PATH)/mon-explode.cc \
     $(CRAWL_PATH)/mon-gear.cc \
     $(CRAWL_PATH)/mon-info.cc \
+    $(CRAWL_PATH)/mon-lurk.cc \
     $(CRAWL_PATH)/mon-movetarget.cc \
     $(CRAWL_PATH)/mon-pathfind.cc \
     $(CRAWL_PATH)/mon-pick.cc \
@@ -205,11 +207,13 @@ LOCAL_SRC_FILES := $(SDL_PATH)/src/main/android/SDL_android_main.c \
     $(CRAWL_PATH)/pattern.cc \
     $(CRAWL_PATH)/pcg.cc \
     $(CRAWL_PATH)/perlin.cc \
+    $(CRAWL_PATH)/piety-info.cc \
     $(CRAWL_PATH)/place-info.cc \
     $(CRAWL_PATH)/place.cc \
     $(CRAWL_PATH)/playable.cc \
     $(CRAWL_PATH)/player-act.cc \
     $(CRAWL_PATH)/player-equip.cc \
+    $(CRAWL_PATH)/player-notices.cc \
     $(CRAWL_PATH)/player-reacts.cc \
     $(CRAWL_PATH)/player-stats.cc \
     $(CRAWL_PATH)/player.cc \

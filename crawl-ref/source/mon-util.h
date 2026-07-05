@@ -123,7 +123,7 @@ struct monsterentry
 {
     short mc;            // monster number
 
-    char basechar;
+    char32_t basechar;
     colour_t colour;
     const char *name;
 
@@ -191,6 +191,8 @@ static inline int get_resist(resists_t all, mon_resist_flags res)
     return v;
 }
 
+constexpr int SLYMDRA_HP_PER_HEAD = 27;
+
 dungeon_feature_type preferred_feature_type(monster_type mt);
 
 monsterentry *get_monster_data(monster_type mc) IMMUTABLE;
@@ -249,7 +251,6 @@ bool mons_invuln_will(const monster& mon);
 mon_attack_def mons_attack_spec(const monster& mon, int attk_number, bool base_flavour = true);
 string mon_attack_name(attack_type attack, bool with_object = true);
 string mon_attack_name_short(attack_type attack);
-bool is_plain_attack_type(attack_type attack);
 bool flavour_triggers_damageless(attack_flavour flavour);
 int flavour_damage(attack_flavour flavour, int HD, bool random = true);
 bool flavour_has_reach(attack_flavour flavour);
@@ -302,7 +303,7 @@ int mons_class_base_speed(monster_type mc);
 mon_energy_usage mons_class_energy(monster_type mc);
 mon_energy_usage mons_energy(const monster& mon);
 int mons_class_zombie_base_speed(monster_type zombie_base_mc, bool slow);
-int mons_base_speed(const monster& mon, bool known = false);
+int mons_base_speed(const monster& mon);
 
 bool monster_class_flies(monster_type mc);
 bool monster_inherently_flies(const monster &mons);
@@ -333,13 +334,13 @@ bool mons_class_can_use_stairs(monster_type mc);
 bool mons_class_can_use_transporter(monster_type mc);
 bool mons_can_use_stairs(const monster& mon,
                          dungeon_feature_type stair = DNGN_UNSEEN);
-void name_zombie(monster& mon, monster_type mc, const string &mon_name);
-void name_zombie(monster& mon, const monster& orig);
+void name_zombie_from_class(monster& mon, monster_type mc, const string& mon_name);
+void name_zombie_from_mon(monster& mon, const monster& orig);
 
 int mons_power(monster_type mc);
 
 char32_t mons_char(monster_type mc);
-char mons_base_char(monster_type mc);
+char32_t mons_base_char(monster_type mc);
 
 int mons_class_colour(monster_type mc);
 
@@ -357,14 +358,10 @@ void mons_pacify(monster& mon, mon_attitude_type att = ATT_GOOD_NEUTRAL,
 bool mons_should_fire(const bolt &beam, const targeting_tracer& tracer,
                       bool ignore_good_idea = false);
 
+bool mon_type_has_spells(const monster_type mon_type);
 bool mons_has_los_ability(monster_type mon_type);
-bool ms_ranged_spell(spell_type monspell, bool attack_only = false,
-                     bool ench_too = true);
-bool mons_has_ranged_spell(const monster& mon, bool attack_only = false,
-                           bool ench_too = true);
-bool mons_has_ranged_attack(const monster& mon);
+bool is_offensive_spell(spell_type spell, maybe_bool needs_lof = maybe_bool::maybe);
 bool _mons_has_smite_attack(const monster* mons);
-bool mons_can_attack(const monster& mon);
 
 gender_type mons_class_gender(monster_type mc);
 const char *mons_pronoun(monster_type mon_type, pronoun_type variant,
@@ -375,9 +372,6 @@ bool mons_atts_aligned(mon_attitude_type fr1, mon_attitude_type fr2);
 
 bool mons_att_wont_attack(mon_attitude_type fr);
 mon_attitude_type mons_attitude(const monster& m);
-
-bool mons_is_native_in_branch(const monster& mons,
-                              const branch_type branch = you.where_are_you);
 
 // Whether the monster is temporarily confused (class_too = false)
 // or confused at all (class_too = true; temporarily or by class).
@@ -422,12 +416,10 @@ bool mons_class_is_test(monster_type mc);
 bool mons_class_angered_by_attacks(monster_type mc);
 bool mons_is_active_ballisto(const monster& mon);
 bool mons_has_body(const monster& mon);
-bool mons_is_abyssal_only(monster_type mc);
 bool mons_is_unbreathing(monster_type mc);
 
 bool herd_monster(const monster& mon);
 
-int cheibriados_monster_player_speed_delta(const monster& mon);
 bool cheibriados_thinks_mons_is_fast(const monster& mon);
 bool mons_is_projectile(monster_type mc);
 bool mons_is_projectile(const monster& mon);
@@ -482,8 +474,9 @@ monster_type get_monster_by_name(string name, bool substring = false);
 
 string random_body_part_name(bool plural, int part_class);
 
-string do_mon_str_replacements(const string &msg, const monster& mons,
+string do_mon_str_replacements(const string& msg, const monster& mons,
                                int s_type = -1);
+string do_mon_name_replacements(const string& name);
 
 mon_body_shape get_mon_shape(const monster& mon);
 mon_body_shape get_mon_shape(const monster_type mc);
@@ -505,7 +498,6 @@ bool mons_can_traverse(const monster& mon, const coord_def& pos,
 mon_inv_type equip_slot_to_mslot(equipment_slot eq);
 mon_inv_type item_to_mslot(const item_def &item);
 
-bool player_or_mon_in_sanct(const monster& mons);
 bool mons_is_immotile(const monster& mons);
 
 int get_dist_to_nearest_monster();
@@ -521,8 +513,6 @@ mon_threat_level_type mons_threat_level(const monster &mon,
                                         bool real = false);
 
 bool mons_foe_is_marked(const monster& mons);
-
-bool mons_stores_tracking_data(const monster& mons);
 
 bool mons_is_player_shadow(const monster& mon);
 bool mons_is_wrath_avatar(const monster &mon);
@@ -581,7 +571,8 @@ int derived_undead_avg_hp(monster_type mtype, int hd, int scale = 10);
 
 int touch_of_beogh_hp_mult(const monster& mon);
 
-bool shoot_through_monster(const actor* agent, const monster& mon,bool do_message = false);
-bool shoot_through_monster(const actor* agent, const monster* mon, bool do_message = false);
-bool never_harm_monster(const actor* agent, const monster& mon, bool do_message = false);
-bool never_harm_monster(const actor* agent, const monster* mon, bool do_message = false);
+bool shoot_through_actor(const actor* agent, const actor* target, bool announce = false);
+bool could_harm(const actor* agent, const actor* target, bool announce_important = false,
+                                                         bool announce_mundane = false);
+bool could_harm_enemy(const actor* agent, const actor* target, bool announce_important = false,
+                                                               bool announce_mundane = false);

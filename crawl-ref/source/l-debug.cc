@@ -26,6 +26,7 @@
 #include "stairs.h"
 #include "state.h"
 #include "stringutil.h"
+#include "tile-env.h"
 #include "tileview.h"
 #include "unique-creature-list-type.h"
 #include "unwind.h"
@@ -103,6 +104,8 @@ LUAFN(debug_generate_level)
 {
     msg::suppress mx;
     env.map_knowledge.init(map_cell());
+    env.map_forgotten.reset();
+    tile_env.remembered_flavour.reset();
     los_changed();
     tile_init_default_flavour();
     tile_clear_flavour();
@@ -472,7 +475,7 @@ LUAFN(debug_check_moncasts)
     return 1;
 }
 
-const struct luaL_reg debug_dlib[] =
+const struct luaL_Reg debug_dlib[] =
 {
 { "goto_place", debug_goto_place },
 { "dungeon_setup", debug_dungeon_setup },

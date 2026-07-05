@@ -4,8 +4,8 @@
 
 #include "enum.h"
 #include "mon-info.h"
+#include "monster.h"
 #include "tag-version.h"
-#include "trap-type.h"
 
 #define MAP_MAGIC_MAPPED_FLAG   0x01
 #define MAP_SEEN_FLAG           0x02
@@ -14,9 +14,10 @@
 #define MAP_INVISIBLE_MONSTER   0x10
 #define MAP_DETECTED_ITEM       0x20
 #define MAP_VISIBLE_FLAG        0x40
+#define MAP_OLD_INVIS_MONSTER   0x80
 #define MAP_GRID_KNOWN (MAP_MAGIC_MAPPED_FLAG | MAP_SEEN_FLAG \
                         | MAP_DETECTED_MONSTER | MAP_INVISIBLE_MONSTER \
-                        | MAP_DETECTED_ITEM | MAP_VISIBLE_FLAG)
+                        | MAP_DETECTED_ITEM | MAP_VISIBLE_FLAG | MAP_OLD_INVIS_MONSTER)
 
 #define MAP_EMPHASIZE          0x100
 #define MAP_MORE_ITEMS         0x200
@@ -27,7 +28,7 @@
 #define MAP_ICY               0x8000
 
 /* these flags require more space to serialize: put infrequently used ones there */
-#define MAP_EXCLUDED_STAIRS  0x10000
+#define MAP_DOOR_CONNECT_1   0x10000
 #define MAP_BLOOD_WEST       0x20000
 #define MAP_BLOOD_NORTH      0x40000
 #define MAP_SANCTUARY_1      0x80000
@@ -41,6 +42,8 @@
 #define MAP_DISJUNCT       0X8000000
 #define MAP_BLASPHEMY     0X10000000
 #define MAP_BFB_CORPSE    0X20000000
+#define MAP_DOOR_CONNECT_2 0x40000000
+#define MAP_DOOR_CONNECT_3 0x80000000
 
 struct cloud_info
 {
@@ -73,8 +76,7 @@ struct cloud_info
     // for clouds with duration: decay/20, clamped to 0-3
     // for vortex clouds: the vortex phase
     uint8_t variety;
-    // TODO: should this be tileidx_t?
-    unsigned short tile;
+    tileidx_t tile;
     coord_def pos;
     killer_type killer;
 };
@@ -87,8 +89,7 @@ struct cloud_info
 struct map_cell
 {
     // TODO: in C++20 we can give these a default member initializer
-    map_cell() : _feat(DNGN_UNSEEN),
-                 _trap(TRAP_UNASSIGNED)
+    map_cell() : _feat(DNGN_UNSEEN)
     {
     }
 
@@ -109,7 +110,6 @@ struct map_cell
         flags = o.flags;
         _feat = o._feat;
         _feat_colour = o._feat_colour;
-        _trap = o._trap;
         _cloud = o._cloud ? make_unique<cloud_info>(*o._cloud) : nullptr;
         _item = o._item ? make_unique<item_def>(*o._item) : nullptr;
         _mons = o._mons ? make_unique<monster_info>(*o._mons) : nullptr;
@@ -127,7 +127,6 @@ struct map_cell
         flags = o.flags;
         _feat = o._feat;
         _feat_colour = o._feat_colour;
-        _trap = o._trap;
         _cloud = std::move(o._cloud);
         _item = std::move(o._item);
         _mons = std::move(o._mons);
@@ -155,7 +154,8 @@ struct map_cell
     // Clear prior to show update. Need to retain at least "seen" flag.
     void clear_data()
     {
-        const uint32_t f = flags & (MAP_SEEN_FLAG | MAP_CHANGED_FLAG);
+        const uint32_t f = flags & (MAP_SEEN_FLAG | MAP_CHANGED_FLAG
+                                    | MAP_VISIBLE_FLAG);
         clear();
         flags = f;
     }
@@ -173,12 +173,14 @@ struct map_cell
         return _feat_colour;
     }
 
-    void set_feature(dungeon_feature_type nfeat, unsigned colour = 0,
-                     trap_type tr = TRAP_UNASSIGNED)
+    void set_feature(dungeon_feature_type nfeat)
     {
         _feat = nfeat;
+    }
+
+    void set_feat_colour(colour_t colour = 0)
+    {
         _feat_colour = colour;
-        _trap = tr;
     }
 
     item_def* item() const
@@ -215,7 +217,7 @@ struct map_cell
         flags &= ~(MAP_DETECTED_ITEM | MAP_MORE_ITEMS);
     }
 
-    monster_type monster() const
+    monster_type mon_type() const
     {
         return _mons ? _mons->type : MONS_NO_MONSTER;
     }
@@ -236,9 +238,16 @@ struct map_cell
         return !!(flags & MAP_DETECTED_MONSTER);
     }
 
+    // An invisible monster which the player is unambiguously aware is currently here.
     bool invisible_monster() const
     {
         return !!(flags & MAP_INVISIBLE_MONSTER);
+    }
+
+    // The last-known location of an invisible monster that is no longer here.
+    bool old_invisible_monster() const
+    {
+        return !!(flags & MAP_OLD_INVIS_MONSTER);
     }
 
     void set_detected_monster(monster_type mons)
@@ -249,17 +258,28 @@ struct map_cell
         flags |= MAP_DETECTED_MONSTER;
     }
 
-    void set_invisible_monster()
+    void set_invisible_monster(const monster* mon)
     {
         clear_monster();
+        _mons = make_unique<monster_info>(mon);
+        _mons->mb.set(MB_INVISIBLE, false); // Avoid redundant invisibility descriptions.
         flags |= MAP_INVISIBLE_MONSTER;
+        _mons->mb.set(MB_KNOWN_INVIS);
+    }
+
+    void set_old_invisible_monster(const monster* mon)
+    {
+        _mons = make_unique<monster_info>(mon->type, mon->base_monster);
+        _mons->mb.set(MB_INVISIBLE, false); // Avoid redundant invisibility descriptions.
+        flags |= MAP_OLD_INVIS_MONSTER;
+        _mons->mb.set(MB_REMEMBERED_INVIS);
     }
 
     void clear_monster()
     {
         // TODO: internal callers are doing a bit of duplicate work here
         _mons.reset();
-        flags &= ~(MAP_DETECTED_MONSTER | MAP_INVISIBLE_MONSTER);
+        flags &= ~(MAP_DETECTED_MONSTER | MAP_INVISIBLE_MONSTER | MAP_OLD_INVIS_MONSTER);
     }
 
     cloud_type cloud() const
@@ -315,9 +335,9 @@ struct map_cell
         return !!(flags & MAP_MAGIC_MAPPED_FLAG);
     }
 
-    trap_type trap() const
+    bool feat_known() const
     {
-        return _trap;
+        return !!(flags & (MAP_MAGIC_MAPPED_FLAG | MAP_SEEN_FLAG));
     }
 
 #ifdef USE_TILE
@@ -332,13 +352,38 @@ struct map_cell
     }
 #endif
 
+    void set_door_connect(unsigned short door_connect)
+    {
+        uint32_t door_connect_flags = MAP_DOOR_CONNECT_1 | MAP_DOOR_CONNECT_2
+                                      | MAP_DOOR_CONNECT_3;
+        flags &= ~door_connect_flags;
+        ASSERT(door_connect < 7);
+        if (door_connect & 1)
+            flags |= MAP_DOOR_CONNECT_1;
+        if ((door_connect >> 1) & 1)
+            flags |= MAP_DOOR_CONNECT_2;
+        if ((door_connect >> 2) & 1)
+            flags |= MAP_DOOR_CONNECT_3;
+    }
+
+    unsigned short door_connect() const
+    {
+        unsigned short result = 0;
+        if (flags & MAP_DOOR_CONNECT_1)
+            result += 1;
+        if (flags & MAP_DOOR_CONNECT_2)
+            result += 2;
+        if (flags & MAP_DOOR_CONNECT_3)
+            result += 4;
+        return result;
+    }
+
 public:
     uint32_t flags = 0;   // Flags describing the mappedness of this square.
 private:
     // TODO: shrink enums, shrink/re-order cloud_info and inline it
     dungeon_feature_type _feat:8;
     colour_t _feat_colour = 0;
-    trap_type _trap:8;
     unique_ptr<cloud_info> _cloud;
     unique_ptr<item_def> _item;
     unique_ptr<monster_info> _mons;

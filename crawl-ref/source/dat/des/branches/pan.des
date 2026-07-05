@@ -86,7 +86,7 @@ function pan_lord_setup(_G, name)
     elseif name == "Lom Lobon" then
         _G.lfloorcol("lightgrey")
         _G.lrockcol("white")
-        _G.lfloortile("floor_rough_lightgray")
+        _G.lfloortile("floor_swirlstone")
         _G.lrocktile("wall_hall_white")
         _G.tile ("b = wall_crystal_bookcase")
         _G.tile ("c = stone_wall_shoals")
@@ -155,7 +155,7 @@ disco_choices = {
         end
     end,
     function (x, y, ballx, bally, turn, rand)
-        local angle = math.atan2(y - bally, x - ballx)
+        local angle = math.atan(y - bally, x - ballx)
         local segment = (math.floor(angle / (2 * math.pi) * (2 * #colours)) + 2 * #colours) % (2 * #colours)
         local index = (math.floor((segment + turn) / 2) % #colours) + 1
         if rand > 60 then
@@ -264,15 +264,15 @@ function pan_entry_vault_contents(e, glyph)
         e.kmons(glyph .. "1 = " .. tiertwo)
         e.kmons("2 = " .. tierthree)
         e.nsubst("2 = 2 = 22. / *:.")
-        e.nsubst("1 = 1:112 / *:.")
+        e.nsubst("1 = 1:1 / *:.")
     else
         e.subst("12 = .")
         e.kmons(glyph .. " = " .. tiertwo .. " / " ..
                 tierthree .. " / " .. tierthree)
     end
 
-    e.ftile(".+12O : floor_demonic_red / floor_demonic_blue / " ..
-                    "floor_demonic_green / floor_demonic_magenta")
+    e.ftile(".+12O$ : floor_demonic_red / floor_demonic_blue / " ..
+                     "floor_demonic_green / floor_demonic_magenta")
 end
 
 function pan_declare_demonic_rune(holy)
@@ -307,7 +307,7 @@ function demonic_rune_vault_is_decoy(e)
     return false
   end
 
-  local tag, tag2 = unpack(params)
+  local tag, tag2 = table.unpack(params)
   return tag ~= nil and string.find(tag, "lure")
 end
 
@@ -2450,7 +2450,7 @@ KMONS:  p = human / elf / dwarf ; nothing / kobold ; nothing / mummy / \
             revenant / tengu ; nothing / merfolk ; nothing / poltergeist / \
             felid / octopode ; nothing / djinni ; nothing / \
             gargoyle ; nothing / formicid ; nothing / vine stalker ; nothing / \
-            barachi ; nothing / gnoll ; nothing / armataur ; nothing / \
+            barachi ; nothing / gnoll ; nothing / centaur ; nothing / \
             oni ; nothing / goblin ; nothing
 NSUBST: t = 10:p / *:', b = 10:p / *:'
 KPROP:  p' = no_tele_into
@@ -3253,7 +3253,7 @@ ENDMAP
 ##################################
 NAME:   reaverb_pan_chaos_star
 TAGS:   extra transparent pandec
-KFEAT:  ^ = devourer's trap
+KFEAT:  ^ = trap_devourer
 MAP
         ...
  ....  ..x..  ....
@@ -3872,7 +3872,7 @@ SHUFFLE: Aai/Bbj/Cck/Ddl/Eem/Ffn/Ggo/Hhp, Ffn/Qqr/Qqr, Ggo/Sst/Sst
 SHUFFLE: Hhp/Uuv/Uuv
 SUBST:   ABCDFGHijklnop = x, abcdfgh = -, EQSU = @, emqrstuv = .
 SUBST:   I : x., J : x., K : x., L: x., M: x., N : x.
-KFEAT:   - = transit_pandemonium w:36 / permanent teleport trap w:1 / \
+KFEAT:   - = transit_pandemonium w:36 / trap_teleport_permanent w:1 / \
              exit_pandemonium w:1 / exit_through_abyss w:1
 MAP
     xxxAxxx
@@ -4176,7 +4176,7 @@ ENDMAP
 
 NAME:    regret_index_pan_divided_teeth
 TAGS:    transparent allow_dup extra pandec
-KFEAT:   ^ : alarm trap / dispersal trap
+KFEAT:   ^ : trap_alarm / trap_dispersal
 SHUFFLE: ABCDEFHI
 SUBST:   A : cccxxxxYG^..., B : x.., C : x.., DEFHI = .
 SUBST:   c : cxx, - : xx+, ? : xx+, ! : xx+

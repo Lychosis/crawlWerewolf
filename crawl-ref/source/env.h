@@ -8,10 +8,11 @@
 #include "coord.h"
 #include "fprop.h"
 #include "map-cell.h"
+#include "map-knowledge.h"
 #include "mapmark.h"
 #include "monster.h"
+#include "mon-lurk.h"
 #include "shopping.h"
-#include "trap-def.h"
 
 using std::vector;
 
@@ -70,12 +71,15 @@ struct crawl_environment
     unique_ptr<MapKnowledge>                 map_forgotten;
     set<coord_def> visible;
 
+    // Tracking of invisible monsters that the player was recently aware of,
+    // but cannot currently see.
+    invis_monster_knowledge                  invis_knowledge;
+
     vector<coord_def>                        travel_trail;
 
     map<coord_def, cloud_struct> cloud;
 
     map<coord_def, shop_struct> shop; // shop list
-    map<coord_def, trap_def> trap; // trap list
 
     FixedVector< monster_type, MAX_MONS_ALLOC > mons_alloc;
     map_markers                              markers;
@@ -104,6 +108,8 @@ struct crawl_environment
     bool forest_is_hostile;
     int density;
     int absdepth0;
+
+    vector<lurker_data> lurkers;
 
     // Remaining fields not marshalled:
 

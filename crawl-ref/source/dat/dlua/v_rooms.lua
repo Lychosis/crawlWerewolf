@@ -177,6 +177,17 @@ local function pick_room(e, options)
     options.did_necropolis_chance = true
   end
   -- Roll the chance to pick a Wizlab vault room if we haven't done so.
+  if not options.did_gulch_chance then
+    if crawl.x_chance_in_y(dgn.gulch_chance_percent, 100) then
+      for i, r in ipairs(options.room_type_weights) do
+        if r.generator == "tagged" and r.tag == "vaults_gulch" then
+          chosen = r
+        end
+      end
+    end
+    options.did_gulch_chance = true
+  end
+  -- Roll the chance to pick a Wizlab vault room if we haven't done so.
   if not options.did_wizlab_chance then
     if crawl.x_chance_in_y(dgn.wizlab_chance_percent, 100) then
       for i, r in ipairs(options.room_type_weights) do
@@ -432,12 +443,6 @@ function place_vaults_rooms(e, data, room_count, options)
 
   -- Useful to see what's going on when things are getting veto'd:
   if _VAULTS_DEBUG then dump_usage_grid(data) end
-
-  if you.depth() == 4 then
-    e.set_feature_name("stone_stairs_down_i", "metal staircase leading down")
-    e.set_feature_name("stone_stairs_down_ii", "metal staircase leading down")
-    e.set_feature_name("stone_stairs_down_iii", "metal staircase leading down")
-  end
 
   return true
 end

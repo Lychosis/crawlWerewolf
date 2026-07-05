@@ -60,6 +60,7 @@
 #include "random.h"
 #include "religion.h"
 #include "showsymb.h"
+#include "skills.h"
 #include "species.h"
 #include "spl-util.h"
 #include "state.h"
@@ -155,6 +156,7 @@ void init_mon_name_cache()
         // insert, depending on which should take precedence. Some
         // uniques of multiple forms can get away with this, though.
         if (mon == MONS_BAI_SUZHEN_DRAGON
+            || mon == MONS_GOJI_UNMOUNTED
             || mon != MONS_SERPENT_OF_HELL
                && mons_species(mon) == MONS_SERPENT_OF_HELL)
         {
@@ -213,6 +215,40 @@ void init_monsters()
     init_monster_symbols();
 }
 
+// XXX: This is a very imperfect fallback, since it will result in color overlaps
+//      and in a few cases result in incorrectly-themed groupings. For instance,
+//      only *almost* all ◊ used to be P, but a few were I (and are not plants).
+//      However, it does strictly replace unicode characters with a 'best guess'
+//      and anything else can be edited by the player.
+static const map<char32_t, char32_t> mons_ascii_remap =
+{
+    {U'\xc5',   'A'}, // Å
+    {U'\xc6',   'R'}, // Æ
+    {U'\x10c',  'C'}, // Č
+    {U'\x10e',  'D'}, // Ď
+    {U'\x11f',  'g'}, // ğ
+    {U'\xf6',   'o'}, // ö
+    {U'\x175',  'W'}, // ŵ
+    {U'\x174',  'W'}, // Ŵ
+    {U'\x17e',  'z'}, // ž
+
+    {U'\x14b',  '9'}, // ŋ
+    {U'\xde',   'H'}, // Þ
+    {U'\x2021', 'I'}, // ‡
+
+    {U'\x394',  'I'}, // Δ
+    {U'\x398',  '*'}, // Θ
+    {U'\x3bb',  'y'}, // λ
+    {U'\x3a3',  'E'}, // Σ
+    {U'\x3c8',  'p'}, // ψ
+    {U'\x3c9',  'w'}, // ω
+
+    {U'\x25ca', 'P'}, // ◊
+    {U'\xa4',   '*'}, // ¤
+    {U'\x25cf', '*'}, // ●
+    {U'\x256c', 'I'}, // ╬
+};
+
 void init_monster_symbols()
 {
     map<unsigned, monster_type> base_mons;
@@ -236,6 +272,15 @@ void init_monster_symbols()
     for (monster_type i = MONS_PROGRAM_BUG; i < NUM_MONSTERS; ++i)
         if (wcwidth(monster_symbols[i].glyph) != 1)
             monster_symbols[i].glyph = mons_base_char(i);
+
+    if (Options.char_set == CSET_ASCII)
+    {
+        for (monster_type i = MONS_PROGRAM_BUG; i < NUM_MONSTERS; ++i)
+        {
+            if (const char32_t* ascii_char = map_find(mons_ascii_remap, monster_symbols[i].glyph))
+                monster_symbols[i].glyph = *ascii_char;
+        }
+    }
 }
 
 void set_resist(resists_t &all, mon_resist_flags res, int lev)
@@ -635,6 +680,7 @@ bool mons_class_is_draconic(monster_type mc)
         case MONS_DRAKE:
         case MONS_DRACONIAN:
         case MONS_WYRMHOLE:
+        case MONS_MONGREL_WURM:
             return true;
         default:
             return false;
@@ -678,6 +724,7 @@ bool mons_gives_xp(const monster& victim, const actor& agent)
             && (!testbits(victim.flags, MF_WAS_NEUTRAL) // no neutral monsters
                 || victim.has_ench(ENCH_MAD))           // ...except frenzied ones
             && !testbits(victim.flags, MF_NO_REWARD)    // no reward for no_reward
+            && !testbits(victim.flags, MF_TESSERACT_SPAWN)
             && !mon_killed_friend;
 }
 
@@ -778,19 +825,6 @@ bool mons_has_body(const monster& mon)
     return true;
 }
 
-// Difference in speed between monster and the player for Cheibriados'
-// purposes. This is the speed difference disregarding the player's
-// slow status.
-int cheibriados_monster_player_speed_delta(const monster& mon)
-{
-    // Ignore the Slow effect.
-    unwind_var<int> ignore_slow(you.duration[DUR_SLOW], 0);
-    const int pspeed = 1000 / (player_movement_speed() * player_speed());
-    dprf("Your delay: %d, your speed: %d, mon speed: %d",
-        player_movement_speed(), pspeed, mon.speed);
-    return mon.speed - pspeed;
-}
-
 bool cheibriados_thinks_mons_is_fast(const monster& mon)
 {
     return mons_base_speed(mon) >= 10;
@@ -857,88 +891,10 @@ bool mons_offers_beogh_conversion_now(const monster& mon)
                 && !you.has_mutation(MUT_FORLORN)
                 && you.hp * 3 / 2 <= you.hp_max
                 && !mon.is_summoned() && !mon.friendly()
-                && !silenced(mon.pos()) && !mon.has_ench(ENCH_MUTE)
+                && !mon.is_silenced()
                 && !mons_is_confused(mon) && mons_is_seeking(mon)
                 && mon.foe == MHITYOU && !mons_is_immotile(mon)
                 && you.can_see(mon);
-}
-
-// Returns true for monsters that obviously (to the player) feel
-// "thematically at home" in a branch. Currently used for native
-// monsters recognising traps and patrolling branch entrances.
-bool mons_is_native_in_branch(const monster& mons,
-                              const branch_type branch)
-{
-    switch (branch)
-    {
-    case BRANCH_ELF:
-        return mons_genus(mons.type) == MONS_ELF;
-
-    case BRANCH_ORC:
-        return mons_genus(mons.type) == MONS_ORC;
-
-    case BRANCH_SHOALS:
-        return mons_species(mons.type) == MONS_CYCLOPS
-               || mons_species(mons.type) == MONS_MERFOLK
-               || mons.type == MONS_HARPY;
-
-    case BRANCH_SLIME:
-        return mons_is_slime(mons);
-
-    case BRANCH_SNAKE:
-        return mons_genus(mons.type) == MONS_NAGA
-               || mons_genus(mons.type) == MONS_SALAMANDER
-               || mons_genus(mons.type) == MONS_SNAKE;
-
-    case BRANCH_ZOT:
-        return mons_genus(mons.type) == MONS_DRACONIAN
-               || mons.type == MONS_ORB_GUARDIAN
-               || mons.type == MONS_ORB_OF_FIRE
-               || mons.type == MONS_DEATH_COB
-               || mons.type == MONS_KILLER_KLOWN;
-
-    case BRANCH_VAULTS:
-        return mons_genus(mons.type) == MONS_HUMAN;
-
-    case BRANCH_CRYPT:
-        return mons.holiness() == MH_UNDEAD;
-
-    case BRANCH_TOMB:
-        return mons_genus(mons.type) == MONS_MUMMY
-              || mons.type == MONS_USHABTI
-              || mons.type == MONS_DEATH_SCARAB;
-
-    case BRANCH_SPIDER:
-        return mons_genus(mons.type) == MONS_SPIDER;
-
-    case BRANCH_ABYSS:
-        return mons_is_abyssal_only(mons.type)
-               || mons.type == MONS_ABOMINATION_LARGE
-               || mons.type == MONS_ABOMINATION_SMALL
-               || mons.type == MONS_TENTACLED_MONSTROSITY
-               || mons.type == MONS_TENTACLED_STARSPAWN
-               || mons.type == MONS_THRASHING_HORROR
-               || mons.type == MONS_UNSEEN_HORROR
-               || mons.type == MONS_WORLDBINDER;
-
-    default:
-        return false;
-    }
-}
-
-bool mons_is_abyssal_only(monster_type mc)
-{
-    switch (mc)
-    {
-    case MONS_ANCIENT_ZYME:
-    case MONS_ELDRITCH_TENTACLE:
-    case MONS_ELDRITCH_TENTACLE_SEGMENT:
-    case MONS_LURKING_HORROR:
-    case MONS_WRETCHED_STAR:
-        return true;
-    default:
-        return false;
-    }
 }
 
 // Monsters considered as "slime" for Jiyva.
@@ -1079,7 +1035,7 @@ static void _destroy_mimic_feature(const coord_def &pos)
 void discover_mimic(const coord_def& pos)
 {
     item_def* item = item_mimic_at(pos);
-    const bool feature_mimic = !item && feature_mimic_at(pos);
+    const bool feature_mimic = !item && current_feature_is_mimic_at(pos);
     // Is there really a mimic here?
     if (!item && !feature_mimic)
         return;
@@ -1130,7 +1086,7 @@ int mons_demon_tier(monster_type mc)
 {
     switch (mons_base_char(mc))
     {
-    case 'C':
+    case U'\x010C': // 'Č':
         if (mc != MONS_ANTAEUS)
             return 0;
         // intentional fall-through for Antaeus
@@ -1475,8 +1431,8 @@ int mons_res_blind(monster_type mc)
 bool mons_resists_drowning(monster_type type, monster_type base)
 {
     const habitat_type ht = mons_habitat_type(type, base, true);
-
-    return mons_is_unbreathing(type) || ht == HT_WATER || ht == HT_AMPHIBIOUS;
+    const bool lives_in_deep_water = (ht & HT_DEEP_WATER) == HT_DEEP_WATER;
+    return mons_is_unbreathing(type) || lives_in_deep_water;
 }
 
 char32_t mons_char(monster_type mc)
@@ -1490,7 +1446,7 @@ char32_t mons_char(monster_type mc)
         return monster_symbols[mc].glyph;
 }
 
-char mons_base_char(monster_type mc)
+char32_t mons_base_char(monster_type mc)
 {
     const monsterentry *me = get_monster_data(mc);
     return me ? me->basechar : 0;
@@ -1549,13 +1505,15 @@ int mons_class_regen_amount(monster_type mc)
 {
     switch (mc)
     {
-    case MONS_PARGHIT:            return 27;
+    case MONS_PARGHIT:              return 27;
     case MONS_DEMONIC_CRAWLER:
+    case MONS_COLOSSAL_AMOEBA:
     case MONS_PROTEAN_PROGENITOR:
-    case MONS_ASPIRING_FLESH:
-    case MONS_MARTYRED_SHADE:     return 6;
-    case MONS_BOUNDLESS_TESSERACT: return 10;
-    default:                      return 1;
+    case MONS_ASPIRING_FLESH:       return 6;
+    case MONS_SLYMDRA:
+    case MONS_MARTYRED_SHADE:       return 4;
+    case MONS_BOUNDLESS_TESSERACT:  return 10;
+    default:                        return 1;
     }
 }
 
@@ -1743,13 +1701,20 @@ bool mons_can_use_stairs(const monster& mon, dungeon_feature_type stair)
     return true;
 }
 
-void name_zombie(monster& mon, monster_type mc, const string &mon_name)
+void name_zombie_from_class(monster& mon, monster_type mc, const string& mon_name)
 {
     mon.mname = mon_name;
 
-    // For the Lernaean hydra: treat Lernaean as an adjective to
+    // For the Royal Jelly: treat Royal Jelly as a replacement name to
+    // avoid mentions of "Royal Jelly the spectral jelly".
+    if (mc == MONS_ROYAL_JELLY)
+    {
+        mon.mname = "Royal Jelly";
+        mon.flags |= MF_NAME_REPLACE;
+    }
+    // Also for the Lernaean hydra: treat Lernaean as an adjective to
     // avoid mentions of "Lernaean hydra the X-headed hydra zombie".
-    if (mc == MONS_LERNAEAN_HYDRA)
+    else if (mc == MONS_LERNAEAN_HYDRA)
     {
         mon.mname = "Lernaean";
         mon.flags |= MF_NAME_ADJECTIVE;
@@ -1773,22 +1738,29 @@ void name_zombie(monster& mon, monster_type mc, const string &mon_name)
         mon.props[DBNAME_KEY] = mons_class_name(mon.type);
 }
 
-void name_zombie(monster& mon, const monster& orig)
+void name_zombie_from_mon(monster& mon, const monster& orig)
 {
     if (!mons_is_unique(orig.type) && orig.mname.empty())
         return;
 
     string name;
+    monster_flags_t orig_mon_flags = orig.flags;
 
     if (!orig.mname.empty())
-        name = orig.mname;
+    {
+        if (!(orig.flags & MF_NAME_NOCORPSE))
+            name = orig.mname;
+        else
+            // Remove all the monster's name flags, since it lost its name.
+            orig_mon_flags &= ~MF_ALL_NAMES;
+    }
     else
         name = mons_type_name(orig.type, DESC_PLAIN);
 
-    name_zombie(mon, orig.type, name);
-    mon.flags |= orig.flags & (MF_NAME_SUFFIX
-                                 | MF_NAME_ADJECTIVE
-                                 | MF_NAME_DESCRIPTOR);
+    name_zombie_from_class(mon, orig.type, name);
+    mon.flags |= orig_mon_flags & (MF_NAME_SUFFIX
+                                     | MF_NAME_ADJECTIVE
+                                     | MF_NAME_DESCRIPTOR);
 }
 
 // Derived undead deal 80% of the damage of the base form.
@@ -1909,11 +1881,12 @@ static mon_attack_def _hepliaklqana_ancestor_attack(const monster &mon,
         return { };
 
     const int HD = mon.get_experience_level();
-    const int dam = HD + 3; // 4 at 1 HD, 21 at 18 HD (max)
-    // battlemages do double base melee damage (+25-50% including their weapon)
-    const int dam_mult = mon.type == MONS_ANCESTOR_BATTLEMAGE ? 2 : 1;
+    const int base_dam = HD + 3; // 4 at 1 HD, 21 at 18 HD (max)
+    // elementalists do reduced base melee damage
+    const int dam = mon.type == MONS_ANCESTOR_ELEMENTALIST ? base_dam * 2 / 3
+                                                           : base_dam;
 
-    return { AT_HIT, AF_PLAIN, dam * dam_mult };
+    return { AT_HIT, AF_PLAIN, dam };
 }
 
 /** Get the attack type, attack flavour and damage for a monster attack.
@@ -1984,11 +1957,6 @@ mon_attack_def mons_attack_spec(const monster& m, int attk_number,
 
     if (attk_number == 0)
     {
-        if (m.has_ench(ENCH_FIRE_CHAMPION))
-            attk.flavour = AF_FIRE;
-        else if (m.has_ench(ENCH_CHAOS_LACE))
-            attk.flavour = AF_CHAOTIC;
-
         if (mon.type == MONS_PLAYER_SHADOW)
         {
             if (mon.props.exists(DITH_SHADOW_ATTACK_KEY))
@@ -2067,6 +2035,8 @@ mon_attack_def mons_attack_spec(const monster& m, int attk_number,
         else
             attk.damage = 2 + (m.get_hit_dice() * 3 / 2);
     }
+    else if (mon.type == MONS_ERYTHROSPITE)
+        attk.damage = 3 + m.get_experience_level() * 10 / 9;
 
     // Vampires get a bite aux in addition to normal attacks.
     if (mon.has_ench(ENCH_VAMPIRE_THRALL)
@@ -2188,28 +2158,6 @@ string mon_attack_name(attack_type attack, bool with_object)
 }
 
 /**
- * Is this attack flavour 'plain'? A plain attack flavour doesn't imply the
- * target will be affected in any particular way beyond damage.
- * Certain attack flavours like AT_TRAMPLE, AT_SPORE, and AT_ENGULF do imply
- * additional effects, and are not considered 'plain'.
- */
-bool is_plain_attack_type(attack_type attack)
-{
-    switch (attack)
-    {
-        case AT_CONSTRICT:  // constriction
-        case AT_ENGULF:     // water hold
-        case AT_POUNCE:     // webbing
-        case AT_SPORE:      // confusing spores
-        case AT_STING:      // poison
-        case AT_TRAMPLE:    // trampling
-            return false;
-        default:
-            return true;
-    }
-}
-
-/**
  * Does this monster attack flavour trigger even if the base attack does no
  * damage?
  *
@@ -2220,13 +2168,16 @@ bool is_plain_attack_type(attack_type attack)
 bool flavour_triggers_damageless(attack_flavour flavour)
 {
     return flavour == AF_CRUSH
-        || flavour == AF_ENGULF
+        || flavour == AF_FLOOD
         || flavour == AF_PAIN
         || flavour == AF_PURE_FIRE
         || flavour == AF_AIRSTRIKE
         || flavour == AF_SHADOWSTAB
         || flavour == AF_DROWN
-        || flavour == AF_CORRODE;
+        || flavour == AF_CONTAM_WATER
+        || flavour == AF_CORRODE
+        || flavour == AF_DIM
+        || flavour == AF_BURSTSHROOM;
 }
 
 /**
@@ -2573,6 +2524,10 @@ int exp_value(const monster& mon, bool real, bool legacy)
     if (mon.type == MONS_SLIME_CREATURE && mon.blob_size > 1)
         x_val *= mon.blob_size;
 
+    // Give real XP for all real slime creatures eaten.
+    if (mon.type == MONS_SLYMDRA && mon.props.exists(SLYMDRA_SLIMES_EATEN_KEY))
+        x_val += mon.props[SLYMDRA_SLIMES_EATEN_KEY].get_int() * 236;
+
     if (mon.has_ench(ENCH_FIGMENT))
         x_val /= 3;
 
@@ -2658,6 +2613,11 @@ monster_type draconian_job_for_colour(monster_type colour)
 static mon_spellbook_type _get_mc_spellbook(const monster_type mon_type)
 {
     return static_cast<mon_spellbook_type>(get_monster_data(mon_type)->sec);
+}
+
+bool mon_type_has_spells(const monster_type mon_type)
+{
+    return _get_mc_spellbook(mon_type) != MST_NO_SPELLS;
 }
 
 mon_spellbook_type get_spellbook(const monster_info &mon)
@@ -2828,6 +2788,10 @@ void define_monster(monster& mons, bool friendly)
     case MONS_LERNAEAN_HYDRA:
         // The Lernaean hydra starts off with 27 heads.
         mons.num_heads = 27;
+        break;
+
+    case MONS_SLYMDRA:
+        mons.num_heads = random_range(3, 5);
         break;
 
     case MONS_TIAMAT:
@@ -3170,10 +3134,11 @@ static string _get_proper_monster_name(const monster& mon)
         return "";
 
     string name = getRandMonNameString(me->name);
-    if (!name.empty())
-        return name;
+    if (name.empty())
+        name = getRandMonNameString(get_monster_data(mons_genus(mon.type))->name);
+    name = do_mon_name_replacements(name);
 
-    return getRandMonNameString(get_monster_data(mons_genus(mon.type))->name);
+    return name;
 }
 
 // Names a monster (will rename it if it already had a name)
@@ -3190,7 +3155,9 @@ bool give_monster_proper_name(monster& mon)
 static bool _give_apostle_proper_name(monster& mon, apostle_type type)
 {
     string apostle_key = "orc apostle " + apostle_type_names[type] + " name";
-    mon.mname = getRandMonNameString(apostle_key);
+    string name = getRandMonNameString(apostle_key);
+    name = do_mon_name_replacements(name);
+    mon.mname = name;
 
     // XXX: The rest of this is duplicated from give_monster_proper_name().
     if (!mon.props.exists(DBNAME_KEY))
@@ -3247,21 +3214,15 @@ int mons_class_zombie_base_speed(monster_type zombie_base_mc, bool slow)
  * What's this monster's base speed, before temporary effects are applied?
  *
  * @param mon       The monster in question.
- * @param known     Whether to include only information the player knows about,
- *                  i.e. not the speed of certain monsters with varying speeds
- *                  (abominations, hell beasts)
  * @return          The speed of the monster.
  */
-int mons_base_speed(const monster& mon, bool known)
+int mons_base_speed(const monster& mon)
 {
     if (mon.ghost)
         return mon.ghost->speed;
 
-    if (mon.props.exists(MON_SPEED_KEY)
-        && (!known || mon.type == MONS_MUTANT_BEAST))
-    {
+    if (mon.props.exists(MON_SPEED_KEY))
         return mon.props[MON_SPEED_KEY];
-    }
 
     if (mon.mons_species() == MONS_SPECTRAL_THING
         || mon.mons_species() == MONS_DRAUGR)
@@ -3388,23 +3349,13 @@ bool mons_self_destructs(const monster& m)
     return mons_blows_up(m) || mons_destroyed_on_impact(m);
 }
 
-/// Does this monster trigger your shoutitis? (Random.)
-bool should_shout_at_mons(const monster &m)
-{
-    return !m.is_peripheral()
-        && x_chance_in_y(you.get_mutation_level(MUT_SCREAM) * 6, 100);
-}
-
 /// Does this monster trigger your attractitis? (Random.)
 bool should_attract_mons(const monster &m)
 {
-    return you.has_mutation(MUT_INITIALLY_ATTRACTIVE)
-        && one_chance_in(3)
-        && grid_distance(you.pos(), m.pos()) > 2
-        && !mons_is_tentacle_or_tentacle_segment(m.type)
-        && !m.is_peripheral()
-        && !m.is_summoned() // XXX: unsure about this
-        && !m.no_tele();
+    return x_chance_in_y(you.get_mutation_level(MUT_INITIALLY_ATTRACTIVE), 3)
+            && grid_distance(you.pos(), m.pos()) > 2
+            && !m.is_peripheral()
+            && !m.no_tele();
 }
 
 bool mons_att_wont_attack(mon_attitude_type fr)
@@ -3513,7 +3464,14 @@ void mons_start_fleeing_from_sanctuary(monster& mons)
 {
     mons.flags |= MF_FLEEING_FROM_SANCTUARY;
     mons.target = env.sanctuary_pos;
-    behaviour_event(&mons, ME_SCARE, 0, env.sanctuary_pos);
+
+    // If the monster is on top of the center of the santuary, don't let it
+    // freeze in place.
+    if (mons.pos() == mons.target)
+        mons.target += (mons.target - you.pos()).sgn();
+
+    mons.behaviour = BEH_FLEE;
+    mons.foe = MHITYOU;
 }
 
 void mons_stop_fleeing_from_sanctuary(monster& mons)
@@ -3603,11 +3561,6 @@ static bool _mons_should_fire_beneficial(const bolt &beam,
         return false;
     }
 
-    // Should beneficial monster enchantment beams be allowed in a
-    // sanctuary? -cao
-    if (is_sanctuary(you.pos()) || is_sanctuary(beam.source))
-        return false;
-
     return true;
 }
 
@@ -3644,80 +3597,42 @@ bool mons_should_fire(const bolt& beam, const targeting_tracer &tracer,
     if (_beneficial_beam_flavour(beam.flavour))
         return _mons_should_fire_beneficial(beam, tracer);
 
-    if (is_sanctuary(you.pos()) || is_sanctuary(beam.source))
-        return false;
-
     if (ignore_good_idea)
         return true;
+
     // After this point, safety/self-interest checks only.
-
-
-    // Friendly monsters shouldn't be targeting you: this will happen
-    // often because the default behaviour for charmed monsters is to
-    // have you as a target. While foe_ratio will handle this, we
-    // don't want a situation where a friendly dragon breathes through
-    // you to hit other creatures... it should target the other
-    // creatures, and coincidentally hit you.
-    //
-    // FIXME: this can cause problems with reflection, bounces, etc.
-    // It would be better to have the monster fire logic never reach
-    // this point for friendlies.
-    if (monster_by_mid(beam.source_id))
-    {
-        monster* m = monster_by_mid(beam.source_id);
-        if (m->alive() && m->friendly() && beam.target == you.pos())
-            return false;
-    }
-
     return tracer.good_to_fire(beam.foe_ratio) >= ai_action::good();
 }
 
 /**
- * Can monsters use the given spell effectively from range? (If a monster has
- * the given spell, should it try to keep its distance from its enemies?)
+ * Is a given spell capable of offensive action (including summoning something
+ * that might be)?
  *
- * @param monspell      The spell in question.
- * @param attack_only   Whether to only count spells which directly harm
- *                      enemies (ie: do damage). Overrides ench_too.
- * @param ench_too      Whether to count temporary debilitating effects (Slow,
- *                      etc).
- * @return              Whether the given spell should be considered 'ranged'.
+ * This is only used for some monster AI logic, and so even if it's a bit of an
+ * approximation in some cases, it's hopefully good enough.
+ *
+ * @param spell         The spell in question.
+ * @param needs_lof     Whether the spell is allowed to need direct line of fire
+ *                      or not.
  */
-bool ms_ranged_spell(spell_type monspell, bool attack_only, bool ench_too)
+bool is_offensive_spell(spell_type spell, maybe_bool needs_lof)
 {
-    // summoning spells are usable from ranged, but not direct attacks.
-    if (spell_typematch(monspell, spschool::summoning))
-        return !attack_only;
+    const spell_flags flags = get_spell_flags(spell);
 
-    const spell_flags flags = get_spell_flags(monspell);
-
-    // buffs & escape spells aren't considered 'ranged'.
-    if (testbits(flags, spflag::selfench)
-        || testbits(flags, spflag::escape)
-        || monspell == SPELL_BLINK_OTHER_CLOSE)
-    {
-        return false;
-    }
-
-    // conjurations are attacks.
-    if (spell_typematch(monspell, spschool::conjuration))
-        return true;
-
-    // hexes that aren't conjurations or summons are enchantments.
-    if (spell_typematch(monspell, spschool::hexes))
-        return !attack_only && ench_too;
-
-    switch (monspell)
-    {
-    case SPELL_NO_SPELL:
-    case SPELL_CANTRIP:
-    case SPELL_BLINK_CLOSE:
+    // These are not offensive spells.
+    if (flags & (spflag::escape | spflag::helpful | spflag::selfench))
         return false;
 
-    default:
-        // Everything else is probably some kind of attack, hopefully.
-        return true;
-    }
+    // Assume that spflag::target and untagged spells both ignore line of
+    // fire, while spflag::dir_or_target requires it (regardless of whether it
+    // penetrates or not).
+
+    if (needs_lof == true && !(flags & (spflag::dir_or_target)))
+        return false;
+    else if (needs_lof == false && (flags & (spflag::dir_or_target)))
+        return false;
+
+    return true;
 }
 
 // Returns true if the monster has an ability that can affect the target
@@ -3726,60 +3641,6 @@ bool mons_has_los_ability(monster_type mon_type)
 {
     return mons_is_siren_beholder(mon_type)
            || mon_type == MONS_STARCURSED_MASS;
-}
-
-bool mons_has_ranged_spell(const monster& mon, bool attack_only,
-                           bool ench_too)
-{
-    // Monsters may have spell-like abilities.
-    if (mons_has_los_ability(mon.type))
-        return true;
-
-    for (const mon_spell_slot &slot : mon.spells)
-    {
-        if (ms_ranged_spell(slot.spell, attack_only, ench_too)
-            // Assume spells with no defined range are always effective at
-            // range.
-            && spell_range(slot.spell, &mon) != 1)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static bool _mons_has_usable_ranged_weapon(const monster* mon)
-{
-    return mon->launcher() != nullptr;
-}
-
-static bool _mons_has_attack_wand(const monster& mon)
-{
-    const item_def *wand = mon.mslot_item(MSLOT_WAND);
-
-    return wand && is_offensive_wand(*wand);
-}
-
-bool mons_has_ranged_attack(const monster& mon)
-{
-    return mons_has_ranged_spell(mon, true)
-           || _mons_has_usable_ranged_weapon(&mon)
-           || mon.missiles()
-           || mon.reach_range() > 1
-           || _mons_has_attack_wand(mon);
-}
-
-bool mons_can_attack(const monster& mon)
-{
-    const actor* foe = mon.get_foe();
-    if (!foe || !mon.can_see(*foe))
-        return false;
-
-    if (mons_has_ranged_attack(mon) && mon.see_cell_no_trans(foe->pos()))
-        return true;
-
-    return adjacent(mon.pos(), foe->pos());
 }
 
 /**
@@ -4002,8 +3863,11 @@ bool mons_class_can_pass(monster_type mc, dungeon_feature_type grid)
     if (mons_class_habitat(mc) & HT_WALLS_ONLY)
     {
         // See the comment in habitat_is_compatible().
-        return feat_is_wall(grid) && !feat_is_permarock(grid) ||
-               feat_is_statuelike(grid);
+        if (feat_is_wall(grid) && !feat_is_permarock(grid) ||
+            feat_is_statuelike(grid))
+        {
+            return true;
+        }
     }
 
     return !feat_is_solid(grid);
@@ -4144,7 +4008,8 @@ monster_type royal_jelly_ejectable_monster()
     return random_choose(MONS_ACID_BLOB,
                          MONS_AZURE_JELLY,
                          MONS_ROCKSLIME,
-                         MONS_VOID_OOZE);
+                         MONS_VOID_OOZE,
+                         MONS_STAR_JELLY);
 }
 
 // Replaces @foe_god@ and @god_is@ with foe's god name.
@@ -4175,6 +4040,12 @@ static string _replace_god_name(god_type god, bool need_verb = false,
     return result;
 }
 
+static bool _is_any_god(god_type god)
+{
+    UNUSED(god);
+    return true;
+}
+
 static string _random_class_of_god_name(bool (*class_of_god)(god_type god))
 {
     string result;
@@ -4188,6 +4059,29 @@ static string _random_class_of_god_name(bool (*class_of_god)(god_type god))
 
     const string godname = god_name(some_god, false);
     result = godname;
+
+    return result;
+}
+
+static bool _is_any_skill(skill_type skill)
+{
+    UNUSED(skill);
+    return true;
+}
+
+static string _random_class_of_skill_name(bool (*class_of_skill)(skill_type skill))
+{
+    string result;
+    skill_type some_skill;
+
+    do
+    {
+        some_skill = random_skill();
+    }
+    while (!class_of_skill(some_skill));
+
+    const string skillname = skill_name(some_skill);
+    result = skillname;
 
     return result;
 }
@@ -4390,7 +4284,7 @@ static string _replace_speech_tag(string msg, string from, const string &to)
 
 // Replaces the "@foo@" strings in monster shout and monster speak
 // definitions.
-string do_mon_str_replacements(const string &in_msg, const monster& mons,
+string do_mon_str_replacements(const string& in_msg, const monster& mons,
                                int s_type)
 {
     string msg = in_msg;
@@ -4460,7 +4354,7 @@ string do_mon_str_replacements(const string &in_msg, const monster& mons,
             foe_name = foe->name(DESC_THE);
 
         string prep = "at";
-        if (s_type == S_SILENT || s_type == S_SHOUT || s_type == S_NORMAL)
+        if (s_type == S_SILENT || s_type == S_SHOUT || s_type == S_NORMAL_VOLUME)
             prep = "to";
         msg = replace_all(msg, "@says@ @to_foe@", "@says@ " + prep + " @foe@");
 
@@ -4701,14 +4595,29 @@ string do_mon_str_replacements(const string &in_msg, const monster& mons,
         msg = replace_all(msg, "@My_God@", godcap);
     }
 
-    if (msg.find("@random_god_") != string::npos)
+    // For randomly generated names.
+    msg = replace_all_func(msg, "@RANDGEN@", make_name_randgen);
+
+    if (msg.find("@random_god") != string::npos)
     {
+        msg = replace_all(msg, "@random_god@",
+                          _random_class_of_god_name(_is_any_god));
         msg = replace_all(msg, "@random_god_chaotic@",
                           _random_class_of_god_name(is_chaotic_god));
         msg = replace_all(msg, "@random_god_evil@",
                           _random_class_of_god_name(is_evil_god));
         msg = replace_all(msg, "@random_god_good@",
                           _random_class_of_god_name(is_good_god));
+    }
+
+    if (msg.find("@random_skill") != string::npos)
+    {
+        msg = replace_all(msg, "@random_skill@",
+                          _random_class_of_skill_name(_is_any_skill));
+        msg = replace_all(msg, "@random_skill_magic@",
+                          _random_class_of_skill_name(is_magic_skill));
+        msg = replace_all(msg, "@random_skill_mundane@",
+                          _random_class_of_skill_name(is_mundane_skill));
     }
 
     if (msg.find("@random_body_part") != string::npos)
@@ -4768,7 +4677,7 @@ string do_mon_str_replacements(const string &in_msg, const monster& mons,
         "buggily says", // NUM_SHOUTS
         "breathes",     // S_VERY_SOFT
         "whispers",     // S_SOFT
-        "says",         // S_NORMAL
+        "says",         // S_NORMAL_VOLUME
         "shouts",       // S_LOUD
         "screams",      // S_VERY_LOUD
         "caws",
@@ -4787,6 +4696,39 @@ string do_mon_str_replacements(const string &in_msg, const monster& mons,
     msg = maybe_capitalise_substring(msg);
 
     return msg;
+}
+
+// This should take a small subset of what do_mon_str_replacements() does.
+string do_mon_name_replacements(const string& in_name)
+{
+    string name = in_name;
+
+    // For randomly generated names.
+    name = replace_all_func(name, "@RANDGEN@", make_name_randgen);
+
+    if (name.find("@random_god") != string::npos)
+    {
+        name = replace_all(name, "@random_god@",
+                           _random_class_of_god_name(_is_any_god));
+        name = replace_all(name, "@random_god_chaotic@",
+                           _random_class_of_god_name(is_chaotic_god));
+        name = replace_all(name, "@random_god_evil@",
+                           _random_class_of_god_name(is_evil_god));
+        name = replace_all(name, "@random_god_good@",
+                           _random_class_of_god_name(is_good_god));
+    }
+
+    if (name.find("@random_skill") != string::npos)
+    {
+        name = replace_all(name, "@random_skill@",
+                           _random_class_of_skill_name(_is_any_skill));
+        name = replace_all(name, "@random_skill_magic@",
+                           _random_class_of_skill_name(is_magic_skill));
+        name = replace_all(name, "@random_skill_mundane@",
+                           _random_class_of_skill_name(is_mundane_skill));
+    }
+
+    return name;
 }
 
 /**
@@ -4898,11 +4840,6 @@ bool mon_shape_is_humanoid(mon_body_shape shape)
            && shape <= MON_SHAPE_LAST_HUMANOID;
 }
 
-bool player_or_mon_in_sanct(const monster& mons)
-{
-    return is_sanctuary(you.pos()) || is_sanctuary(mons.pos());
-}
-
 int get_dist_to_nearest_monster()
 {
     int minRange = LOS_RADIUS + 1;
@@ -4912,7 +4849,7 @@ int get_dist_to_nearest_monster()
         if (mon == nullptr)
             continue;
 
-        if (!mon->visible_to(&you))
+        if (!you.aware_of(*mon))
             continue;
 
         // Plants/fungi don't count.
@@ -5306,13 +5243,6 @@ bool mons_is_recallable(const actor* caller, const monster& targ)
            && mons_class_is_threatening(targ.type);
 }
 
-bool mons_stores_tracking_data(const monster& mons)
-{
-    return mons.type == MONS_THORN_HUNTER
-           || mons.type == MONS_MERFOLK_AVATAR
-           || mons.type == MONS_BOULDER_BEETLE;
-}
-
 bool mons_is_beast(monster_type mc)
 {
     if (!(mons_class_holiness(mc) & MH_NATURAL)
@@ -5482,8 +5412,11 @@ string get_damage_level_string(mon_holy_type holi, mon_dam_level_type mdam)
 
 void print_wounds(const monster& mons)
 {
-    if (!mons.alive() || mons.hit_points == mons.max_hit_points)
+    if (!mons.alive() || mons.hit_points == mons.max_hit_points
+        || mons.has_ench(ENCH_PHASE_SHIFT) && !you.can_see_invisible())
+    {
         return;
+    }
 
     mon_dam_level_type dam_level = mons_get_damage_level(mons);
     string desc = get_damage_level_string(mons.holiness(), dam_level);
@@ -5691,12 +5624,6 @@ void throw_monster_bits(const monster& mon)
     }
 }
 
-/// Add an ancestor spell to the given list.
-static void _add_ancestor_spell(monster_spells &spells, spell_type spell)
-{
-    spells.emplace_back(spell, 25, MON_SPELL_WIZARD);
-}
-
 /**
  * Set the correct spells for a given ancestor, corresponding to their HD and
  * type.
@@ -5716,26 +5643,49 @@ void set_ancestor_spells(monster &ancestor, bool notify)
     const int HD = ancestor.get_experience_level();
     switch (ancestor.type)
     {
-    case MONS_ANCESTOR_BATTLEMAGE:
-        _add_ancestor_spell(ancestor.spells, HD >= 10 ?
-                                             SPELL_BOLT_OF_MAGMA :
-                                             SPELL_THROW_FROST);
-        _add_ancestor_spell(ancestor.spells, HD >= 16 ?
-                                             SPELL_LEHUDIBS_CRYSTAL_SPEAR :
-                                             SPELL_STONE_ARROW);
+    case MONS_ANCESTOR_ELEMENTALIST:
+        ancestor.spells.emplace_back(SPELL_DEFLECT_MISSILES, 200, MON_SPELL_WIZARD);
+
+        if (HD < 10)
+            ancestor.spells.emplace_back(SPELL_SHOCK, 35, MON_SPELL_WIZARD);
+        if (HD < 13)
+            ancestor.spells.emplace_back(SPELL_STONE_ARROW, 35, MON_SPELL_WIZARD);
+        if (HD >= 10 && HD < 16)
+        {
+            ancestor.spells.emplace_back(SPELL_ICEBLAST, 35, MON_SPELL_WIZARD);
+            ancestor.spells.emplace_back(SPELL_BOLT_OF_MAGMA, 35, MON_SPELL_WIZARD);
+        }
+        if (HD >= 13)
+            ancestor.spells.emplace_back(SPELL_LRD, 40, MON_SPELL_WIZARD);
+        if (HD >= 16)
+            ancestor.spells.emplace_back(SPELL_PLASMA_BEAM, 30, MON_SPELL_WIZARD);
+        if (HD >= 16)
+            ancestor.spells.emplace_back(SPELL_PERMAFROST_ERUPTION, 30, MON_SPELL_WIZARD);
+
         break;
+
     case MONS_ANCESTOR_HEXER:
-        _add_ancestor_spell(ancestor.spells, HD >= 10 ? SPELL_PARALYSE
-                                                      : SPELL_SLOW);
-        _add_ancestor_spell(ancestor.spells, HD >= 13 ? SPELL_MASS_CONFUSION
-                                                      : SPELL_CONFUSE);
+        if (HD < 10)
+            ancestor.spells.emplace_back(SPELL_SLOW, 25, MON_SPELL_WIZARD);
+        if (HD < 13)
+            ancestor.spells.emplace_back(SPELL_CONFUSE, 25, MON_SPELL_WIZARD);
+        if (HD >= 10)
+            ancestor.spells.emplace_back(SPELL_PARALYSE, 25, MON_SPELL_WIZARD);
+        if (HD >= 13)
+        {
+            ancestor.spells.emplace_back(SPELL_HASTE, 25, MON_SPELL_WIZARD);
+            ancestor.spells.emplace_back(SPELL_MASS_CONFUSION, 25, MON_SPELL_WIZARD);
+        }
         break;
+
+    case MONS_ANCESTOR_KNIGHT:
+        if (HD >= 13)
+            ancestor.spells.emplace_back(SPELL_BOLSTER, 50, MON_SPELL_WIZARD);
+        break;
+
     default:
         break;
     }
-
-    if (HD >= 13)
-        ancestor.spells.emplace_back(SPELL_HASTE, 25, MON_SPELL_WIZARD);
 
     if (ancestor.spells.size())
         ancestor.props[CUSTOM_SPELLS_KEY] = true;
@@ -5790,109 +5740,174 @@ int touch_of_beogh_hp_mult(const monster& mon)
 }
 
 /**
- * Should all actions beams originating from a particular ignore a given
- * monster completely?
+ * Should all projectiles and beams originating from a particular agent pass
+ * through a given actor harmless, regardless of whether they are ordinarily
+ * penetrating?
  *
- *  @param agent       The source of the beam. If nullptr, the beam has no source.
- *  @param mon         A monster that is the target of the beam.
- *  @param do_message  If true, prints a message stating how the monster
- *                        avoided the beam.
- *  @return            Whether the given agent can shoot through this monster.
+ *  @param agent       The source of the projectile.
+ *                     Maybe be nullptr, the projectile has a non-actor source.
+ *  @param target      The target in question
+ *  @param announce    If true, prints a message stating how the target
+ *                     avoided being hit.
+ *  @return     Whether the given agent can shoot through this actor.
  */
-bool shoot_through_monster(const actor* agent, const monster& mon, bool do_message)
+bool shoot_through_actor(const actor* agent, const actor* target, bool announce)
 {
+    if (!target)
+        return true;
+
     // Projectiles can be shot through by anyone.
-    if (mons_is_projectile(mon))
+    const monster* mon = target->as_monster();
+    if (mon && mons_is_projectile(*mon))
         return true;
 
     // But all the other checks require an aligned agent.
-    if (!agent || !mons_aligned(agent, &mon))
+    if (!agent || !mons_aligned(agent, mon))
         return false;
 
-    if (mons_is_avatar(mon.type) || mon.type == MONS_SHOOTING_STAR)
-        return true;
-
-    if ((agent->is_player() && have_passive(passive_t::shoot_through_plants)
-         || agent->is_monster() && agent->deity() == GOD_FEDHAS)
-         && mons_class_is_plant(mon.type))
+    // Certain special allies can freely shoot through the player.
+    if (target->is_player())
     {
-        if (do_message && you.can_see(mon))
+        if (agent->is_monster()
+            && (mons_is_hepliaklqana_ancestor(agent->type)
+                || mons_is_player_shadow(*agent->as_monster())
+                || agent->real_attitude() == ATT_MARIONETTE
+                || agent->type == MONS_PLATINUM_PARAGON))
         {
-            simple_god_message(
-                        make_stringf(" protects %s plant from harm.",
-                            agent->is_player() ? "your" : "a").c_str(),
-                        false, GOD_FEDHAS);
+            return true;
         }
-        return true;
     }
-
-    if (agent->is_player() && mons_is_hepliaklqana_ancestor(mon.type))
+    else
     {
-        // TODO: this message does not work very well for all sorts of attacks
-        // should this be a god message?
-        if (do_message && you.can_see(mon))
-            mprf("%s avoids your attack.", mon.name(DESC_THE).c_str());
-        return true;
-    }
+        if (mons_is_avatar(target->type) || target->type == MONS_SHOOTING_STAR)
+            return true;
 
-    if (agent->is_player()
-        && will_have_passive(passive_t::shadow_attacks)
-        && mons_is_player_shadow(mon))
-    {
-        return true;
-    }
+        if ((agent->is_player() && have_passive(passive_t::shoot_through_plants)
+            || agent->is_monster() && agent->deity() == GOD_FEDHAS)
+            && mons_class_is_plant(target->type))
+        {
+            if (announce && you.can_see(*target))
+            {
+                simple_god_message(
+                            make_stringf(" protects %s plant from harm.",
+                                agent->is_player() ? "your" : "a").c_str(),
+                            false, GOD_FEDHAS);
+            }
+            return true;
+        }
 
-    if (agent->is_player() && testbits(mon.flags, MF_DEMONIC_GUARDIAN))
-    {
-        if (do_message && you.can_see(mon))
-            mpr("Your demonic guardian avoids your attack.");
-        return true;
-    }
+        if (agent->is_player() && mons_is_hepliaklqana_ancestor(target->type))
+        {
+            // TODO: this message does not work very well for all sorts of attacks
+            // should this be a god message?
+            if (announce && you.can_see(*target))
+                mprf("%s avoids your attack.", target->name(DESC_THE).c_str());
+            return true;
+        }
 
-    if (agent->is_player() && mon.type == MONS_HAUNTED_ARMOUR)
-        return true;
+        if (agent->is_player()
+            && will_have_passive(passive_t::shadow_attacks)
+            && mons_is_player_shadow(*mon))
+        {
+            return true;
+        }
+
+        if (agent->is_player() && testbits(mon->flags, MF_DEMONIC_GUARDIAN))
+        {
+            if (announce && you.can_see(*mon))
+                mpr("Your demonic guardian avoids your attack.");
+            return true;
+        }
+
+        if (agent->is_player() && mon->type == MONS_HAUNTED_ARMOUR)
+            return true;
+    }
 
     return false;
-}
-
-bool shoot_through_monster(const actor* agent, const monster* mon, bool do_message)
-{
-    return mon && shoot_through_monster(agent, *mon, do_message);
 }
 
 /**
- * Should all actions (beams, explosions, and otherwise) caused by a particular
- * agent ignore a given monster?
+ * Would it ever be possible for any hostile action by a given agent to do any
+ * harm whatsoever to a given target? This includes damage, debuffs, or anything
+ * else we would consider negative.
  *
- * This is *mostly* the same as shoot_through_monster(), but Jiyva jellies
- * are specifically impossible to harm, but cannot be shot through.
+ * Note: This does not imply that the agent *currently* possesses the means to
+ * inflict that harm (ie: it can return true for an agent with no attacks, or
+ * only spells the target resists fully). Rather, think of it as 'the target is
+ * not naturally invulnerable to all offensive actions by the agent in question'.
  *
- *  @param agent       The source of the action. If nullptr, the action has no source.
- *  @param mon         A monster that is the target of the action.
- *  @param do_message  If true, prints a message stating how the monster avoided harm.
- *  @return            Whether the monster cannot be harmed by this agent.
+ * This includes all cases covered by shoot_through_actor(), but also some
+ * additional ones (such as Jivya's jelly protection), where a target cannot be
+ * harmed, but still blocks fire.
+ *
+ *  @param agent       The source of the action. May be nullptr, if the action
+ *                     has a non-actor source (or possibly a dead actor).
+ *  @param target      The actor that is the target of the action.
+ *  @param announce_important  If true, prints a message stating how the target
+ *                             avoids harm (in cases where this avoidance is
+ *                             unusual).
+ *  @param announce_mundane    If true, prints a message stating how the target
+ *                             avoids harm (in cases where this avoidance is
+ *                             frequent, such as Ancestors avoiding player
+ *                             attacks).
+ *  @return  Whether the monster could theoretically be harmed by this agent.
  */
-bool never_harm_monster(const actor* agent, const monster& mon, bool do_message)
+bool could_harm(const actor* agent, const actor* target, bool announce_important,
+                                                         bool announce_mundane)
 {
-    if (shoot_through_monster(agent, mon, do_message))
-        return true;
+    if (!target)
+        return false;
+
+    // If we can fire through them, we definitely can't harm them.
+    if (shoot_through_actor(agent, target, announce_mundane))
+        return false;
+
+    // Players in Sanctuaries cannot harm anything.
+    if (agent && agent->is_player() && (is_sanctuary(you.pos())))
+    {
+        if (announce_important)
+        {
+            string msg = make_stringf("The Sanctuary denies your attempt to harm %s.",
+                                        target->name(DESC_THE).c_str());
+            god_speaks(GOD_ZIN, msg.c_str());
+        }
+        return false;
+    }
+
+    // Actors in Sanctuaries cannot be harmed by anything.
+    if (is_sanctuary(target->pos()))
+    {
+        if (announce_important && you.see_cell(target->pos()))
+        {
+            string msg = make_stringf("The Sanctuary protects %s from harm.",
+                                        target->name(DESC_THE).c_str());
+            god_speaks(GOD_ZIN, msg.c_str());
+        }
+        return false;
+    }
 
     if (agent && agent->is_player()
         && have_passive(passive_t::neutral_slimes)
-        && mons_is_slime(mon)
-        && mon.wont_attack())
+        && mons_class_is_slime(target->type)
+        && target->wont_attack())
     {
-        if (do_message && you.can_see(mon))
+        if (announce_mundane && you.can_see(*target))
             simple_god_message(" protects your slime from harm.", false, GOD_JIYVA);
-        return true;
+        return false;
     }
 
-    return false;
+    return true;
 }
 
-bool never_harm_monster(const actor* agent, const monster* mon, bool do_message)
+// As above, but specifically only returns true if the target is an *enemy*
+// that the agent could harm (while always returning false for allies).
+bool could_harm_enemy(const actor* agent, const actor* target,
+                      bool announce_important, bool announce_mundane)
 {
-    return mon && never_harm_monster(agent, *mon, do_message);
+    if (mons_aligned(agent, target))
+        return false;
+
+    return could_harm(agent, target, announce_important, announce_mundane);
 }
 
 /**

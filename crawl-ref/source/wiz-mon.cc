@@ -36,6 +36,7 @@
 #include "mon-poly.h"
 #include "mon-speak.h"
 #include "output.h"
+#include "player-notices.h"
 #include "prompt.h"
 #include "religion.h"
 #include "shout.h"
@@ -78,7 +79,7 @@ void wizard_create_spec_monster_name()
         if (strlen(specs) >= 3 && partial != MONS_PROGRAM_BUG)
         {
             mlist.clear();
-            newerr = mlist.add_mons(mons_type_name(partial, DESC_PLAIN));
+            newerr = mlist.add_mons(remove_prepended_the(mons_type_name(partial, DESC_PLAIN)));
         }
 
         if (!newerr.empty())
@@ -163,7 +164,7 @@ void debug_list_monsters()
 
     sort(mon_nums, mon_nums + MAX_MONSTERS, _sort_monster_list);
 
-    int total_exp = 0, total_adj_exp = 0, total_nonuniq_exp = 0;
+    int total_exp = 0, total_nonuniq_exp = 0;
 
     string prev_name = "";
     int    count     = 0;
@@ -198,18 +199,16 @@ void debug_list_monsters()
         count++;
         prev_name = name;
 
-        int exp = exp_value(*mi);
-        total_exp += exp;
-        if (!mons_is_unique(mi->type))
-            total_nonuniq_exp += exp;
-
         if ((mi->flags & (MF_WAS_NEUTRAL | MF_NO_REWARD))
             || mi->is_summoned())
         {
             continue;
         }
 
-        total_adj_exp += exp;
+        int exp = exp_value(*mi);
+        total_exp += exp;
+        if (!mons_is_unique(mi->type))
+            total_nonuniq_exp += exp;
     }
 
     char buf[80];
@@ -222,18 +221,26 @@ void debug_list_monsters()
         snprintf(buf, sizeof(buf), "%s", prev_name.c_str());
     mons.emplace_back(buf);
 
-    mpr_comma_separated_list("Monsters: ", mons);
+    if (!mons.empty())
+        mpr_comma_separated_list("Monsters: ", mons);
 
-    if (total_adj_exp == total_exp)
+    if (!env.lurkers.empty())
     {
-        mprf("%d monsters, %d total exp value (%d non-uniq)",
-             nfound, total_exp, total_nonuniq_exp);
+        vector<monster*> lurkers;
+        for (lurker_data &lurker : env.lurkers)
+        {
+            lurkers.push_back(&lurker.mon.mons);
+            const int exp = exp_value(lurker.mon.mons);
+            total_exp += exp;
+            if (!mons_is_unique(lurker.mon.mons.type))
+                total_nonuniq_exp += exp;
+            nfound++;
+        }
+        mprf("Lurkers: %s", multimonster_name_string(lurkers, true).c_str());
     }
-    else
-    {
-        mprf("%d monsters, %d total exp value (%d non-uniq, %d adjusted)",
-             nfound, total_exp, total_nonuniq_exp, total_adj_exp);
-    }
+
+    mprf("%d monsters, %d total exp value (%d non-uniq)",
+            nfound, total_exp, total_nonuniq_exp);
 }
 
 static string _habitat_debug_name(habitat_type ht)
@@ -493,9 +500,6 @@ void wizard_dismiss_all_monsters(bool force_all)
 
     int count = dismiss_monsters(buf);
     mprf("Dismissed %i monster%s.", count, count == 1 ? "" : "s");
-    // If it was turned off turn autopickup back on if all monsters went away.
-    if (!*buf)
-        autotoggle_autopickup(false);
 }
 
 void debug_make_monster_shout(monster* mon)
@@ -613,7 +617,7 @@ static void _move_player(const coord_def& where)
         env.grid(where) = DNGN_FLOOR;
         set_terrain_changed(where);
     }
-    move_player_to_grid(where, false);
+    you.move_to(where, MV_INTERNAL);
     // If necessary, update the Abyss.
     if (player_in_branch(BRANCH_ABYSS))
         maybe_shift_abyss_around_player();
@@ -636,7 +640,7 @@ static void _move_monster(const coord_def& where, int idx1)
     const int idx2 = env.mgrid(moves.target);
     monster* mon2 = monster_at(moves.target);
 
-    mon1->moveto(moves.target);
+    mon1->move_to(moves.target, MV_INTERNAL | MV_NO_MGRID_UPDATE);
     env.mgrid(moves.target) = idx1;
     mon1->check_redraw(moves.target);
 
@@ -644,14 +648,14 @@ static void _move_monster(const coord_def& where, int idx1)
 
     if (mon2 != nullptr)
     {
-        mon2->moveto(where);
+        mon2->move_to(where, MV_INTERNAL | MV_NO_MGRID_UPDATE);
         mon1->check_redraw(where);
+        env.invis_knowledge.update(*mon2);
     }
     if (!you.see_cell(moves.target))
-    {
-        mon1->flags &= ~(MF_WAS_IN_VIEW | MF_SEEN);
-        mon1->seen_context = SC_NONE;
-    }
+        mon1->flags &= ~(MF_WAS_IN_VIEW | MF_SEEN | MF_SENSED);
+
+    env.invis_knowledge.update(*mon1);
 }
 
 void wizard_move_player_or_monster(const coord_def& where)

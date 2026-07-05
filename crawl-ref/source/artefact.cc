@@ -58,7 +58,8 @@ static bool _god_fits_artefact(const god_type which_god, const item_def &item,
     // First check the item's base_type and sub_type, then check the
     // item's brand and other randart properties.
 
-    const bool type_bad = !god_likes_item_type(item, which_god);
+    const bool type_bad = !god_likes_item_type(item.base_type, item.sub_type,
+                                               which_god);
 
     if (type_bad && !name_check_only)
     {
@@ -69,7 +70,7 @@ static bool _god_fits_artefact(const god_type which_god, const item_def &item,
     if (type_bad)
         return false;
 
-    const int brand = get_weapon_brand(item);
+    const brand_type brand = get_weapon_brand(item);
     const int ego   = get_armour_ego_type(item);
 
     if (is_evil_god(which_god) && brand == SPWPN_HOLY_WRATH)
@@ -321,8 +322,8 @@ void set_unique_item_status(const item_def& item,
  * @param arm           The armour_type of the armour in question.
  * @param proprt[out]   The properties list to be populated.
  */
-static void _populate_armour_intrinsic_artps(const armour_type arm,
-                                             artefact_properties_t &proprt)
+void populate_armour_intrinsic_artps(const armour_type arm,
+                                     artefact_properties_t &proprt)
 {
     proprt[ARTP_FIRE] += armour_type_prop(arm, ARMF_RES_FIRE);
     proprt[ARTP_COLD] += armour_type_prop(arm, ARMF_RES_COLD);
@@ -448,16 +449,17 @@ static map<talisman_type, vector<intrinsic_artp>> talisman_artps = {
     { TALISMAN_SCARAB,      {{ARTP_FIRE, 2}}},
     { TALISMAN_MEDUSA,      {{ARTP_POISON, 1}}},
     { TALISMAN_SERPENT,     {{ARTP_POISON, 1}}},
+    { TALISMAN_EEL,         {{ARTP_ELECTRICITY, 1}}},
     { TALISMAN_SPIDER,      {{ARTP_RAMPAGING, 1}}},
     { TALISMAN_FORTRESS,    {{ARTP_RCORR, 1}}},
     { TALISMAN_STATUE,  {{ARTP_POISON, 1}, {ARTP_ELECTRICITY, 1},
                          {ARTP_NEGATIVE_ENERGY, 1}}},
     { TALISMAN_DRAGON,  {{ARTP_FIRE, 1}, {ARTP_COLD, 1}, {ARTP_POISON, 1}, {ARTP_FLY, 1}}},
-    { TALISMAN_SPHINX,  {{ARTP_FLY, 1}}},
+    { TALISMAN_SPHINX,  {{ARTP_FLY, 1}, {ARTP_SEE_INVISIBLE, 1}}},
     { TALISMAN_STORM,   {{ARTP_POISON, 1}, {ARTP_ELECTRICITY, 1}, {ARTP_FLY, 1}}},
     { TALISMAN_DEATH,   {{ARTP_POISON, 1}, {ARTP_NEGATIVE_ENERGY, 3},
                         {ARTP_COLD, 1}}},
-    { TALISMAN_VAMPIRE, {{ARTP_COLD, 1}, {ARTP_NEGATIVE_ENERGY, 1}}},
+    { TALISMAN_VAMPIRE, {{ARTP_COLD, 1}, {ARTP_NEGATIVE_ENERGY, 1}, {ARTP_SEE_INVISIBLE, 1}}},
 };
 
 /**
@@ -495,8 +497,8 @@ static void _populate_item_intrinsic_artps(const item_def &item,
     switch (item.base_type)
     {
         case OBJ_ARMOUR:
-            _populate_armour_intrinsic_artps((armour_type)item.sub_type,
-                                             props);
+            populate_armour_intrinsic_artps((armour_type)item.sub_type,
+                                            props);
             break;
         case OBJ_STAVES:
             _populate_staff_intrinsic_artps((stave_type)item.sub_type, props);
@@ -577,6 +579,7 @@ static void _add_randart_weapon_brand(const item_def &item,
         item_props[ARTP_BRAND] = random_choose_weighted(
             47, SPWPN_FLAMING,
             47, SPWPN_FREEZING,
+            35, NUM_SPECIAL_WEAPONS,
             26, SPWPN_HEAVY,
             26, SPWPN_VENOM,
             26, SPWPN_DRAINING,
@@ -591,6 +594,9 @@ static void _add_randart_weapon_brand(const item_def &item,
              6, SPWPN_REAPING,
              3, SPWPN_DISTORTION,
              3, SPWPN_CHAOS);
+
+        if (item_props[ARTP_BRAND] == NUM_SPECIAL_WEAPONS)
+            item_props[ARTP_BRAND] = get_special_brand_for(static_cast<weapon_type>(item.sub_type));
     }
 
     // no brand = magic flag to reject and retry
@@ -760,10 +766,12 @@ static bool _artp_can_go_on_item(artefact_prop_type prop, int prop_val,
             return extant_props[ARTP_BRAND] != SPWPN_ANTIMAGIC;
         case ARTP_BLINK:
             return !_any_artps_in_item_props({ ARTP_PREVENT_TELEPORTATION },
-                                             intrinsic_props, extant_props);
+                                             intrinsic_props, extant_props)
+                    && !item.is_type(OBJ_TALISMANS, TALISMAN_SPIDER);
         case ARTP_PREVENT_TELEPORTATION:
             return !_any_artps_in_item_props({ ARTP_BLINK },
                                                 intrinsic_props, extant_props)
+                   && !item.is_type(OBJ_TALISMANS, TALISMAN_SPIDER)
                    && !item.is_type(OBJ_TALISMANS, TALISMAN_STORM);
         // only on melee weapons
         case ARTP_ANGRY:
@@ -1754,7 +1762,7 @@ const unrandart_entry* get_unrand_entry(int unrand_index)
 
 static int _unrand_weight(int unrand_index, int item_level)
 {
-    const unrandart_entry* entry = &unranddata[unrand_index];
+    const unrandart_entry* entry = &unranddata[unrand_index - UNRAND_START];
 
     // Early-game unrands (with a preferred max depth != 0) are
     // weighted higher within their depth and lower past it.
@@ -1765,7 +1773,39 @@ static int _unrand_weight(int unrand_index, int item_level)
     return item_level <= pref_max_level ? 100 : 1;
 }
 
-int find_okay_unrandart(uint8_t aclass, uint8_t atype, int item_level, bool in_abyss)
+static bool _unrand_is_compatible(const unrandart_entry& unrand,
+                                  object_class_type aclass,
+                                  uint8_t atype,
+                                  bool acquirement)
+{
+    if (unrand.base_type != aclass)
+        return false;
+    if (atype == OBJ_RANDOM)
+        return true;
+    if (aclass != OBJ_WEAPONS)
+        return unrand.sub_type == atype;
+
+    item_def required_item;
+    required_item.base_type = aclass;
+    required_item.sub_type = atype;
+
+    item_def unrand_item;
+    unrand_item.base_type = unrand.base_type;
+    unrand_item.sub_type = unrand.sub_type;
+
+    if (item_attack_skill(required_item) != item_attack_skill(unrand_item))
+        return false;
+    if (acquirement)
+    {
+        return you.hands_reqd(required_item, true)
+               == you.hands_reqd(unrand_item, true);
+    }
+    return basic_hands_reqd(required_item, SIZE_MEDIUM)
+           == basic_hands_reqd(unrand_item, SIZE_MEDIUM);
+}
+
+int find_okay_unrandart(uint8_t aclass, uint8_t atype, int item_level,
+                        bool in_abyss, bool acquirement)
 {
     int chosen_unrand_idx = -1;
 
@@ -1815,16 +1855,8 @@ int find_okay_unrandart(uint8_t aclass, uint8_t atype, int item_level, bool in_a
             continue;
         }
 
-        if (entry->base_type != aclass
-            || atype != OBJ_RANDOM && entry->sub_type != atype
-               // Acquirement.
-               && (aclass != OBJ_WEAPONS
-                   || item_attack_skill(entry->base_type, atype) !=
-                      item_attack_skill(entry->base_type, entry->sub_type)
-                   || hands_reqd(&you, entry->base_type,
-                                 atype) !=
-                      hands_reqd(&you, entry->base_type,
-                                 entry->sub_type)))
+        if (!_unrand_is_compatible(*entry, (object_class_type)aclass, atype,
+                                   acquirement))
         {
             continue;
         }

@@ -926,6 +926,10 @@ default 'cap-J'
 
 VISUAL:@The_monster@ jiggles.
 %%%%
+default 'j'
+
+VISUAL:@The_monster@ jiggles.
+%%%%
 'l'
 
 @The_monster@ hisses menacingly.
@@ -938,7 +942,6 @@ default confused 'r'
 
 VISUAL:@The_monster@ runs around in a circle.
 %%%%
-# Bees and hornets - moths and giant fireflies have separate speech.
 default confused 'y'
 
 SOUND:@The_monster@ buzzes around in tight circles.
@@ -946,12 +949,6 @@ SOUND:@The_monster@ buzzes around in tight circles.
 default silenced confused 'y'
 
 VISUAL:@The_monster@ flies around in tight circles.
-%%%%
-# Statues and golems never speak unless assigned a message to their
-# specific species.
-default '8'
-
-__NONE
 #########################################
 # Speech strings by monster genus
 #########################################
@@ -4768,6 +4765,65 @@ Gastronok triumphant
 
 @The_monster@ gurgles, "Let's see if you taste as good as that wizard did."
 %%%%
+############ GOJI ### A goblin rider whose strategy is less brilliant than he thinks
+Goji
+
+@The_monster@ says, "All other rider will be jealous when they see me now. Except they can't!"
+
+@The_monster@ shouts, "Stealth is key to winning *all* battles."
+
+@The_monster@ says, "Me always have element of surprise."
+
+w:20
+VISUAL:{{
+  if you.see_invisible() then
+    return "@The_monster@ nearly slides off @possessive@ mount."
+  else
+    return "@The_monster@ tilts precariously sideways for a moment."
+  end
+}}
+
+w:20
+VISUAL:{{
+  if you.see_invisible() then
+    return "@The_monster@ is repeatedly hit by @possessive@ mount's wing. @Subjective@ doesn't seem to notice."
+  else
+    return "@The_monster@'s face is buffeted by something unseen."
+  end
+}}
+
+w:20
+VISUAL:{{
+  if you.see_invisible() then
+    return "@The_monster@'s mount tries and fails to shake @objective@ off."
+  else
+    return "@The_monster@ wobbles up and down alarmingly."
+  end
+}}
+
+VISUAL:@The_monster@ struggles to disentangle @possessive@ weapon from @possessive@ harness.
+
+@The_monster@ says, "Even shrike cannot dodge what it cannot see!"
+
+@The_monster@ says, "I make captain now for sure."
+
+w:2
+@The_monster@ says, "Float like a butterfly, sting like... a butterfly with a spear!"
+%%%%
+Goji killed
+
+@The_monster@ rasps, "But I... could not... be seen...."
+%%%%
+Goji triumphant
+
+{{
+  if you.invisible() then
+    return '@The_monster@ laughs triumpantly. "Goji even *more* invisible!"'
+  else
+    return '@The_monster@ laughs. "Silly ' .. you.species():lower() .. "! You couldn't even see me."
+  end
+}}
+%%%%
 ############ GRINDER ### An inefficient ex-torturer
 Grinder
 
@@ -7198,21 +7254,9 @@ VISUAL:@The_monster@ looks irritated.
 %%%%
 _Terence_rare_
 
-@The_monster@ screams @at_foe@, "Your {{
-if you.race() == "Armataur" then
-    return "tough hide"
-else
-    return "supposed skill"
-end
-}} won't protect you!" @player_only@
+@The_monster@ screams @at_foe@, "Your supposed skill won't protect you!"
 
-@The_monster@ screams @at_foe@, "Where's your {{
-if you.race() == "Armataur" then
-    return "elephant"
-else
-    return "power"
-end
-}} now?!" @player_only@
+@The_monster@ screams @at_foe@, "Where's your power now?!"
 
 @The_monster@ screams @at_foe@, "Stand, coward! You want a fight, show some honour!"
 
@@ -7405,7 +7449,7 @@ _Wiglaf_common_
 
 @The_monster@ says, "Och, ye'r asking fur it now."
 
-VISUAL: @The_monster@ straightens out a crease in @possessive@ hat.
+VISUAL:@The_monster@ straightens out a crease in @possessive@ hat.
 %%%%
 _Wiglaf_rare_
 
@@ -7768,6 +7812,11 @@ default electric golem
 
 SOUND:@The_monster@ crackles and sizzles.
 %%%%
+################## Erythrospite #############################
+erythrospite
+
+VISUAL:@The_monster@ throbs to the beat of your heart.
+%%%%
 ################## Frilled lizard ##############################
 frilled lizard
 
@@ -7876,12 +7925,12 @@ VISUAL:@The_monster@ skips for a moment.
 %%%%
 Killer Klown triumphant
 
-VISUAL: @The_monster@ begins to take a bow, but slips on a banana peel.
+VISUAL:@The_monster@ begins to take a bow, but slips on a banana peel.
 
 @The_monster@ honks, delighted.
 
 # Yes, of course they could tie together a tree or a wisp.
-VISUAL: @The_monster@ begins to tie you into a balloon animal.
+VISUAL:@The_monster@ begins to tie you into a balloon animal.
 ## END Killer Klown ##
 %%%%
 ################## Laughing skull ###########################
@@ -8236,19 +8285,31 @@ neutral good god 'cap-A'
 
 __NONE
 
-w:1
+w:5
 @_holy_being_@
 %%%%
 friendly good god 'cap-A'
 
-w:19
-__NONE
-
-w:1
 @_holy_being_@
 %%%%
 # Otherwise, they'll stay silent.
 default 'cap-A'
+
+__NONE
+%%%%
+neutral good god 'Å'
+
+__NONE
+
+w:5
+@_holy_being_@
+%%%%
+friendly good god 'Å'
+
+@_holy_being_@
+%%%%
+# Otherwise, they'll stay silent.
+default 'Å'
 
 __NONE
 %%%%
@@ -9178,22 +9239,6 @@ w:5
 w:1
 @The_monster@ says, "I wanted to be a wyvern-rider, but @my_God@ had other plans!"
 %%%%
-# Cards not from any Nemelex deck
-_misplaced_card_
-
-the Ace of Spades
-
-the Old Maid
-
-# Tarot
-the Hanged Man
-
-# Tarot via the Simpsons
-the Happy Squirrel
-
-# Uno
-Wild Draw Four
-%%%%
 # Nemelex's old Deck of Oddities; just names, not lines
 _deck_of_oddities_card_
 
@@ -9212,6 +9257,24 @@ the Genie
 the Helix
 
 Xom
+%%%%
+# Cards not from any Nemelex deck
+_misplaced_card_
+
+the Ace of Spades
+
+the Joker
+
+the Old Maid
+
+# Tarot
+the Hanged Man
+
+# Tarot via the Simpsons
+the Happy Squirrel
+
+# Uno
+Wild Draw Four
 %%%%
 # Nemelex's deck of destruction
 _deck_of_destruction_line_

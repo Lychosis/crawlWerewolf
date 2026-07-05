@@ -1022,11 +1022,11 @@ kitem("E = minotaur skeleton, shortbow good_item / orcbow good_item / " ..
 
  -- Spriggan stabber.
 kitem("F = spriggan skeleton, dagger good_item / short sword good_item / " ..
-          "rapier good_item / quick blade w:5, robe good_item w:120 / " ..
-          light_scales .. " / shadow dragon scales, " ..
-          "randbook disc:hexes / book of misfortune / nothing w:20, " ..
-          "buckler good_item / hat good_item / any wand w:20 / any misc / " ..
-          "gold / any scroll / any potion / nothing w:80")
+          "rapier good_item / athame good_item / quick blade w:6, " ..
+          "robe good_item w:120 / " .. light_scales .. " / " ..
+          "shadow dragon scales, randbook disc:hexes / book of misfortune / " ..
+          "nothing w:20, buckler good_item / hat good_item / any wand w:20 / " ..
+          "any misc / gold / any scroll / any potion / nothing w:80")
 
  -- Merfolk gladiator. 3 guaranteed items, 25% chance for the last one.
 kitem("H = merfolk skeleton, partisan good_item / demon trident / " ..
@@ -1097,7 +1097,7 @@ dgn.delayed_decay_extra(_G, "O", "octopode corpse",
           "any misc / gold / any scroll / any potion / nothing w:180")
 
 -- Felid shapeshifter.
-kitem("P = felid skeleton, protean talisman randart / blade talisman / " ..
+kitem("P = felid skeleton, protean talisman randart / eel talisman / " ..
           "fortress talisman / lupine talisman / serpent talisman / " ..
           "spider talisman / wellspring talisman, " ..
           "any jewellery good_item w:60 / manual of shapeshifting / " ..
@@ -1108,12 +1108,12 @@ kitem("P = felid skeleton, protean talisman randart / blade talisman / " ..
           "any scroll / any potion / nothing w:60")
 
 -- Barachi warper.
-kitem("Q = barachi skeleton, book of spatial translocation / " ..
+kitem("Q = barachi skeleton, book of spatial translocations / " ..
           "book of displacement / there-and-back book / book of the warp / " ..
           "randbook disc:translocation, " ..
           "scroll of blinking / scroll of teleportation q:2 / " ..
           "dart ego:disjunction," ..
-          "dagger good_item / short sword good_item / rapier good_item / " ..
+          "dagger good_item / rapier good_item / athame good_item / " ..
           "long sword good_item / double sword / demon blade / " ..
           "hand cannon good_item / shortbow randart / orcbow randart / " ..
           "arbalest good_item / hand cannon good_item / triple crossbow / " ..

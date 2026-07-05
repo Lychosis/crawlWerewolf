@@ -89,8 +89,7 @@ static void _mons_summon_monster_illusion(monster* caster,
     // If a charmed caster creates a clone from a regular hostile,
     // the clone should still be friendly.
     if (monster *clone = clone_mons(foe, true, &cloning_visible,
-                                    caster->friendly() ?
-                                    ATT_FRIENDLY : caster->attitude))
+                                    caster->temp_attitude()))
     {
         const string clone_id = _monster_clone_id_for(foe);
         clone->props[CLONE_REPLICA_KEY] = clone_id;
@@ -187,7 +186,6 @@ static void _mons_load_player_enchantments(monster* creator, monster* target)
             if (ench == ENCH_NONE)
                 continue;
             target->add_ench(mon_enchant(ench,
-                                         0,
                                          creator,
                                          you.duration[i]));
         }
@@ -326,17 +324,14 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
 
     *mons          = *orig;
     mons->set_new_monster_id();
-    mons->move_to_pos(pos);
+    mons->move_to(pos, MV_INTERNAL);
     mons->attitude = mon_att;
 
     // The monster copy constructor doesn't copy constriction, so no need to
-    // worry about that. We do need to worry about the enchantments associated
-    // with direct constriction, though.
-    if (mons->has_ench(ENCH_VILE_CLUTCH))
-        mons->del_ench(ENCH_VILE_CLUTCH);
-
-    if (mons->has_ench(ENCH_GRASPING_ROOTS))
-        mons->del_ench(ENCH_GRASPING_ROOTS);
+    // worry about that. We do need to worry about the enchantment associated
+    // with temporary constriction, though.
+    if (mons->has_ench(ENCH_CONSTRICTED))
+        mons->del_ench(ENCH_CONSTRICTED);
 
     // Don't copy death triggers - phantom royal jellies should not open the
     // Slime vaults on death.
@@ -363,7 +358,7 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
     if (mons->has_ench(ENCH_TOUCH_OF_BEOGH))
         mons->del_ench(ENCH_TOUCH_OF_BEOGH);
 
-    if (mons->has_ench(ENCH_VENGEANCE_TARGET))
+    if (mons->is_vengeance_target())
         you.duration[DUR_BEOGH_SEEKING_VENGEANCE] += 1;
 
     // Duplicate objects, or unequip them if they can't be duplicated.
@@ -393,13 +388,6 @@ monster* clone_mons(const monster* orig, bool quiet, bool* obvious,
         if (!quiet)
             simple_monster_message(*orig, " is duplicated!");
         *obvious = true;
-    }
-
-    if (you.can_see(*mons))
-    {
-        handle_seen_interrupt(mons);
-        viewwindow();
-        update_screen();
     }
 
     if (crawl_state.game_is_arena())

@@ -56,6 +56,8 @@ enum xom_event_type
     XOM_GOOD_HYPER_ENCHANT_MONSTER,
     XOM_GOOD_MASS_CHARM,
     XOM_GOOD_WAVE_OF_DESPAIR,
+    XOM_GOOD_BLINDING_BLINKITIS,
+    XOM_GOOD_CHAOS_VEX,
     XOM_GOOD_FOG,
     XOM_GOOD_CLOUD_TRAIL,
     XOM_GOOD_CLEAVING,
@@ -123,7 +125,6 @@ string xom_effect_to_name(xom_event_type effect);
 void debug_xom_effects();
 #endif
 
-bool swap_monsters(monster* m1, monster* m2);
 bool move_stair(coord_def stair_pos, bool away, bool allow_under);
 
 void validate_xom_events();

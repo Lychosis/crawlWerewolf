@@ -87,7 +87,6 @@ static bool _evoke_horn_of_geryon()
 
     mprf(MSGCH_SOUND, "You produce a hideous howling noise!");
     noisy(15, you.pos()); // same as hell effect noise
-    did_god_conduct(DID_EVIL, 3);
     int num = 1;
     const int adjusted_power = you.skill(SK_EVOCATIONS, 10);
     if (adjusted_power + random2(90) > 130)
@@ -244,7 +243,6 @@ void zap_wand(int slot, dist *_target)
 
     practise_evoking(1);
     count_action(CACT_EVOKE, wand.sub_type, OBJ_WANDS);
-    alert_nearby_monsters();
 
     you.turn_is_over = true;
 }
@@ -295,7 +293,6 @@ static bool _box_of_beasts()
 
     mprf("...and %s %s out!",
          mons->name(DESC_A).c_str(), mons->airborne() ? "flies" : "leaps");
-    did_god_conduct(DID_CHAOS, random_range(5,10));
 
     return true;
 }
@@ -311,12 +308,7 @@ static bool _place_webs()
     const int max_range = LOS_DEFAULT_RANGE / 2 + 2;
     for (monster_near_iterator mi(you.pos(), LOS_SOLID); mi; ++mi)
     {
-        trap_def *trap = trap_at((*mi)->pos());
-        // Don't destroy non-web traps or try to trap monsters
-        // currently caught by something.
         if (you.pos().distance_from((*mi)->pos()) > max_range
-            || (!trap && env.grid((*mi)->pos()) != DNGN_FLOOR)
-            || (trap && trap->type != TRAP_WEB)
             || (*mi)->friendly()
             || (*mi)->caught())
         {
@@ -326,14 +318,7 @@ static bool _place_webs()
         if (!x_chance_in_y(web_chance, 100))
             continue;
 
-        if (trap && trap->type == TRAP_WEB)
-            destroy_trap((*mi)->pos());
-
-        place_specific_trap((*mi)->pos(), TRAP_WEB, 1); // 1 ammo = temp
-        // Reveal the trap
-        env.grid((*mi)->pos()) = DNGN_TRAP_WEB;
-        trap = trap_at((*mi)->pos());
-        trap->trigger(**mi);
+        mi->trap_in_web();
         webbed = true;
     }
     return webbed;
@@ -627,6 +612,14 @@ static bool _phial_of_floods(dist *target)
     return false;
 }
 
+bool mirror_can_effect(monster *victim)
+{
+    // Mirrored monsters (including by Mara, rakshasas) can still be
+    // re-reflected.
+    return actor_is_illusion_cloneable(victim)
+        || victim->has_ench(ENCH_PHANTOM_MIRROR);
+}
+
 static spret _phantom_mirror(dist *target)
 {
     bolt beam;
@@ -635,7 +628,7 @@ static spret _phantom_mirror(dist *target)
     if (!target)
         target = &target_local;
 
-    targeter_smite tgt(&you, LOS_RADIUS);
+    targeter_phantom_mirror tgt(&you);
 
     direction_chooser_args args;
     args.restricts = DIR_TARGET;
@@ -646,23 +639,6 @@ static spret _phantom_mirror(dist *target)
     if (!spell_direction(*target, beam, &args))
         return spret::abort;
     victim = monster_at(beam.target);
-    if (!victim || !you.can_see(*victim))
-    {
-        if (beam.target == you.pos())
-            mpr("You can't use the mirror on yourself.");
-        else
-            mpr("You can't see anything there to clone.");
-        return spret::abort;
-    }
-
-    // Mirrored monsters (including by Mara, rakshasas) can still be
-    // re-reflected.
-    if (!actor_is_illusion_cloneable(victim)
-        && !victim->has_ench(ENCH_PHANTOM_MIRROR))
-    {
-        mpr("The mirror can't reflect that.");
-        return spret::abort;
-    }
 
     monster_info mi(victim);
     habitat_type habitat = mons_habitat(*victim);
@@ -675,7 +651,7 @@ static spret _phantom_mirror(dist *target)
     //      than their base type.
     if (!you_can_see_habitable_spot_near(victim->pos(), habitat, 1))
     {
-        mpr("There is no available space!");
+        canned_msg(MSG_NO_AVAILABLE_SPACE);
         return spret::abort;
     }
     if (stop_summoning_prompt(mi.mresists, mf))
@@ -696,9 +672,8 @@ static spret _phantom_mirror(dist *target)
     mon->summoner = MID_PLAYER;
     mons_add_blame(mon, "mirrored by the player character");
     mon->add_ench(ENCH_PHANTOM_MIRROR);
-    mon->add_ench(mon_enchant(ENCH_DRAINED,
-                              div_rand_round(mon->get_experience_level(), 3),
-                              &you, INFINITE_DURATION));
+    mon->add_ench(mon_enchant(ENCH_DRAINED, &you, INFINITE_DURATION,
+                              div_rand_round(mon->get_experience_level(), 3)));
 
     mon->behaviour = BEH_SEEK;
     set_nearest_monster_foe(mon);
@@ -715,8 +690,7 @@ static spret _phantom_mirror(dist *target)
 
 static bool _valid_tremorstone_target(const monster &m)
 {
-    return !m.is_firewood()
-        && !never_harm_monster(&you, m);
+    return !m.is_firewood();
 }
 
 /**
@@ -997,8 +971,11 @@ static bool _evoke_ally_only(const item_def &item, bool ident)
     return false;
 }
 
-string cannot_evoke_item_reason(const item_def *item, bool temp, bool ident)
+string cannot_evoke_item_reason(const item_def *item, bool temp, bool ident,
+                                bool *god_forbids)
 {
+    if (god_forbids)
+        *god_forbids = false;
     // id is not at issue here
     if (temp && you.berserk())
         return "You are too berserk!";
@@ -1017,6 +994,15 @@ string cannot_evoke_item_reason(const item_def *item, bool temp, bool ident)
         // TODO: zigfig has some terrain/level constraints that aren't handled
         // here
         return "";
+    }
+
+    // Your god won't let you evoke items they forbid.
+    if (god_forbids_item(*item, temp))
+    {
+        if (god_forbids)
+            *god_forbids = true;
+        return make_stringf("%s forbids the use of this item.",
+                            uppercase_first(god_name(you.religion)).c_str());
     }
 
     if (item->is_type(OBJ_BAUBLES, BAUBLE_FLUX))
@@ -1058,7 +1044,7 @@ string cannot_evoke_item_reason(const item_def *item, bool temp, bool ident)
     if (temp
         && item->base_type == OBJ_MISCELLANY
         && item->sub_type == MISC_HORN_OF_GERYON
-        && silenced(you.pos()))
+        && you.is_silenced())
     {
         return "You can't produce a sound!";
     }
@@ -1075,9 +1061,10 @@ string cannot_evoke_item_reason(const item_def *item, bool temp, bool ident)
 
 bool item_currently_evokable(const item_def *item)
 {
-    const string err = cannot_evoke_item_reason(item);
+    bool god_forbids = false;
+    const string err = cannot_evoke_item_reason(item, true, true, &god_forbids);
     if (!err.empty())
-        mpr(err);
+        mprf(god_forbids ? MSGCH_GOD : MSGCH_PLAIN, "%s", err.c_str());
     return err.empty();
 }
 
@@ -1102,11 +1089,14 @@ bool evoke_item(item_def& item, dist *preselect)
         return true;
 
     case OBJ_BAUBLES:
+        if (!check_transform_into(transformation::flux, false))
+            return false;
+
         mprf("You crush the flux bauble in your %s and feel its energy "
             "flooding your body.", you.hand_name(false).c_str());
         ASSERT(in_inventory(item));
         dec_inv_item_quantity(item.link, 1);
-        transform(0, transformation::flux);
+        transform(0, transformation::flux, true);
         you.props[FLUX_ENERGY_KEY] = 45;
         return true;
 
@@ -1403,15 +1393,16 @@ int stardust_orb_max(bool max)
 
 int stardust_orb_power(int mp_spent, bool max_evo)
 {
-    const int skill = max_evo ? 108 : you.skill(SK_EVOCATIONS, 4);
-    int pow = (skill + 15) * (100 + (mp_spent * 25)) / 100;
+    const int skill = max_evo ? 81 : you.skill(SK_EVOCATIONS, 3);
+    int pow = (skill + 10) * (100 + (mp_spent * 25)) / 100;
     return pow;
 }
 
 void stardust_orb_trigger(int mp_spent)
 {
     if (!you.duration[DUR_STARDUST_COOLDOWN]
-        && you.wearing_ego(OBJ_ARMOUR, SPARM_STARDUST))
+        && you.wearing_ego(OBJ_ARMOUR, SPARM_STARDUST)
+        && !you.has_mutation(MUT_HP_CASTING))
     {
         schedule_stardust_fineff(&you, stardust_orb_power(mp_spent),
                                  stardust_orb_max());

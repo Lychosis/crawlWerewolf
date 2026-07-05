@@ -38,9 +38,11 @@ constexpr int PARAGON_FINISHER_MID_CHARGE = 8;
 constexpr int PARAGON_FINISHER_MAX_CHARGE = 14;
 
 bool player_summon_check(const vector<monster_type>& types, int max_range = 2,
-                         int exclude_range = 0, coord_def pos = coord_def());
+                         int exclude_range = 0, coord_def pos = coord_def(),
+                         spell_type origin_spell = SPELL_NO_SPELL);
 bool player_summon_check(monster_type type, int max_range = 2,
-                         int exclude_range = 0, coord_def pos = coord_def());
+                         int exclude_range = 0, coord_def pos = coord_def(),
+                         spell_type origin_spell = SPELL_NO_SPELL);
 
 spret cast_summon_small_mammal(int pow, bool fail);
 
@@ -56,9 +58,7 @@ spret cast_sphinx_sisters(const actor& caster, int pow, bool fail);
 spret cast_summon_dragon(actor *caster, int pow, bool fail = false);
 spret cast_summon_hydra(actor *caster, int pow, bool fail = false);
 spret cast_summon_mana_viper(int pow, bool fail);
-bool summon_berserker(int pow, actor *caster,
-                      monster_type override_mons = MONS_PROGRAM_BUG);
-spret cast_summon_berserker(int pow, bool fail);
+bool summon_berserker(actor *caster, monster_type type);
 bool summon_holy_warrior(int pow, bool punish);
 spret cast_summon_holy_warrior(int pow, bool fail);
 
@@ -74,13 +74,13 @@ spret cast_forge_lightning_spire(int pow, bool fail);
 spret cast_call_imp(int pow, bool fail);
 spret summon_shadow_creatures();
 spret cast_summon_horrible_things(int pow, bool fail);
-bool can_cast_malign_gateway();
-void create_malign_gateway(coord_def point, beh_type beh, string cause,
-                           int pow, bool is_player = false);
+bool can_cast_malign_gateway(const actor& caster);
+void create_malign_gateway(coord_def point, mid_t owner, beh_type beh,
+                           string cause, int pow);
 spret cast_malign_gateway(actor* caster, int pow, bool fail = false,
                           bool test = false);
 coord_def find_gateway_location(actor* caster);
-bool is_gateway_target(const actor& caster, coord_def location);
+bool is_gateway_target(const actor& caster, coord_def location, bool only_known = true);
 spret cast_summon_forest(actor* caster, int pow, bool fail, bool test=false);
 spret cast_forge_blazeheart_golem(int pow, bool fail);
 
@@ -156,6 +156,7 @@ dice_def hoarfrost_cannonade_damage(int pow, bool finale);
 spret cast_hoarfrost_cannonade(const actor& agent, int pow, bool fail);
 
 dice_def hellfire_mortar_damage(int pow);
+int hellfire_mortar_cooldown_length(int lava_length);
 spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail);
 
 bool make_soul_wisp(const actor& agent, actor& victim);
@@ -196,8 +197,9 @@ spret monarch_detonation(const actor& agent, int pow, bool fail);
 
 spret cast_splinterfrost_shell(const actor& agent, const coord_def& aim, int pow,
                              bool fail);
-vector<coord_def> get_splinterfrost_block_spots(const actor& agent,
-                                              const coord_def& aim, int num_walls);
+vector<coord_def> get_wall_ring_spots(const coord_def& center,
+                                      const coord_def& aim,
+                                      int num_walls, bool water_okay = false);
 bool splinterfrost_block_fragment(monster& block, const coord_def& aim);
 
 spret cast_summon_seismosaurus_egg(const actor& agent, int pow, bool fail);

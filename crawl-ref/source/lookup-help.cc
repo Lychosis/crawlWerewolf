@@ -10,6 +10,7 @@
 #include <functional>
 
 #include "ability.h"
+#include "abyss.h"
 #include "artefact.h"
 #include "branch.h"
 #include "cio.h"
@@ -51,6 +52,7 @@
 #include "tilepick.h"
 #include "tileview.h"
 #include "ui.h"
+#include "unicode.h"
 #include "viewchar.h"
 #include "view.h"
 
@@ -164,6 +166,8 @@ private:
  */
 static monster_type _soh_type(string &soh_name)
 {
+    // If no branch or no valid branch was specified, this will be "hell", in
+    // which case we default to Gehenna below.
     const string flavour = lowercase_string(soh_name.substr(soh_name.find_last_of(' ')+1));
 
     branch_type branch = NUM_BRANCHES;
@@ -180,9 +184,8 @@ static monster_type _soh_type(string &soh_name)
         case BRANCH_TARTARUS:
             return MONS_SERPENT_OF_HELL_TARTARUS;
         case BRANCH_GEHENNA:
-            return MONS_SERPENT_OF_HELL;
         default:
-            die("bad serpent of hell name");
+            return MONS_SERPENT_OF_HELL;
     }
 }
 
@@ -369,7 +372,8 @@ static vector<string> _get_monster_keys(char32_t showchar)
         if (me->mc != i)
             continue;
 
-        if ((char32_t)me->basechar != showchar)
+        // Match either the default glyph or any player-remapped glyph for this monster.
+        if (me->basechar != showchar && mons_char(i) != showchar)
             continue;
 
         if (mons_species(i) == MONS_SERPENT_OF_HELL)
@@ -601,10 +605,7 @@ static void _recap_feat_keys(vector<string> &keys)
         if (type == DNGN_ENTER_SHOP)
             keys[i] = "A shop";
         else
-        {
-            keys[i] = feature_description(type, NUM_TRAPS, "", DESC_A,
-                                          NUM_BRANCHES);
-        }
+            keys[i] = feature_description(type, "", DESC_A, NUM_BRANCHES);
     }
 }
 
@@ -814,7 +815,7 @@ static MenuEntry* _cloud_menu_gen(char letter, const string &str, string &key)
     cloud_struct fake_cloud;
     fake_cloud.type = cloud;
     fake_cloud.decay = 1000;
-    me->colour = element_colour(get_cloud_colour(fake_cloud));
+    me->colour = element_colour(get_cloud_colour(fake_cloud), fake_cloud.pos);
 
     cloud_info fake_cloud_info;
     fake_cloud_info.type = cloud;
@@ -884,8 +885,12 @@ vector<string> LookupType::matching_keys(string regex) const
 
     if (no_search())
         key_list = simple_key_fetch();
-    else if (regex.size() == 1 && supports_glyph_lookup())
-        key_list = glyph_fetch(regex[0]);
+    else if (strwidth(regex) == 1 && supports_glyph_lookup())
+    {
+        char32_t c;
+        utf8towc(&c, &regex[0]);
+        key_list = glyph_fetch(c);
+    }
     else
         key_list = get_desc_keys(regex);
 
@@ -1255,6 +1260,11 @@ static string _branch_depth(branch_type br)
     const int depth = branches[br].numlevels;
 
     // Abyss depth is explained in the description.
+    if (br == BRANCH_ABYSS)
+    {
+        desc = make_stringf("\n(If you entered the Abyss now, you could be "
+                            "pulled as deep as Abyss:%d.)", abyss_default_depth(true));
+    }
     if (depth > 1 && br != BRANCH_ABYSS)
     {
         desc = make_stringf("\n\nThis %s is %d levels deep.",
@@ -1486,7 +1496,7 @@ static bool _exact_lookup_match(const LookupType &lookup_type,
     if (lookup_type.no_search())
         return false; // no search, no exact match
 
-    if (lookup_type.supports_glyph_lookup() && regex.size() == 1)
+    if (lookup_type.supports_glyph_lookup() && strwidth(regex) == 1)
         return false; // glyph search doesn't have the concept
 
     if (lookup_type.filter_forbid && (*lookup_type.filter_forbid)(regex, ""))
@@ -1573,7 +1583,7 @@ bool LookupType::find_description(string &response) const
 
     vector<string> key_list = matching_keys(regex);
 
-    const bool by_symbol = supports_glyph_lookup() && regex.size() == 1;
+    const bool by_symbol = supports_glyph_lookup() && strwidth(regex) == 1;
     response = _keylist_invalid_reason(key_list, lowercase_string(type),
                                        regex, by_symbol);
     if (!response.empty())

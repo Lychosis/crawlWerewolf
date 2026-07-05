@@ -337,6 +337,13 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { WPN_SHORT_SWORD,      1 },
         { WPN_RAPIER,           1 },
         { WPN_DAGGER,           1 }, };
+    static const weapon_list OCCULT_WEAPONS =
+    {   { WPN_DAGGER,           4 },
+        { WPN_WHIP,             2 },
+        { WPN_ATHAME,           1 }, };
+    static const weapon_list RITUAL_WEAPONS =
+    {   { WPN_DAGGER,           4 },
+        { WPN_ATHAME,           1 }, };
     static const weapon_list DRAC_MAGE_WEAPONS = // XXX: merge with DE? ^
     {   { WPN_LONG_SWORD,       2 },
         { WPN_SHORT_SWORD,      1 },
@@ -403,6 +410,15 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { WPN_LONG_SWORD,       1 } },
       { 1, 2, 5 },
       { { SPWPN_HOLY_WRATH,     1 } } };
+    static const mon_weapon_spec DE_VILE_MAGE_WEAPONS =
+    { { { WPN_SCIMITAR,         2 },
+        { WPN_FALCHION,         1 },
+        { WPN_RAPIER,           1 },
+        { WPN_ATHAME,           1 }, },
+      { 1, 0, 4 },
+      { { SPWPN_FLAMING,        1 },
+        { SPWPN_FREEZING,       1 },
+        { NUM_SPECIAL_WEAPONS,  3 } } };
     static const vector<pair<brand_type, int>> HELL_KNIGHT_BRANDS = // sum 45
     {   { SPWPN_FLAMING,        13 },
         { SPWPN_DRAINING,       4 },
@@ -436,7 +452,8 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { WPN_DIRE_FLAIL,       3 },
         { WPN_DEMON_WHIP,       2 },
         { WPN_GLAIVE,           3 },
-        { WPN_DEMON_TRIDENT,    2 } };
+        { WPN_DEMON_TRIDENT,    2 },
+        { WPN_ATHAME,           3 } };
     static const weapon_list GARGOYLE_WEAPONS =
     {   { WPN_MACE,             15 },
         { WPN_FLAIL,            10 },
@@ -496,6 +513,12 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
                 { WPN_BROAD_AXE,        10 },
                 { WPN_BATTLEAXE,        16 },
         }, {2, 1, 4}, { { SPWPN_DRAINING, 1 }, { NUM_SPECIAL_WEAPONS, 1 }, } } },
+        { MONS_FUNGAL_SHAMBLER,
+            { { { WPN_MORNINGSTAR,      4 },
+                { WPN_PARTISAN,         6 },
+                { WPN_SCIMITAR,         3 },
+                { WPN_WAR_AXE,          6 },
+            } } },
         { MONS_GNOLL,                   { GNOLL_WEAPONS } },
         { MONS_OGRE_MAGE,               { GNOLL_WEAPONS } },
         { MONS_NAGA_MAGE,               { GNOLL_WEAPONS } },
@@ -593,9 +616,9 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { MONS_DEEP_ELF_AIR_MAGE,       { DE_MAGE_WEAPONS } },
         { MONS_DEEP_ELF_FIRE_MAGE,      { DE_MAGE_WEAPONS } },
         { MONS_DEEP_ELF_ANNIHILATOR,    { DE_MAGE_WEAPONS } },
-        { MONS_DEEP_ELF_DEATH_MAGE,     { DE_MAGE_WEAPONS } },
-        { MONS_DEEP_ELF_DEMONOLOGIST,   { DE_MAGE_WEAPONS } },
-        { MONS_DEEP_ELF_SORCERER,       { DE_MAGE_WEAPONS } },
+        { MONS_DEEP_ELF_DEATH_MAGE,     DE_VILE_MAGE_WEAPONS },
+        { MONS_DEEP_ELF_DEMONOLOGIST,   DE_VILE_MAGE_WEAPONS },
+        { MONS_DEEP_ELF_SORCERER,       DE_VILE_MAGE_WEAPONS },
         { MONS_DEEP_ELF_ELEMENTALIST,   { DE_MAGE_WEAPONS } },
         { MONS_DRACONIAN_SHIFTER,       { DRAC_MAGE_WEAPONS } },
         { MONS_DRACONIAN_SCORCHER,      { DRAC_MAGE_WEAPONS } },
@@ -721,6 +744,7 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { MONS_MERFOLK_AQUAMANCER, { { { WPN_RAPIER, 1 } }, {}, {}, 2 } },
         { MONS_MERFOLK_JAVELINEER, { { { WPN_SPEAR, 1 } } } },
         { MONS_GOBLIN_RIDER, { { { WPN_SPEAR, 1 } } } },
+        { MONS_GOJI, { { { WPN_SPEAR, 1 } } } },
         { MONS_SPRIGGAN_RIDER, { { { WPN_SPEAR, 1 } } } },
         { MONS_MERFOLK, { { { WPN_TRIDENT, 1 } } } },
         { MONS_MERFOLK_SIREN,
@@ -888,18 +912,21 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
             { { WPN_BATTLEAXE,          1 } }, {},
             { { SPWPN_FREEZING, 1 } },
         } },
+        { MONS_BURIAL_ACOLYTE,          { OCCULT_WEAPONS } },
+        { MONS_NECROMANCER,             { OCCULT_WEAPONS } },
+        { MONS_OCCULTIST,               { OCCULT_WEAPONS } },
+        { MONS_KOBOLD_DEMONOLOGIST,     { OCCULT_WEAPONS } },
+        { MONS_JOSEPHINE,               { RITUAL_WEAPONS } },
+        { MONS_NERGALLE,                { RITUAL_WEAPONS } },
+        { MONS_ORC_SORCERER,
+            { { { WPN_DAGGER,               9 },
+                { WPN_ATHAME,               1 },
+        } } },
         { MONS_CACTUS_GIANT,    { { { WPN_GIANT_SPIKED_CLUB, 1 } } } },
         { MONS_ORC_WIZARD,      { { { WPN_DAGGER, 1 } } } },
-        { MONS_ORC_SORCERER,    { { { WPN_DAGGER, 1 } } } },
-        { MONS_NERGALLE,        { { { WPN_DAGGER, 1 } } } },
         { MONS_DOWAN,           { { { WPN_DAGGER, 1 } } } },
-        { MONS_BURIAL_ACOLYTE,  { { { WPN_DAGGER, 1 } } } },
-        { MONS_KOBOLD_DEMONOLOGIST, { { { WPN_DAGGER, 1 } } } },
         { MONS_KOBOLD_GEOMANCER, { { { WPN_DAGGER, 1 } } } },
-        { MONS_NECROMANCER,      { { { WPN_DAGGER, 1 } } } },
         { MONS_ARCANIST,         { { { WPN_DAGGER, 1 } } } },
-        { MONS_OCCULTIST,        { { { WPN_DAGGER, 1 } } } },
-        { MONS_JOSEPHINE,        { { { WPN_DAGGER, 1 } } } },
         { MONS_CASSANDRA,        { { { WPN_DAGGER, 1 } } } },
         { MONS_AGNES,       { { { WPN_LAJATANG, 1 } } } },
         { MONS_SONJA, {
@@ -923,9 +950,10 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
             { { SPWPN_ELECTROCUTION, 1 } },
         } },
         { MONS_SALAMANDER_MYSTIC,
-            { { { WPN_QUARTERSTAFF,     10 },
+            { { { WPN_QUARTERSTAFF,     9 },
                 { WPN_DAGGER,           5 },
                 { WPN_SCIMITAR,         2 },
+                { WPN_ATHAME,           1 },
         } } },
         { MONS_SPRIGGAN,
             { { { WPN_DAGGER,           1 },
@@ -981,7 +1009,8 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { MONS_DEMONSPAWN_CORRUPTER,   { DS_WEAPONS } },
         { MONS_DEMONSPAWN_SOUL_SCHOLAR,   { DS_WEAPONS } },
         { MONS_DEMONSPAWN_BLOOD_SAINT, {
-            { { WPN_DAGGER,             4 },
+            { { WPN_DAGGER,             3 },
+              { WPN_ATHAME,             1 },
               { WPN_QUARTERSTAFF,       1 } },
         } },
         { MONS_DEMONSPAWN_WARMONGER, {
@@ -1157,6 +1186,15 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
 
     case MONS_GOBLIN_RIDER:
         if (coinflip())
+            level = ISPEC_GOOD_ITEM;
+        break;
+
+    case MONS_GOJI:
+        level = ISPEC_GOOD_ITEM;
+        break;
+
+    case MONS_FUNGAL_SHAMBLER:
+        if (one_chance_in(4))
             level = ISPEC_GOOD_ITEM;
         break;
 
@@ -1376,7 +1414,7 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         break;
 
     case MONS_ANCESTOR_HEXER:
-    case MONS_ANCESTOR_BATTLEMAGE:
+    case MONS_ANCESTOR_ELEMENTALIST:
     case MONS_ANCESTOR_KNIGHT:
         force_item = true;
         upgrade_hepliaklqana_weapon(type, item);
@@ -1406,7 +1444,7 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
     // and subtype and create a new item. - bwr
     const int thing_created =
         ((force_item) ? get_mitm_slot() : items(false, xitc, xitt, level,
-                                                item.brand, NO_AGENT,
+                                                item.brand, NO_AGENT, false,
                                                 custom_name));
 
     if (thing_created == NON_ITEM)
@@ -1993,6 +2031,7 @@ int make_mons_armour(monster_type type, int level)
     case MONS_TERENCE:
     case MONS_URUG:
     case MONS_HAROLD:
+    case MONS_FUNGAL_SHAMBLER:
         item.base_type = OBJ_ARMOUR;
         item.sub_type  = random_choose_weighted(1, ARM_RING_MAIL,
                                                 3, ARM_SCALE_MAIL,
@@ -2179,6 +2218,13 @@ int make_mons_armour(monster_type type, int level)
     case MONS_CRAZY_YIUF:
         item.base_type = OBJ_ARMOUR;
         item.sub_type  = ARM_CLOAK;
+        break;
+
+    case MONS_GOJI:
+        force_item = true;
+        item.base_type = OBJ_ARMOUR;
+        item.sub_type = ARM_SCARF;
+        set_item_ego_type(item, OBJ_ARMOUR, SPARM_HARM);
         break;
 
     case MONS_FANNAR:

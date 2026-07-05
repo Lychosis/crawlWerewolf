@@ -115,6 +115,14 @@ A granite statue
  The lone and level sands stretch far away.”
     -Percy Bysshe Shelley, “Ozymandias”. 1818.
 %%%%
+A hide-covered altar of Uskayaw
+
+“We skipped the light fandango
+ Turned cartwheels 'cross the floor
+ I was feeling kinda seasick
+ But the crowd called out for more”
+    -Procul Harum, “A Whiter Shade of Pale”. 1967.
+%%%%
 A one-way gate to the infinite horrors of the Abyss
 
 “And if you gaze for long into an abyss, the abyss gazes also into you.”
@@ -553,6 +561,14 @@ Iskenderun's Battlesphere spell
 “Maxim 4: Close air support covereth a multitude of sins.”
     -Howard Tayler, _The Seventy Maxims of Maximally Effective Mercenaries_,
      in _Schlock Mercenary_. 2008.
+%%%%
+Launch Clockwork Bee spell
+
+“According to all known laws of aviation, there is no way a bee should be able
+ to fly. Its wings are too small to get its fat little body off the ground.
+ The bee, of course, flies anyway, because bees don't care what humans think
+ is impossible.”
+    -Bee Movie. 2007.
 %%%%
 Lee's Rapid Deconstruction spell
 
@@ -2570,6 +2586,12 @@ HAMLET [Drawing his sword.]: How now! a rat? Dead, for a ducat, dead
     -William Shakespeare, _The Tragedy of Hamlet, Prince of Denmark_, III, 4.
 1603.
 %%%%
+__s_suffix
+
+“Ere the worm pierce your winding-sheet, ere the spider
+ Make a thin curtain for your epitaphs.”
+    - John Webster, _The White Devil_, V, 6. 1612.
+%%%%
 __cap-D_suffix
 
 “On the other hand, Confucius is made to say to his disciples, ‘I know how
@@ -2818,6 +2840,10 @@ chonchon
  and have been known to suck the blood of sleepers.”
     - _A Book of Creatures_, 2015.
 %%%%
+clockwork bee
+
+<Launch Clockwork Bee spell>
+%%%%
 crimson imp
 
 “The Devil, too, sometimes steals human children; it is not infrequent for him
@@ -2885,6 +2911,10 @@ diamond obelisk
  culture and in the culture of future observers.”
     -“Expert Judgment on Markers to Deter Inadvertent Human Intrusion into the
       Waste Isolation Pilot Plant”, Sandia National Laboratories report. 1993
+%%%%
+dormant clockwork bee
+
+<Launch Clockwork Bee spell>
 %%%%
 oblivion hound
 
@@ -3319,14 +3349,13 @@ lindwurm
  wir uns den Drachen oder Lindwurm als ein Ungeheuer vorstellen, dessen langer
  Hals in einen Adler-, Löwen- oder Delphinenkopf endigt; das auf dem breiten
  Rücken Greifs- oder Nachisittige trägt; und am vielfach
- gerollten Schweif
- einen Stachel mit Widerhaken hat; Feuer speit; sich in Mädchen verliebt und
- diese entführt; bald diese bald jene Gestalt annimmt; auf sauer erworbenen
- Schatzen ruht — kurz, als ein Ungeheuer, das alle Eigenschaften besitzt,
- welche die Fabel ihm andichtet; dann wäre es Wahnsinn, an Drachen und
- Lindwürmer glauben zu wollen. Nehmen wir aber dafür bloß ein furchtbares
- Ungeheuer überhaupt, welches nun aus unserem Welttheile vertilgt ist, so hat
- der Glaube daran nichts Lächerliches.”
+ gerollten Schweif einen Stachel mit Widerhaken hat; Feuer speit; sich in
+ Mädchen verliebt und diese entführt; bald diese bald jene Gestalt annimmt; auf
+ sauer erworbenen Schatzen ruht — kurz, als ein Ungeheuer, das alle
+ Eigenschaften besitzt, welche die Fabel ihm andichtet; dann wäre es Wahnsinn,
+ an Drachen und Lindwürmer glauben zu wollen. Nehmen wir aber dafür bloß ein
+ furchtbares Ungeheuer überhaupt, welches nun aus unserem Welttheile vertilgt
+ ist, so hat der Glaube daran nichts Lächerliches.”
     -Leopold Ziegelhauſer, _Schattenbilder der Vorzeit: Ein Kranz von
      Geschichten, Sagen, Legenden, Märchen, Skizzen und Heldenmahlen, Aus allen
      Gegenden Deutschlands und des österreichischen Kaiserstaates_. 1844.
@@ -3579,9 +3608,8 @@ ogre mage
 oklob plant
 
 “Carbonic acid is one of the three materials which together form the starting
- point of vegetable growth; the others being water and
- nitric acid. This acid
- is formed of carbon and oxygen in the proportion of one part of the former to
+ point of vegetable growth; the others being water and nitric acid. This acid is
+ formed of carbon and oxygen in the proportion of one part of the former to
  two of the latter chemically combined. It is a colorless gas, having an acid
  taste and smell; is soluble in water; weighs one-half more than air and can be
  poured from one vessel to another, as a liquid may be; 100 parts of water
@@ -3745,6 +3773,12 @@ rakshasa
  and his features were frightful.”
     -_Mahābhārata_, Adi Parva, Hidimva-vadha Parva, section CLIV. ca. 500 B.C.
      trans. Kisari Mohan Ganguli, 1883.
+%%%%
+raven
+
+“The Hatter opened his eyes very wide on hearing this; but all he said was ‘Why
+is a raven like a writing-desk?’”
+    -Lewis Carroll, Alice’s Adventures in Wonderland
 %%%%
 reaper
 
@@ -4022,6 +4056,13 @@ sphinx marauder
     -Seneca, _Oedipus_, 1st cent. A.D.
      trans. Frank Justus Miller, 1917.
 %%%%
+star jelly
+
+"My colleagues may have dismissed the sightings as blink frog egg casings, but
+today I shall prove that these creatures came from beyond the firmament. Let's
+begin the dissection."
+        -Ardun Idrick, cryptozoologist, last words
+%%%%
 starcursed mass
 
 “Did you see that star go out?
@@ -4219,6 +4260,14 @@ vampire bat
 “For something is amiss and out of place
  When mice with wings can wear a human face.”
     -Theodore Roethke, “The Bat”. 1938.
+%%%%
+vampire mosquito
+
+“I lit a thin green candle
+ To make you jealous of me
+ But the room just filled up with mosquitoes
+ They heard that my body was free”
+    -Leonard Cohen, “One of Us Cannot Be Wrong”. 1967.
 %%%%
 very ugly thing
 

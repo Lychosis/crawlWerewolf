@@ -51,6 +51,11 @@ as zombies. The chance of reanimating a monster and the duration of the effect
 increase with spell power. Re-casting this spell will return zombies to dust, as
 will leaving the floor.
 %%%%
+Antimagic Gaze spell
+
+Causes the target's magic to leak into the air, as though they were hit by an
+antimagic weapon, with no direct line of fire required.
+%%%%
 Apportation spell
 
 Pulls the top item or group of similar items from a distant pile to the floor
@@ -177,8 +182,18 @@ spell power.
 %%%%
 Blinkbolt spell
 
-Transforms the caster into a lightning bolt, and translocates the caster to
-the bolt's destination.
+Transforms the caster into a penetrating lightning bolt, and translocates the
+caster to the bolt's destination.
+%%%%
+Bolt of Antimagic spell
+
+Fires a penetrating bolt of ontologically-paradoxical antimagic, draining its
+victims' reserves of magic.
+%%%%
+Bolster spell
+
+Enhances the caster's physical form, greatly increasing the damage they deal in
+melee as well as their resistance to all elements.
 %%%%
 Bolt of Cold spell
 
@@ -186,7 +201,8 @@ Fires a penetrating bolt of frost.
 %%%%
 Bolt of Devastation spell
 
-Fires a bolt of grief and heartache that cuts its victims' willpower in half.
+Fires a penetrating bolt of grief and heartache that cuts its victims'
+willpower in half.
 %%%%
 Bolt of Draining spell
 
@@ -199,13 +215,13 @@ Fires a penetrating bolt of flames.
 %%%%
 Bolt of Flesh spell
 
-Fires a barrage of conjured flesh, which will briefly remain as a pile on the
-ground at the end of its path.
+Fires a penetrating barrage of conjured flesh, which will briefly remain as a
+pile on the ground at the end of its path.
 %%%%
 Bolt of Light spell
 
-Fires a ray of searing light, which may blind any living, demonic, or holy
-creature it strikes.
+Fires a pentrating ray of searing light, which may blind any living, demonic,
+or holy creature it strikes.
 %%%%
 Bolt of Magma spell
 
@@ -253,6 +269,12 @@ Brothers in Arms spell
 
 <Brothers in Arms ability>
 %%%%
+Cage of Brambles spell
+
+Causes walls of thorny brambles to grow rapidly in a ring around all nearby
+enemies. The caster's allies may fire projectiles through these briars without
+hinderance, but anyone else may find removing them rather painful.
+%%%%
 Call Canine Familiar spell
 
 Summons an inugami to the caster's aid. These mystical canines form a bond with
@@ -260,8 +282,8 @@ their summoner, strengthening them in direct proportion with the caster's
 spellpower.
 
 Recasting this spell while your familiar is nearby will imbue it with additional
-magic, mending some of its wounds and causing its next attack to strike more
-quickly and cleave adjacent foes.
+magic, mending some of its wounds, cleansing it of poison, and causing its next
+attack to strike more quickly and cleave adjacent foes.
 %%%%
 Call Down Damnation spell
 
@@ -477,6 +499,11 @@ Debugging Ray spell
 
 Fires a ray which does massive damage (1500 hp) and always hits.
 %%%%
+Deflect Missiles spell
+
+Envelops the caster in a repulsion field, greatly increasing their evasion
+against all types of projectile - even while otherwise incapacitated.
+%%%%
 Detonation Catalyst spell
 
 Affixes a volatile catalyst to the caster's fists or melee weapon, causing each
@@ -572,7 +599,7 @@ will not avoid what fate has in store for you.
 %%%%
 Doom Bolt spell
 
-Fires a bolt of accursed malice which inflicts Doom.
+Fires a penetrating bolt of accursed malice which inflicts Doom.
 %%%%
 Oblivion Howl spell
 
@@ -590,7 +617,7 @@ duration of the call and the species of dragons called depend on spell power.
 %%%%
 Drain Life spell
 
-Drains the life force of any nearby creatures, healing the user depending on
+Drains the life force of any nearby enemies, healing the user depending on
 the damage dealt.
 %%%%
 Drain Magic spell
@@ -600,9 +627,8 @@ antimagic weapon.
 %%%%
 Draining Gaze spell
 
-Causes the target's magic to leak into the air, as though they were hit by an
-antimagic weapon, and heals the caster for the amount of magic drained,
-with no direct line of fire required.
+Fills a living creature with negative energy, draining them for a fraction of
+their maximum health. This spell requires line of sight but not line of fire.
 %%%%
 Dream Dust spell
 
@@ -616,7 +642,7 @@ Recalls woodland creatures from elsewhere on the same level.
 %%%%
 Electrical Bolt spell
 
-Throws a bolt of electricity at the target, with high accuracy.
+Throws a penetrating bolt of electricity at the target, with high accuracy.
 %%%%
 Enfeeble spell
 
@@ -706,6 +732,10 @@ A single soul from within the armoury leaps out, striking with their weapon and
 then duelling independently for a short time before returning to the maelstrom
 once more.
 %%%%
+Fleetfoot spell
+
+Calls forth winds to increase the caster's movement speed for a short duration.
+%%%%
 Force Lance spell
 
 Fires a shaft of concussive force. If the impact deals damage, it may knock the
@@ -785,6 +815,11 @@ target may have. This may temporarily slow cold-blooded creatures.
 Freezing Cloud spell
 
 Conjures up a large cloud of lethally cold vapour.
+%%%%
+Freezing Gust spell
+
+Fires a penetrating bolt of frigid air that leaves clouds of lethally cold
+vapour in its wake.
 %%%%
 Frozen Ramparts spell
 
@@ -1035,8 +1070,8 @@ death.
 %%%%
 Injury Bond spell
 
-Binds the caster to nearby allies, redirecting half of any damage they suffer
-to the caster.
+Binds the caster to nearby allies, reducing all damage they take by half in
+exchange for suffering half of the prevented damage themselves.
 %%%%
 Injury Mirror spell
 
@@ -1056,7 +1091,11 @@ is dependent on the size of the target.
 %%%%
 Invisibility spell
 
-Turns the caster invisible.
+Turns the caster invisible and randomly displaces them a short distance away.
+
+While an enemy is invisible to you, your accuracy against them is reduced and
+you suffer a major penalty to your evasion and ability to block any attacks they
+make against you.
 %%%%
 Invisibility Other spell
 
@@ -1113,6 +1152,12 @@ on contact with open flame or with creatures - including any caster foolish
 enough to linger in them! The explosion is concussive, knocking adjacent
 creatures away. Damage done rises with the spell's power.
 %%%%
+Landbreaker spell
+
+Violently fractures the landscape, causing rubble to fall upon several nearby
+enemies and also the ground behind them - obstructing their path to flee the
+caster.
+%%%%
 Launch Bomblet spell
 
 Fires a bomblet on a ballistic trajectory that ignores line of fire, dealing
@@ -1133,6 +1178,13 @@ the cost of 1 MP.
 
 Spellpower increases the number of attacks the bee may perform before going
 dormant.
+%%%%
+Launch Sporangium spell
+
+Launches a caustic sporangium which will pursue any intriguing sources of
+nutrients - such as yourself - and engulf them in a massive acidic explosion.
+Nascent plasmodia, capable of firing acid of their own, may take root on any
+walls this explosion touches - though none within 2 tiles of any other.
 %%%%
 Leda's Liquefaction spell
 
@@ -1171,8 +1223,8 @@ Beckons the target forward, attempting to place them adjacent to the caster.
 %%%%
 Lightning Bolt spell
 
-Fires a mighty bolt of lightning. Its damage bypasses half of defenders'
-armour, and it can be bounced off walls to hit targets twice.
+Fires a mighty penetrating bolt of lightning. Its damage bypasses half of
+defenders' armour, and it can be bounced off walls to hit targets twice.
 %%%%
 Magic Dart spell
 
@@ -1273,10 +1325,10 @@ Maxwell's Capacitive Coupling spell
 
 Gradually builds up electric charge in the caster, so long as they maintain
 focus (by waiting in place and not taking any other actions). When a threshold
-is reached, the charge couples with the nearest foe, vaporising them instantly.
-Higher spell power will allow the caster to accumulate charge more rapidly. The
-spell requires a visible target to begin accumulating charge, though a different
-foe may be targeted when the charge is released.
+is reached, the charge couples with the nearest visible foe, vaporising them
+instantly. Higher spell power will allow the caster to accumulate charge more
+rapidly. The spell requires a visible target to begin accumulating charge,
+though a different foe may be affected when the charge is released.
 %%%%
 Maxwell's Portable Piledriver spell
 
@@ -1358,6 +1410,11 @@ their maximum health.
 Mud Breath spell
 
 <Mud Breath ability>
+%%%%
+Murky Legion spell
+
+Summons some glowmurk ghasts, which spread both magical contamination and
+shallow water in a single attack before disappearing.
 %%%%
 Mutagenic Gaze spell
 
@@ -1504,19 +1561,22 @@ Phantom Mirror spell
 Creates a phantom copy of a creature. The copy will be somewhat fragile, but
 otherwise almost indistinguishable from the original.
 %%%%
+Phase Shift spell
+
+Shifts the caster's body slighty out of phase with normal space, causing their
+exact position to become blurry and indistinct. Any attackers without
+supernaturally acute vision will have a much harder time hitting them and also
+be unable to assess the degree of their injuries.
+%%%%
 Planar Overlay spell
 
 Overlays part of an adjacent reality onto this one, causing random local
-monsters to appear elsewhere on the floor. This occurs rapidly at first, but
-soon slows down to a steady rate.
+monsters to appear elsewhere on the floor. The first time this is used, multiple
+monsters will arrive at once; afterward, they will appear at a slow, steady
+rate.
 
-After many monsters have been generated, they will stop rewarding any experience
-points - though destroying the tesseract early will immediately grant the player
-the sum total of all experience points that could be obtained by allowing it to
-continue.
-
-After even more monsters have been generated, new monsters have a chance to
-appear within the player's sight instead.
+After a considerable amount of time has passed, these monsters may even appear
+near the player.
 %%%%
 Plane Rend spell
 
@@ -1526,9 +1586,9 @@ specific branch varies with each cast of the spell.
 %%%%
 Plasma Beam spell
 
-Fires a penetrating beam of plasma at one of the caster's most distant foes.
-The ionised beam bypasses half of defenders' armour, and a second beam of fire
-follows in its wake.
+Fires a penetrating beam of plasma at one of the caster's most distant visible
+foes. The ionised beam bypasses half of defenders' armour, and a second beam of
+fire follows in its wake.
 %%%%
 Platinum Paragon spell
 
@@ -1570,9 +1630,8 @@ Turns the air around the caster into a freezing vortex, doing tremendous damage
 to everyone caught in it that can only be half-mitigated by resistance to
 cold. Those affected will also be swept up into the air and tossed around.
 Only the eye of the storm is a safe place, and it follows the caster. The
-vortex is unable to follow the caster through long-distance translocations.
-The spell's effectiveness is greatly diminished in closed areas. After the
-vortex fades, it cannot be called forth again for a short time.
+spell's effectiveness is greatly diminished in closed areas. After the vortex
+fades, it cannot be called forth again for a short time.
 %%%%
 Polymorph spell
 
@@ -1622,8 +1681,8 @@ put to rest for good.
 %%%%
 Quicksilver Bolt spell
 
-Fires a bolt of dispelling energy at a targeted creature, possibly removing
-some of its enchantments.
+Fires a penetrating bolt of dispelling energy at a targeted creature, possibly
+removing some of its enchantments.
 %%%%
 Ravenous Swarm spell
 
@@ -1659,11 +1718,6 @@ Casting this spell temporarily drains *all* of the caster's remaining magical
 power to constitute the blade, but this energy will be returned to them as soon
 as the blade ceases to exist. Each point of magical power sequestered this way
 slightly increases the damage the blade inflicts.
-%%%%
-Repel Missiles spell
-
-Envelops the caster in a repulsion field, increasing their evasion against all
-types of projectile - even while otherwise incapacitated.
 %%%%
 Resonance Strike spell
 
@@ -1705,8 +1759,8 @@ briefly preventing them from casting any further spells.
 %%%%
 Scorch spell
 
-Scorches a random foe. Those injured by this have their resistance to fire
-burned away for a short time.
+Scorches a random visible foe. Those injured by this have their resistance to
+fire burned away for a short time.
 %%%%
 Sculpt Simulacrum spell
 
@@ -1839,9 +1893,9 @@ body.
 Sigil of Binding spell
 
 Creates two sigils nearby. Anyone who passes over them will be bound, able to
-act and dodge normally but unable to move away. When the effect wears off,
-their movement speed will rebound, giving them temporary swiftness. Swiftness
-from any source grants immunity to binding.
+act and dodge normally but unable to move away. For bound creatures other than
+the caster, their movement speed will rebound when the effect wears off, giving
+them temporary swiftness. Swiftness from any source grants immunity to binding.
 
 Only one set of sigils can be maintained at a time, and they will expire
 prematurely if they leave your sight.
@@ -1981,9 +2035,15 @@ Releases a fast, gas-filled floating spore. After seeking out its foe, the
 spore will explode, damaging anything caught in the blast and further confusing
 living creatures.
 %%%%
-Sprint spell
+Stampede spell
 
-Causes the caster to move across terrain more rapidly for a short duration.
+Charges rapidly in a straight line towards a foe. The user will move at double
+speed in that direction each turn afterward, attacking any enemies in their path
+with increased damage and accuracy and pushing them backward, until they either
+become unable to move or have overshot their target.
+
+Can only be used while their target is standing in a compass direction from the
+user.
 %%%%
 Starburst spell
 
@@ -2178,8 +2238,9 @@ Calls forth a swarm of venomous scorpions.
 Summon Seismosaurus Egg spell
 
 Summons the egg of a brutish lizard, just on the verge of hatching. So long as
-there are foes nearby and the caster remains adjacent to the egg, it will hatch
-several turns after being summoned to wreak havoc upon its summoner's foes.
+there are visible foes nearby and the caster remains adjacent to the egg, it
+will hatch several turns after being summoned to wreak havoc upon its summoner's
+foes.
 
 Even as a juvenile, a seismosaurus is a force to be reckoned with. It is nearly
 as hardy as a mountain, and its footfalls are capable of creating violent
@@ -2202,9 +2263,10 @@ Summon Tzitzimitl spell
 
 Summons a tzitzimitl, a demon of disease and despair.
 %%%%
-Summon Ufetubus spell
+Ufetubi Swarm spell
 
-Summons multiple ufetubi; small, annoying demons.
+Summons a group of berserk ufetubi; irksome minor demons who will rapidly swarm
+and surround the caster's enemies.
 %%%%
 Summon Undead spell
 
@@ -2272,7 +2334,7 @@ aversion to drinking potions.
 %%%%
 Thunderbolt spell
 
-Creates an arc of electricity.
+Creates a penetrating arc of electricity.
 %%%%
 Trog's Hand spell
 
@@ -2363,12 +2425,6 @@ sight but not line of fire.
 Volley of Thorns spell
 
 Launches a small hail of sharp thorns.
-%%%%
-Wall of Brambles spell
-
-Causes brambles to rapidly grow nearby. They have almost no structural
-strength, but the wicked thorns they bear make their removal difficult. Such
-brambles are sparse enough that almost any missile can pass through unhindered.
 %%%%
 Warning Cry spell
 

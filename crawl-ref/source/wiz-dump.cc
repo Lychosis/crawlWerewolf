@@ -83,8 +83,8 @@ static uint8_t _jewellery_type_from_artefact_prop(const string &s
         return AMU_ACROBAT;
     if (s == "Wildshape")
         return AMU_WILDSHAPE;
-    if (s == "Alchemy")
-        return AMU_ALCHEMY;
+    if (s == "Chemistry")
+        return AMU_CHEMISTRY;
     if (s == "Dissipation")
         return AMU_DISSIPATION;
 
@@ -617,7 +617,6 @@ bool chardump_parser::_parse_from_file(const string &full_filename)
     if (seen_skills)
     {
         init_skill_order();
-        init_can_currently_train();
         init_train();
         init_training();
     }

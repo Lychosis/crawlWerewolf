@@ -419,6 +419,12 @@ static void _los_cloud_changed(const coord_def& p, const cloud_type t, const clo
 {
     if (is_opaque_cloud(t) || is_opaque_cloud(old))
         los_terrain_changed(p);
+
+    // Opaque clouds reveal the presence of most invisible monsters.
+    if (is_opaque_cloud(t))
+        if (monster* mons = monster_at(p))
+            if (!mons->is_insubstantial())
+                mons->sense_if_invisible();
 }
 
 cloud_struct::cloud_struct(coord_def p, cloud_type c, int d, int spread,
@@ -759,7 +765,7 @@ bool cloud_is_stronger(cloud_type ct, const cloud_struct& cloud)
  * @param cl_type     The type of cloud to place.
  * @param ctarget     The location of the cloud.
  * @param cl_range    How many turns the cloud will take to decay.
- * @param agent       Any agent that may have caused the cloud. If this is the
+ * @param orig_agent  Any agent that may have caused the cloud. If this is the
  *                    player, god conducts are applied.
  * @param spread_rate How quickly the cloud spreads.
  * @param excl_rad    How large of an exclusion radius to make around the
@@ -770,7 +776,7 @@ bool cloud_is_stronger(cloud_type ct, const cloud_struct& cloud)
  * @return  Whether a cloud was actually placed at this location.
 */
 bool place_cloud(cloud_type cl_type, const coord_def& ctarget, int cl_range,
-                 const actor *agent, int spread_rate, int excl_rad,
+                 const actor *orig_agent, int spread_rate, int excl_rad,
                  bool do_conducts)
 {
     if (!in_bounds(ctarget) || cell_is_solid(ctarget))
@@ -789,6 +795,12 @@ bool place_cloud(cloud_type cl_type, const coord_def& ctarget, int cl_range,
         return false;
     }
 
+    // Pretend clouds made by a marionette are from the player
+    // (Except for purposes of conducts).
+    const actor* agent = orig_agent && orig_agent->temp_attitude() == ATT_MARIONETTE
+                            ? &you
+                            : orig_agent;
+
     const monster * const mons = monster_at(ctarget);
 
     god_conduct_trigger conducts[3];
@@ -798,10 +810,11 @@ bool place_cloud(cloud_type cl_type, const coord_def& ctarget, int cl_range,
     if (agent && agent->is_player())
     {
         if (do_conducts
+            && orig_agent == &you
             && mons && mons->alive()
             && !actor_cloud_immune(*mons, cl_type))
         {
-            set_attack_conducts(conducts, *mons, you.can_see(*mons));
+            set_attack_conducts(conducts, *mons, you.aware_of(*mons));
         }
 
         whose = KC_YOU;
@@ -810,7 +823,7 @@ bool place_cloud(cloud_type cl_type, const coord_def& ctarget, int cl_range,
     }
     else if (agent && agent->is_monster())
     {
-        if (agent->as_monster()->friendly())
+        if (agent->friendly())
             whose = KC_FRIENDLY;
         else
             whose = KC_OTHER;
@@ -1011,17 +1024,10 @@ bool actor_cloud_immune(const actor &act, const cloud_struct &cloud)
     if (actor_cloud_immune(act, cloud.type))
         return true;
 
-    const bool player = act.is_player();
-
-    if (!player && never_harm_monster(&you, act.as_monster())
-        && (cloud.whose == KC_YOU || cloud.whose == KC_FRIENDLY)
-        && (act.as_monster()->friendly() || act.as_monster()->neutral())
-        && (cloud.whose == KC_YOU || cloud.whose == KC_FRIENDLY))
-    {
+    if (!could_harm(cloud.agent(), &act))
         return true;
-    }
 
-    if (!player && have_passive(passive_t::cloud_immunity)
+    if (have_passive(passive_t::cloud_immunity)
         && act.was_created_by(MON_SUMM_AID))
     {
         return true;
@@ -1120,7 +1126,7 @@ static bool _actor_apply_cloud_side_effects(actor *act,
     {
         if (player)
         {
-            if (random2(55) - 13 >= you.experience_level)
+            if (random2(62) - 13 >= you.experience_level)
             {
                 you.petrify(cloud.agent());
                 return true;
@@ -1169,11 +1175,7 @@ static bool _actor_apply_cloud_side_effects(actor *act,
             return true;
         }
         else if (coinflip() && mons->malmutate(cloud.agent(), "mutagenic cloud"))
-        {
-            if (you_worship(GOD_ZIN) && cloud.whose == KC_YOU)
-                did_god_conduct(DID_DELIBERATE_MUTATING, 5 + random2(3));
             return true;
-        }
         return false;
 
     case CLOUD_ALCOHOL:
@@ -1221,11 +1223,7 @@ static bool _actor_apply_cloud_side_effects(actor *act,
         dam = timescale_damage(act, dam);
 
         if (dam > 0)
-        {
             act->hurt(agent, dam, BEAM_NEG, KILLED_BY_CLOUD, "", cloud.cloud_name(true));
-            if (cloud.whose == KC_YOU)
-                did_god_conduct(DID_EVIL, 5 + random2(3));
-        }
 
         return true;
     }
@@ -1257,7 +1255,7 @@ static bool _actor_apply_cloud_side_effects(actor *act,
         else
         {
             monster* mon = act->as_monster();
-            mon->add_ench(mon_enchant(ENCH_DROWSY, 0, cloud.agent(), random_range(25, 40)));
+            mon->add_ench(mon_enchant(ENCH_DROWSY, cloud.agent(), random_range(25, 40)));
             if (mon->get_ench(ENCH_DROWSY).duration >= 100)
             {
                 mon->del_ench(ENCH_DROWSY);
@@ -1366,19 +1364,31 @@ static void _actor_apply_cloud(actor *act, cloud_struct &cloud)
     if (player && cloud_max_base_damage > 0 && resist > 0)
         canned_msg(MSG_YOU_RESIST);
 
+    // Get the cloud's agent now as _actor_apply_cloud_side_effects can delete
+    // blastmotes clouds
+    actor* oppressor = cloud.agent();
+
     const beam_type cloud_flavour = _cloud2beam(cloud.type);
     if (cloud_flavour != BEAM_NONE)
-        act->expose_to_element(cloud_flavour, 7, cloud.agent());
+        act->expose_to_element(cloud_flavour, 7, oppressor);
 
     const bool side_effects =
         _actor_apply_cloud_side_effects(act, cloud, final_damage);
 
     if (!player && (side_effects || final_damage > 0))
-        behaviour_event(mons, ME_DISTURB, 0, act->pos());
+    {
+        if (oppressor && oppressor->alive())
+        {
+            // Alert the monster to the oppressor but don't give away their
+            // position.
+            behaviour_event(mons, ME_ALERT, oppressor, act->pos());
+        }
+        else
+            behaviour_event(mons, ME_DISTURB, 0, act->pos());
+    }
 
     if (final_damage)
     {
-        actor *oppressor = cloud.agent();
         const string oppr_name =
             oppressor ? " "+apostrophise(oppressor->name(DESC_THE))
                       : "";
@@ -1885,35 +1895,28 @@ static void _spread_cloud(coord_def pos, cloud_type type, int radius, int pow,
     }
 }
 
-void run_cloud_spreaders(int dur)
+bool map_cloud_spreader_marker::run(int time)
 {
-    if (!dur)
-        return;
+    if (time <= 0)
+        return false;
 
-    for (map_marker *marker : env.markers.get_all(MAT_CLOUD_SPREADER))
+    speed_increment += time;
+    int rad = min(speed_increment / speed, max_rad - 1) + 1;
+    int ratio = (speed_increment - ((rad - 1) * speed)) * 100 / speed;
+
+    if (ratio == 0)
     {
-        map_cloud_spreader_marker * const mark
-            = dynamic_cast<map_cloud_spreader_marker*>(marker);
-
-        mark->speed_increment += dur;
-        int rad = min(mark->speed_increment / mark->speed, mark->max_rad - 1) + 1;
-        int ratio = (mark->speed_increment - ((rad - 1) * mark->speed))
-                    * 100 / mark->speed;
-
-        if (ratio == 0)
-        {
-            rad--;
-            ratio = 100;
-        }
-
-        _spread_cloud(mark->pos, mark->ctype, rad, mark->duration,
-                        mark->remaining, ratio, mark->agent_mid, mark->kcat);
-        if ((rad >= mark->max_rad && ratio >= 100) || mark->remaining == 0)
-        {
-            env.markers.remove(mark);
-            break;
-        }
+        rad--;
+        ratio = 100;
     }
+
+    _spread_cloud(pos, ctype, rad, duration, remaining, ratio, agent_mid, kcat);
+
+    // If the cloud has finished spreading, tell env.markers to remove this.
+    if ((rad >= max_rad && ratio >= 100) || remaining == 0)
+        return true;
+
+    return false;
 }
 
 const cloud_tile_info& cloud_type_tile_info(cloud_type type)
@@ -2079,7 +2082,7 @@ static const vector<chaos_effect> chaos_effects = {
     { "ensnaring", 3, [](const actor &victim) {
         return !victim.is_web_immune(); },
         BEAM_NONE, [](actor* victim, actor* /*source*/) {
-           ensnare(victim);
+           victim->trap_in_web();
            return you.can_see(*victim);
        },
     },
@@ -2108,7 +2111,7 @@ static const vector<chaos_effect> chaos_effects = {
                 blind_player(random_range(7, 12), ETC_RANDOM);
             else
             {
-                victim->as_monster()->add_ench(mon_enchant(ENCH_BLIND, 1, source,
+                victim->as_monster()->add_ench(mon_enchant(ENCH_BLIND, source,
                                                random_range(7, 12) * BASELINE_DELAY));
             }
             return you.can_see(*victim);
@@ -2163,7 +2166,7 @@ bool chaos_affects_actor(actor* victim, actor* source)
             : source && source->as_monster()->confused_by_you() ? KILL_YOU_CONF
                                                                 : KILL_MON;
 
-        if (beam.thrower == KILL_YOU || (source && source->as_monster()->friendly()))
+        if (beam.thrower == KILL_YOU || (source && source->friendly()))
             beam.attitude = ATT_FRIENDLY;
 
         beam.source_id = source ? source->mid : MID_NOBODY;

@@ -87,7 +87,7 @@ static string _level_description_string_hud()
 
 static bool _low_vertical_space()
 {
-    return crawl_view.hudsz.y < 30;
+    return crawl_view.hudsz.y < 32;
 }
 
 /*
@@ -121,7 +121,9 @@ static bool _low_vertical_space()
 20 W: foobar
 22 Abil: Bes
 23
-24 XXXXXXXXX      status lights
+24 Doom 16%
+25 Cont 110%
+26 XXXXXXXXX      status lights
 .
 y  HPP MPP
  */
@@ -169,6 +171,8 @@ enum touchui_states
     TOUCH_V_WP    = 0x020A, // dummy
     TOUCH_T_QV    = 0x010B,
     TOUCH_V_QV    = 0x020B, // dummy
+    TOUCH_V_DOOM  = 0x2005,
+    TOUCH_V_CONTA = 0x1E06,
     TOUCH_V_LIGHT = 0x010C,
 };
 touchui_states TOUCH_UI_STATE = TOUCH_S_INIT;
@@ -275,8 +279,14 @@ static void _cgotoxy_touchui(int x, int y, GotoRegion region = GOTO_CRT)
         case TOUCH_V_QV:
             x = 4; y = (super_small) ? 18 : 21;
             break;
-        case TOUCH_V_LIGHT:
+        case TOUCH_V_DOOM:
             x = 1; y = (super_small) ? 19 : 23;
+            break;
+        case TOUCH_V_CONTA:
+            x = 1; y = (super_small) ? 20 : 24;
+            break;
+        case TOUCH_V_LIGHT:
+            x = 1; y = (super_small) ? 21 : 25;
             break;
         case TOUCH_T_HP:
             x = 2; y = crawl_view.hudsz.y;
@@ -738,7 +748,8 @@ static void _print_stats_equip(int x, int y)
                 {
                     const item_def& item = entries[i].get_item();
                     cglyph_t g = get_item_glyph(item);
-                    g.col = element_colour(g.col, !Options.animate_equip_bar);
+                    g.col = element_colour(g.col, you.pos(),
+                                           !Options.animate_equip_bar);
                     formatted_string::parse_string(glyph_to_tagstr(g)).display();
                 }
             }
@@ -932,9 +943,9 @@ static void _print_stats_mp(int x, int y)
     if (_is_using_small_layout())
     {
         if (_low_vertical_space())
-            MP_Bar.vdraw(6, 19, you.magic_points, you.max_magic_points);
+            MP_Bar.vdraw(6, 21, you.magic_points, you.max_magic_points);
         else
-            MP_Bar.vdraw(6, 24, you.magic_points, you.max_magic_points);
+            MP_Bar.vdraw(6, 26, you.magic_points, you.max_magic_points);
     }
     else
 #endif
@@ -987,9 +998,9 @@ static void _print_stats_hp(int x, int y)
     if (_is_using_small_layout())
     {
         if (_low_vertical_space())
-            HP_Bar.vdraw(2, 19, you.hp, you.hp_max);
+            HP_Bar.vdraw(2, 21, you.hp, you.hp_max);
         else
-            HP_Bar.vdraw(2, 24, you.hp, you.hp_max);
+            HP_Bar.vdraw(2, 26, you.hp, you.hp_max);
     }
     else
 #endif
@@ -1039,7 +1050,10 @@ static void _print_stats_doom(int x, int y)
 
     CGOTOXY(x, y, GOTO_STAT);
     textcolour(HUD_CAPTION_COLOUR);
-    CPRINTF("Doom: ");
+    if (!_is_using_small_layout())
+        CPRINTF("Doom: ");
+    else
+        CPRINTF("Doom ");
 
     if (you.attribute[ATTR_DOOM] >= 75)
         textcolour(LIGHTMAGENTA);
@@ -1063,13 +1077,16 @@ static void _print_stats_contam(int x, int y)
     // Hide the bar entirely if the player has no contam
     if (you.magic_contamination == 0 && !Options.always_show_doom_contam)
     {
-        CPRINTF("          ");
+        CPRINTF("            ");
         return;
     }
 
     CGOTOXY(x, y, GOTO_STAT);
     textcolour(HUD_CAPTION_COLOUR);
-    CPRINTF("Contam: ");
+    if (!_is_using_small_layout())
+        CPRINTF("Contam: ");
+    else
+        CPRINTF("Cont ");
 
     const int contam = max(you.magic_contamination > 0 ? 1 : 0,
                            you.magic_contamination / 10);
@@ -1113,7 +1130,7 @@ static void _print_stats_ev(int x, int y)
     CGOTOXY(x+4, y, GOTO_STAT);
 
     // Color EV based on whether temporary effects are raising or lowering it
-    const int bonus = you.evasion_scaled(100) - you.evasion_scaled(100, true);
+    const int bonus = you.evasion_scaled(100) - you.evasion_scaled(100, false);
     textcolour(bonus < 0 ? RED
                          : bonus > 0 ? LIGHTBLUE
                                      : HUD_VALUE_COLOUR);
@@ -1786,26 +1803,14 @@ static string _get_monster_name(const monster_info& mi, int count, bool fullname
     return desc;
 }
 
-// If past is true, the messages should be printed in the past tense
-// because they're needed for the morgue dump.
-string mpr_monster_list(bool past)
+static string _describe_from_list(string prefix,
+                                  const vector<monster_info>& mons)
 {
-    // Get monsters via the monster_pane_info, sorted by difficulty.
-    vector<monster_info> mons;
-    get_monster_info(mons);
-
-    string msg = "";
     if (mons.empty())
-    {
-        msg  = "There ";
-        msg += (past ? "were" : "are");
-        msg += " no monsters in sight!";
+        return "";
 
-        return msg;
-    }
-
+    string msg = prefix;
     vector<string> describe;
-
     int count = 0;
     for (unsigned int i = 0; i < mons.size(); ++i)
     {
@@ -1819,17 +1824,43 @@ string mpr_monster_list(bool past)
 
     describe.push_back(_get_monster_name(mons[mons.size()-1], count, true).c_str());
 
-    msg = "You ";
-    msg += (past ? "could" : "can");
-    msg += " see ";
-
     if (describe.size() == 1)
         msg += describe[0];
     else
         msg += comma_separated_line(describe.begin(), describe.end());
-    msg += ".";
 
     return msg;
+}
+
+// If past is true, the messages should be printed in the past tense
+// because they're needed for the morgue dump.
+string mpr_monster_list(bool past)
+{
+    // Get monsters via the monster_pane_info, sorted by difficulty.
+    // (But separate visible and invisible monsters, for better wording.)
+    vector<monster_info> mons;
+    vector<monster_info> invis_mons;
+    get_nearby_monster_info(mons, &invis_mons);
+
+    string msg = "";
+    if (mons.empty() && invis_mons.empty())
+    {
+        msg  = "There ";
+        msg += (past ? "were" : "are");
+        msg += " no monsters in sight!";
+
+        return msg;
+    }
+
+    string vis_describe = _describe_from_list(past ? "could see " : "can see ", mons);
+    string invis_describe = _describe_from_list(past ? "were aware of " : "are aware of ", invis_mons);
+
+    if (invis_describe.empty())
+        return "You " + vis_describe + ".";
+    else if (vis_describe.empty())
+        return "You " + invis_describe + ".";
+    else
+        return "You " + vis_describe + " and " + invis_describe + ".";
 }
 
 #ifndef USE_TILE_LOCAL
@@ -1872,11 +1903,15 @@ static void _print_next_monster_desc(const vector<monster_info>& mons,
             CPRINTF(" ");
 
             monster_info mi = mons[start];
+            colour_t dam_col = dam_colour(mi);
+            if (dam_col != BLACK)
+            {
 #ifdef TARGET_OS_WINDOWS
-            textcolour(real_colour(dam_colour(mi) | COLFLAG_ITEM_HEAP));
+                textcolour(real_colour(dam_col | COLFLAG_ITEM_HEAP, mi.pos));
 #else
-            textcolour(real_colour(dam_colour(mi) | COLFLAG_REVERSE));
+                textcolour(real_colour(dam_col | COLFLAG_REVERSE, mi.pos));
 #endif
+            }
             CPRINTF(" ");
             textbackground(BLACK);
             textcolour(LIGHTGREY);
@@ -1890,21 +1925,21 @@ static void _print_next_monster_desc(const vector<monster_info>& mons,
             printed += 2;
         }
 
-        if (printed < crawl_view.mlistsz.x)
+        int available = crawl_view.mlistsz.x - printed;
+        if (available > 0)
         {
             int desc_colour;
             string desc;
             mons_to_string_pane(desc, desc_colour, zombified,
                                 mons, start, count);
             textcolour(desc_colour);
-            if (static_cast<int>(desc.length()) > crawl_view.mlistsz.x - printed)
+            if (strwidth(desc) > available && available > 1)
             {
-                ASSERT(crawl_view.mlistsz.x - 2 - printed >= 0);
-                desc.resize(crawl_view.mlistsz.x - 2 - printed, ' ');
+                desc = chop_string(desc, available - 2);
                 desc += "…)";
             }
             else
-                desc.resize(crawl_view.mlistsz.x - printed, ' ');
+                desc = chop_string(desc, available);
             CPRINTF("%s", desc.c_str());
         }
     }
@@ -1934,7 +1969,7 @@ int update_monster_pane()
         save_cursor_pos save;
 
         vector<monster_info> mons;
-        get_monster_info(mons);
+        get_nearby_monster_info(mons);
 
         // Count how many groups of monsters there are.
         unsigned int lines_needed = mons.size();
@@ -2598,9 +2633,12 @@ static vector<formatted_string> _get_overview_resistances(
 
     out += _stealth_bar(cwidth, 20) + "\n";
 
-    const int regen = player_regen(); // round up
+    const int regen = player_regen() + (player_indomitable_regen_rate() * 10); // round up
     out += chop_string("HPRegen", cwidth);
-    out += make_stringf("%d.%02d/turn\n", regen/100, regen%100);
+    out += make_stringf("%s%d.%02d%s/turn\n",
+                            you.duration[DUR_INDOMITABLE] ? "<lightblue>" : "",
+                            regen/100, regen%100,
+                            you.duration[DUR_INDOMITABLE] ? "</lightblue>" : "");
 
     if (!you.has_mutation(MUT_HP_CASTING))
     {
@@ -2708,7 +2746,7 @@ static string _rampage_passive_string()
     const int rampage = you.rampaging();
     if (rampage)
     {
-        desc += you.has_mutation(MUT_ROLLPAGE) ? "roll" : "rampage";
+        desc += you.has_mutation(MUT_STAMPEDE) ? "stampede" : "rampage";
 
         const bool infinite = you.unrand_equipped(UNRAND_SEVEN_LEAGUE_BOOTS);
         const char *inf = Options.char_set == CSET_ASCII ? "+inf"
@@ -2851,7 +2889,7 @@ static string _status_mut_rune_list(int sw)
             status.emplace_back(inf.short_text);
     }
 
-    int move_cost = (player_speed() * player_movement_speed()) / 10;
+    int move_cost = player_overall_move_delay(1, true, true, false);
     if (move_cost != 10)
     {
         const char *help = (move_cost <   8) ? "very quick" :

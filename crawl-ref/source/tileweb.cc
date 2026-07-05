@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cstdarg>
 
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -38,6 +39,7 @@
 #include "outer-menu.h"
 #include "message.h"
 #include "mon-util.h"
+#include "mon-info-flag-name.h"
 #include "notes.h"
 #include "options.h"
 #include "player.h"
@@ -420,6 +422,19 @@ static int _handle_cell_click(const coord_def &gc, int button, bool force)
     return CK_MOUSE_CLICK;
 }
 
+static char32_t _remove_first_character_utf8(string& text)
+{
+    if (text.empty())
+        return 0;
+    char32_t result = 0;
+    int length = utf8towc(&result, text.c_str());
+    if (!length)
+        text.clear();
+    else
+        text.erase(0, length);
+    return result;
+}
+
 wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
 {
     JsonWrapper obj = json_decode(data.c_str());
@@ -432,7 +447,7 @@ wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
     fprintf(stderr, "websocket: Received control message '%s' in %d byte.\n", msgtype.c_str(), (int) data.size());
 #endif
 
-    int c = 0;
+    wint_t c = 0;
 
     if (msgtype == "attach")
     {
@@ -606,65 +621,115 @@ wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
         // (possibly just as a string, like the lua API for this)
         process_command(CMD_GAME_MENU);
     }
+    else if (msgtype == "text_input")
+    {
+        JsonWrapper text = json_find_member(obj.node, "text");
+        text.check(JSON_STRING);
+        ASSERT(m_pending_text_input.empty());
+        m_pending_text_input = text->string_;
+        c = _remove_first_character_utf8(m_pending_text_input);
+    }
 
     return c;
 }
 
-bool TilesFramework::await_input(wint_t& c, bool block)
+wint_t TilesFramework::try_await_input()
 {
+    if (m_sock_name.empty())
+        return 0;
+
+    wint_t c = _remove_first_character_utf8(m_pending_text_input);
+    if (c != 0)
+        return c;
+
+    fd_set fds;
+    int result;
+    while (true)
+    {
+        FD_ZERO(&fds);
+        FD_SET(m_sock, &fds);
+
+        timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+
+        result = select(m_sock + 1, &fds, nullptr, nullptr, &timeout);
+        if (result == -1 && errno == EINTR)
+            continue;
+
+        if (result <= 0)
+            return 0;
+
+        c = _receive_control_message();
+        if (c != 0)
+            return c;
+    }
+}
+
+struct save_signal_mask
+{
+    save_signal_mask()
+    {
+        sigprocmask(SIG_SETMASK, nullptr, &old);
+    }
+
+    ~save_signal_mask()
+    {
+        sigprocmask(SIG_SETMASK, &old, nullptr);
+    }
+
+    sigset_t old;
+};
+
+wint_t TilesFramework::await_input(bool(*has_console_input)())
+{
+    if (m_sock_name.empty())
+        return 0;
+
+    wint_t c = _remove_first_character_utf8(m_pending_text_input);
+    if (c != 0)
+        return c;
+
     int result;
     fd_set fds;
-    int maxfd = m_sock_name.empty() ? STDIN_FILENO : m_sock;
+    int maxfd = m_sock;
+
+    save_signal_mask saved_sig_mask;
+    sigset_t signals_to_wait_for;
+    sigemptyset(&signals_to_wait_for);
+    sigaddset(&signals_to_wait_for, SIGWINCH);
+    sigprocmask(SIG_BLOCK, &signals_to_wait_for, nullptr);
 
     while (true)
     {
-        do
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        FD_SET(m_sock, &fds);
+
+        tiles.flush_messages();
+
+        if (has_console_input())
+            return 0;
+        result = pselect(maxfd + 1, &fds, nullptr, nullptr, nullptr,
+                         &saved_sig_mask.old);
+        if (has_console_input())
+            return 0;
+        if (result == -1 && errno == EINTR || result == 0)
+            continue;
+        if (result > 0)
         {
-            FD_ZERO(&fds);
-            FD_SET(STDIN_FILENO, &fds);
-            if (!m_sock_name.empty())
-                FD_SET(m_sock, &fds);
-
-            if (block)
-            {
-                tiles.flush_messages();
-                result = select(maxfd + 1, &fds, nullptr, nullptr, nullptr);
-            }
-            else
-            {
-                timeval timeout;
-                timeout.tv_sec = 0;
-                timeout.tv_usec = 0;
-
-                result = select(maxfd + 1, &fds, nullptr, nullptr, &timeout);
-            }
-        }
-        while (result == -1 && errno == EINTR);
-
-        if (result == 0)
-            return false;
-        else if (result > 0)
-        {
-            if (!m_sock_name.empty() && FD_ISSET(m_sock, &fds))
+            if (FD_ISSET(m_sock, &fds))
             {
                 c = _receive_control_message();
-
                 if (c != 0)
-                    return true;
-            }
-
-            if (FD_ISSET(STDIN_FILENO, &fds))
-            {
-                c = 0;
-                return true;
+                    return c;
             }
         }
         else if (errno == EBADF)
         {
             // This probably means that stdin got closed because of a
             // SIGHUP. We'll just return.
-            c = 0;
-            return false;
+            return 0;
         }
         else
             die("select error: %s", strerror(errno));
@@ -734,6 +799,11 @@ void TilesFramework::send_options()
     Options.write_webtiles_options("options");
     json_close_object();
     finish_message();
+}
+
+void TilesFramework::invalidate_item(int index)
+{
+    m_current_player_info.inv[index].clear();
 }
 
 #define ZOOM_INC 0.1
@@ -1073,8 +1143,10 @@ void TilesFramework::_send_player(bool force_full)
                    "title");
     _update_int(force_full, c.wizard, you.wizard, "wizard");
     _update_int(force_full, c.explore, you.explore, "explore");
-    _update_string(force_full, c.species, player_species_name(),
+    _update_string(force_full, c.species, species::name(you.species),
                    "species");
+    _update_string(force_full, c.species_display_name, player_species_name(),
+                   "species_display_name");
     string god = "";
     if (you_worship(GOD_JIYVA))
         god = god_name_jiyva(true);
@@ -1424,7 +1496,7 @@ void TilesFramework::_send_item(item_def& current, const item_def& next,
             current.plus = evoker_charges(current.sub_type);
         if (in_inventory(current))
         {
-            auto action = quiver::slot_to_action(current.link, false);
+            auto action = quiver::slot_to_action(current.link);
             // TODO: does this stay in sync? Do anything with enabledness?
             if (action && action->is_valid())
                 json_write_string("action_verb", action->quiver_verb());
@@ -1458,9 +1530,9 @@ void TilesFramework::send_doll(const dolls_data &doll, bool submerged, bool ghos
     tiles.json_close_array();
 }
 
-void TilesFramework::send_mcache(mcache_entry *entry, bool submerged, bool send)
+void TilesFramework::send_mcache(mcache_entry *entry, bool submerged, bool invis, bool send)
 {
-    bool trans = entry->transparent();
+    bool trans = entry->transparent() || invis;
     if (trans && send)
         tiles.json_write_int("trans", 1);
 
@@ -1490,14 +1562,9 @@ void TilesFramework::send_mcache(mcache_entry *entry, bool submerged, bool send)
     tiles.json_close_array();
 }
 
-static bool _in_water(const packed_cell &cell)
-{
-    return (cell.bg & TILE_FLAG_WATER) && !(cell.fg & TILE_FLAG_FLYING);
-}
-
 static bool _needs_flavour(const packed_cell &cell)
 {
-    tileidx_t bg_idx = cell.bg & TILE_FLAG_MASK;
+    tileidx_t bg_idx = cell.bg.tile();
     if (bg_idx >= TILE_DNGN_FIRST_TRANSPARENT)
         return true; // Needs flv.floor
     if (cell.is_liquefied || cell.is_bloody)
@@ -1522,11 +1589,11 @@ static inline unsigned _get_highlight(int col)
                                             : unsigned{CHATTR_NORMAL};
 }
 
-void TilesFramework::write_tileidx(tileidx_t t)
+void TilesFramework::write_tile_with_flags(tile_with_flags_t t)
 {
     // JS can only handle signed ints
-    const int lo = t & 0xFFFFFFFF;
-    const int hi = t >> 32;
+    const int lo = t.value & 0xFFFFFFFF;
+    const int hi = t.value >> 32;
     if (hi == 0)
         tiles.write_message("%d", lo);
     else
@@ -1577,9 +1644,11 @@ void TilesFramework::_send_cell(const coord_def &gc,
         const packed_cell &next_pc = next_sc.tile;
         const packed_cell &current_pc = current_sc.tile;
 
-        const tileidx_t fg_idx = next_pc.fg & TILE_FLAG_MASK;
+        const tileidx_t fg_idx = next_pc.fg.tile();
 
-        const bool in_water = _in_water(next_pc);
+        const bool in_water = is_in_water(next_pc);
+        const bool invis = (next_pc.fg.flags() & TILE_FLAG_INVIS)
+                            || (next_pc.bg.flags() & TILE_FLAG_REMEMBERED_INVIS);
         bool fg_changed = false;
 
         if (next_pc.fg != current_pc.fg)
@@ -1587,7 +1656,7 @@ void TilesFramework::_send_cell(const coord_def &gc,
             fg_changed = true;
 
             json_write_name("fg");
-            write_tileidx(next_pc.fg);
+            write_tile_with_flags(next_pc.fg);
             if (get_tile_texture(fg_idx) == TEX_DEFAULT)
                 json_write_int("base", (int) tileidx_known_base_item(fg_idx));
 
@@ -1612,13 +1681,13 @@ void TilesFramework::_send_cell(const coord_def &gc,
         if (next_pc.bg != current_pc.bg)
         {
             json_write_name("bg");
-            write_tileidx(next_pc.bg);
+            write_tile_with_flags(next_pc.bg);
         }
 
         if (next_pc.cloud != current_pc.cloud)
         {
             json_write_name("cloud");
-            write_tileidx(next_pc.cloud);
+            json_write_int(next_pc.cloud);
         }
 
         if (next_pc.icons != current_pc.icons)
@@ -1696,7 +1765,7 @@ void TilesFramework::_send_cell(const coord_def &gc,
             {
                 mcache_entry *entry = mcache.get(fg_idx);
                 if (entry)
-                    send_mcache(entry, in_water);
+                    send_mcache(entry, in_water, invis);
                 else
                 {
                     json_write_comma();
@@ -1737,7 +1806,7 @@ void TilesFramework::_send_cell(const coord_def &gc,
                     tileidx_t mcache_idx = mcache.register_monster(minfo);
                     mcache_entry *entry = mcache.get(mcache_idx);
                     if (entry)
-                        send_mcache(entry, in_water, false);
+                        send_mcache(entry, in_water, invis, false);
                     else
                         json_write_null("mcache");
                 }
@@ -1749,6 +1818,9 @@ void TilesFramework::_send_cell(const coord_def &gc,
         {
             if (fg_changed)
             {
+                if (invis)
+                    tiles.json_write_int("trans", 1);
+
                 json_write_comma();
                 write_message("\"doll\":[[%u,%d]]", (unsigned int) fg_idx, TILE_Y);
                 json_write_null("mcache");
@@ -1812,7 +1884,7 @@ void TilesFramework::_mcache_ref(bool inc)
         {
             coord_def gc(x, y);
 
-            int fg_idx = m_current_view(gc).tile.fg & TILE_FLAG_MASK;
+            int fg_idx = m_current_view(gc).tile.fg.tile();
             if (fg_idx >= TILEP_MCACHE_START)
             {
                 mcache_entry *entry = mcache.get(fg_idx);
@@ -1859,6 +1931,9 @@ void TilesFramework::_send_map(bool spectator_only)
         m_player_on_level = you.on_current_level;
     }
 
+    _update_string(force_full, invis_mon_desc,
+                   env.invis_knowledge.get_unknown_monster_description(), "invis_mon_desc");
+
     if (force_full || m_current_gc != m_next_gc)
     {
         if (m_origin.equals(-1, -1))
@@ -1897,9 +1972,9 @@ void TilesFramework::_send_map(bool spectator_only)
                 screen_cell_t *cell = &m_next_view(gc);
 
                 if (you.flash_where && you.flash_where->is_affected(gc) <= 0)
-                    draw_cell(cell, gc, false, 0);
+                    draw_cell(cell, gc, false, 0, 0);
                 else
-                    draw_cell(cell, gc, false, flash_colour);
+                    draw_cell(cell, gc, false, flash_colour, you.flash_alpha);
 
                 pack_cell_overlays(gc, m_next_view);
             }
@@ -2544,10 +2619,7 @@ void TilesFramework::json_write_icons(const set<tileidx_t> &icons)
 {
     json_open_array("icons");
     for (const tileidx_t icon : icons)
-    {
-        json_write_comma(); // skipped for the first one
-        write_tileidx(icon);
-    }
+        json_write_int(icon);
     json_close_array();
 }
 

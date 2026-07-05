@@ -23,6 +23,7 @@
 #include "cloud.h"
 #include "clua.h"
 #include "command.h"
+#include "coord-def.h"
 #include "coordit.h"
 #include "daction-type.h"
 #include "dactions.h"
@@ -41,12 +42,14 @@
 #include "item-status-flag-type.h"
 #include "items.h"
 #include "libutil.h"
+#include "longwalk-range-mode.h"
 #include "macro.h"
 #include "mapmark.h"
 #include "menu.h"
 #include "message.h"
 #include "mon-death.h"
 #include "nearby-danger.h"
+#include "options.h"
 #include "output.h"
 #include "place.h"
 #include "prompt.h"
@@ -275,8 +278,11 @@ bool feat_is_traversable_now(dungeon_feature_type grid, bool try_fallback,
             return false;
 
         // Swimmers and water-walkers get deep water.
+        // Note that checking whether your base form can swim is not good enough;
+        // your current form must *also* be able to swim.
         if (grid == DNGN_DEEP_WATER
-            && (player_likes_water(true) || have_passive(passive_t::water_walk)))
+            && ((player_likes_water(true) && you.can_swim())
+                 || have_passive(passive_t::water_walk)))
         {
             return true;
         }
@@ -415,7 +421,6 @@ static bool _is_reseedable(const coord_def& c, bool ignore_danger = false)
            || _feat_is_blocking_door(grid)
            || is_trap(c)
            || !ignore_danger && _monster_blocks_travel(cell.monsterinfo())
-           || g_Slime_Wall_Check && slime_wall_neighbour(c)
            || !_is_safe_cloud(c);
 }
 
@@ -523,24 +528,11 @@ bool is_travelsafe_square(const coord_def& c, bool ignore_hostile,
         return false;
     }
 
-    if (g_Slime_Wall_Check && slime_wall_neighbour(c)
-        && !actor_slime_wall_immune(&you))
-    {
-        return false;
-    }
-
     if (!_is_safe_cloud(c) && !try_fallback)
         return false;
 
-    if (is_trap(c))
-    {
-        trap_def trap;
-        trap.pos = c;
-        trap.type = env.map_knowledge(c).trap();
-        trap.ammo_qty = 1;
-        if (trap.is_safe())
-            return true;
-    }
+    if (feat_is_trap(env.map_knowledge(c).feat()) && trap_is_safe(env.map_knowledge(c).feat()))
+        return true;
 
     if (grid == DNGN_BINDING_SIGIL && !you.is_binding_sigil_immune())
         return false;
@@ -560,7 +552,7 @@ static bool _is_safe_move(const coord_def& c)
     {
         // Stop before wasting energy on plants and fungi,
         // unless worshipping Fedhas.
-        if (you.can_see(*mon) && mon->is_firewood() && !fedhas_passthrough(mon))
+        if (you.aware_of(*mon) && mon->is_firewood() && !fedhas_passthrough(mon))
             return false;
 
         // If this is any *other* monster, it'll be visible and
@@ -569,7 +561,7 @@ static bool _is_safe_move(const coord_def& c)
         //    should have been aborted already by the checks in view.cc.
     }
 
-    if (is_trap(c) && !trap_at(c)->is_safe())
+    if (feat_is_trap(env.grid(c)) && !trap_is_safe(env.grid(c)))
         return false;
 
     return _is_safe_cloud(c);
@@ -1114,22 +1106,10 @@ command_type travel()
             if (you.duration[type] == 0)
                 continue;
 
-            // Only rest off the bad part of Swiftness
-            if (type == DUR_SWIFTNESS && you.attribute[ATTR_SWIFTNESS] > 0)
-                continue;
-
             // Only try to rest off transformations when this is both possible
             // and the form is negative.
             if (type == DUR_TRANSFORMATION
                 && (!you.transform_uncancellable || !form_is_bad()))
-            {
-                continue;
-            }
-
-            // Poison doesn't wear off while in this state, so don't try waiting
-            // for it.
-            if (type == DUR_POISONING
-                && (you.is_nonliving() || you.is_lifeless_undead()))
             {
                 continue;
             }
@@ -1461,7 +1441,8 @@ coord_def travel_pathfind::pathfind(run_mode_type rmode, bool fallback_explore)
         return start;
 
     unwind_bool slime_wall_check(g_Slime_Wall_Check,
-                                 !actor_slime_wall_immune(&you));
+                                 !ignore_player_traversability
+                                 && !actor_slime_wall_immune(&you));
     unwind_slime_wall_precomputer slime_neighbours(g_Slime_Wall_Check);
 
     // How many points we'll consider next iteration.
@@ -1622,7 +1603,12 @@ bool travel_pathfind::square_slows_movement(const coord_def &c)
     //
     // Walking through shallow water and opening closed doors is considered to
     // have the cost of two normal moves for travel purposes.
-    const int feat_cost = _feature_traverse_cost(feature);
+    int feat_cost = _feature_traverse_cost(feature);
+
+    // Areas next to slime walls are traversible, but we'd prefer not to if possible.
+    if (g_Slime_Wall_Check && slime_wall_neighbour(c))
+        feat_cost += 5;
+
     if (feat_cost > 1
         && point_distance[c.x][c.y] > traveled_distance - feat_cost)
     {
@@ -1658,7 +1644,8 @@ void travel_pathfind::check_square_greed(const coord_def &c)
 
 bool travel_pathfind::path_flood(const coord_def &c, const coord_def &dc)
 {
-    if (!in_bounds(dc) || unreachables.count(dc))
+    // Squares outside the map cannot be explored or moved to.
+    if (!map_bounds(dc) || unreachables.count(dc))
         return false;
 
     if (floodout
@@ -1721,8 +1708,11 @@ bool travel_pathfind::path_flood(const coord_def &c, const coord_def &dc)
                     {
                         const coord_def ddc = dc + Compass[dir];
 
-                        if (feat_is_wall(env.map_knowledge(ddc).feat()))
+                        if (map_bounds(ddc)
+                            && feat_is_wall(env.map_knowledge(ddc).feat()))
+                        {
                             dist -= Options.explore_wall_bias;
+                        }
                     }
 
                     if (Options.explore_wall_bias < 0 &&
@@ -1774,6 +1764,10 @@ bool travel_pathfind::path_flood(const coord_def &c, const coord_def &dc)
         if (unexplored_dist != UNFOUND_DIST && greedy_dist != UNFOUND_DIST)
             return true;
     }
+
+    // Don't consider moving to squares outside the playable area.
+    if (!in_bounds(dc))
+        return false;
 
     // We don't want to follow the transporter at c if it's excluded. We also
     // don't want to update point_distance for the destination based on
@@ -4633,6 +4627,8 @@ void runrest::initialise(int dir, int mode)
     notified_ancestor_hp_full = false;
     turns_passed = 0;
     skip_autorest = false;
+    starting_pos = you.pos();
+    max_longwalk_distance = -1; // Default to no maximum.
 
     if (dir == RDIR_REST)
     {
@@ -4654,6 +4650,34 @@ void runrest::initialise(int dir, int mode)
         set_run_check(0, left);
         set_run_check(1, dir);
         set_run_check(2, right);
+
+        switch (Options.longwalk_range)
+        {
+            case LWR_LOS:
+                max_longwalk_distance = get_los_radius();
+                break;
+            case LWR_CONSTANT:
+                max_longwalk_distance = Options.longwalk_range_constant;
+                break;
+            case LWR_VISIBLE:
+
+                // See how far we can go in the "pos" direction to find the furthest
+                // visible tile. We don't need to worry about impassible tiles too
+                // much because max_distance is only one limitation. We'll never set
+                // the distance to 0 because we will always attempt to move at least
+                // 1 tile so that wouldn't do anything anyway.
+                max_longwalk_distance = 1;
+                for (int dist = 2; dist <= get_los_radius(); dist++)
+                {
+                    coord_def target = starting_pos + pos*dist;
+                    if (!in_bounds(target) || !you.see_cell_no_trans(target))
+                        break;
+                    max_longwalk_distance = dist;
+                }
+                break;
+            case LWR_UNLIMITED: ; // do nothing. It's already initialized.
+        }
+
     }
 
     if (runmode == RMODE_REST_DURATION || runmode == RMODE_WAIT_DURATION)
@@ -4707,6 +4731,13 @@ bool runrest::run_should_stop() const
     const coord_def targ = you.pos() + pos;
     const map_cell& tcell = env.map_knowledge(targ);
 
+    if (max_longwalk_distance >= 0
+        && starting_pos.distance_from(targ) > max_longwalk_distance)
+    {
+        return true;
+    }
+
+
     if (!_is_safe_cloud(targ))
         return true;
 
@@ -4721,9 +4752,6 @@ bool runrest::run_should_stop() const
 
     const monster_info* mon = tcell.monsterinfo();
     if (mon && !fedhas_passthrough(tcell.monsterinfo()))
-        return true;
-
-    if (slime_wall_neighbour(targ) && !actor_slime_wall_immune(&you))
         return true;
 
     for (int i = 0; i < 3; i++)
@@ -5001,6 +5029,11 @@ void explore_discoveries::found_feature(const coord_def &pos,
         runelights.emplace_back(cleaned_feature_description(pos), 1);
         es_flags |= ES_RUNELIGHT;
     }
+    else if (feat == DNGN_PURIFIED_MUTATION_CATALYST)
+    {
+        mutation_catalysts.emplace_back(cleaned_feature_description(pos), 1);
+        es_flags |= ES_MUTATION_CATALYST;
+    }
 }
 
 void explore_discoveries::add_stair(
@@ -5176,6 +5209,7 @@ bool explore_discoveries::stop_explore() const
     say_any(apply_quantities(transporters), "transporter");
     say_any(apply_quantities(runed_doors), "runed door");
     say_any(apply_quantities(runelights), "runelights");
+    say_any(apply_quantities(mutation_catalysts), "mutation catalysts");
 
     return true;
 }

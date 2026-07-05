@@ -125,22 +125,24 @@ protected:
 /////////////////////////////////////////////////////////////////////////////
 // tile_fg_store
 
-tileidx_t tile_fg_store::operator=(tileidx_t tile)
+tile_with_flags_t tile_fg_store::operator=(tile_with_flags_t tile)
 {
-    if ((tile & TILE_FLAG_MASK) == (m_tile & TILE_FLAG_MASK))
+    if (tile.tile() == m_tile.tile())
     {
         // Update, as flags may have changed.
         m_tile = tile;
         return m_tile;
     }
 
-    mcache_entry *old_entry = mcache.get(m_tile);
+    tileidx_t old_tile = m_tile.tile();
+    mcache_entry *old_entry = mcache.get(old_tile);
     if (old_entry)
         old_entry->dec_ref();
 
     m_tile = tile;
 
-    mcache_entry *new_entry = mcache.get(m_tile);
+    tileidx_t new_tile = m_tile.tile();
+    mcache_entry *new_entry = mcache.get(new_tile);
     if (new_entry)
         new_entry->inc_ref();
 
@@ -155,7 +157,7 @@ mcache_manager::~mcache_manager()
     clear_all();
 }
 
-unsigned int mcache_manager::register_monster(const monster_info& minf)
+tileidx_t mcache_manager::register_monster(const monster_info& minf)
 {
     // TODO enne - is it worth it to search against all mcache entries?
     // TODO enne - pool mcache types to avoid too much alloc/dealloc?
@@ -186,7 +188,7 @@ unsigned int mcache_manager::register_monster(const monster_info& minf)
 
     tileidx_t idx = ~0;
 
-    for (unsigned int i = 0; i < m_entries.size(); i++)
+    for (tileidx_t i = 0; i < (tileidx_t)m_entries.size(); i++)
     {
         if (!m_entries[i])
         {
@@ -198,7 +200,7 @@ unsigned int mcache_manager::register_monster(const monster_info& minf)
 
     if (idx > m_entries.size())
     {
-        idx = m_entries.size();
+        idx = (tileidx_t)m_entries.size();
         m_entries.push_back(entry);
     }
 
@@ -222,9 +224,8 @@ void mcache_manager::clear_all()
     deleteAll(m_entries);
 }
 
-mcache_entry *mcache_manager::get(tileidx_t tile)
+mcache_entry *mcache_manager::get(tileidx_t idx)
 {
-    tileidx_t idx = tile & TILE_FLAG_MASK;
     if (idx < TILEP_MCACHE_START)
         return nullptr;
 
@@ -243,7 +244,7 @@ mcache_monster::mcache_monster(const monster_info& mon)
     ASSERT(mcache_monster::valid(mon));
 
     mtype = mon.type;
-    m_mon_tile = tileidx_monster(mon) & TILE_FLAG_MASK;
+    m_mon_tile = tileidx_monster(mon).tile();
 
     const item_def* mon_weapon = mon.inv[MSLOT_WEAPON].get();
     m_equ_tile = (mon_weapon != nullptr) ? tilep_equ_weapon(*mon_weapon) : 0;
@@ -287,7 +288,7 @@ bool mcache_monster::get_weapon_offset(tileidx_t mon_tile,
     case TILEP_MONS_ZOMBIE_OCTOPODE:
     case TILEP_MONS_ANCESTOR:
     case TILEP_MONS_ANCESTOR_KNIGHT:
-    case TILEP_MONS_ANCESTOR_BATTLEMAGE:
+    case TILEP_MONS_ANCESTOR_ELEMENTALIST:
     case TILEP_MONS_RAGGED_HIEROPHANT:
     case TILEP_MONS_VAMPIRE_MAGE:
     case TILEP_MONS_NORRIS:
@@ -337,8 +338,6 @@ bool mcache_monster::get_weapon_offset(tileidx_t mon_tile,
     case TILEP_MONS_GRUNN:
     case TILEP_MONS_GNOLL_BOUDA:
     case TILEP_MONS_NESSOS_BOWLESS:
-    case TILEP_MONS_ARMATAUR:
-    case TILEP_MONS_PLAYER_SHADOW_ARMATAUR:
     case TILEP_MONS_TENGU:
     case TILEP_MONS_PLAYER_SHADOW_TENGU:
     case TILEP_MONS_TENGU_CONJURER:
@@ -567,6 +566,7 @@ bool mcache_monster::get_weapon_offset(tileidx_t mon_tile,
     case TILEP_MONS_DEEP_ELF_DEATH_MAGE:
     case TILEP_MONS_DEEP_ELF_HIGH_PRIEST:
     case TILEP_MONS_DEEP_ELF_KNIGHT:
+    case TILEP_MONS_DEEP_ELF_KNIGHT_PHASED:
     case TILEP_MONS_DEEP_ELF_DEMONOLOGIST:
     case TILEP_MONS_DEEP_ELF_ANNIHILATOR:
     case TILEP_MONS_PLAYER_SHADOW_ELF:
@@ -721,8 +721,15 @@ bool mcache_monster::get_weapon_offset(tileidx_t mon_tile,
     case TILEP_MONS_SAINT_ROKA:
     case TILEP_MONS_DRAUGR_QUADRUPED_SMALL:
     case TILEP_MONS_DRAUGR_DRACONIAN:
+    case TILEP_MONS_KOBOLD_GEOMANCER:
+    case TILEP_MONS_KOBOLD_GEOMANCER_1:
+    case TILEP_MONS_KOBOLD_GEOMANCER_2:
         *ofs_x = -3;
         *ofs_y = 1;
+        break;
+    case TILEP_MONS_FUNGAL_SHAMBLER:
+        *ofs_x = -3;
+        *ofs_y = 2;
         break;
     case TILEP_MONS_SERAPH_SWORDLESS:
         *ofs_x = -1;
@@ -730,12 +737,6 @@ bool mcache_monster::get_weapon_offset(tileidx_t mon_tile,
         break;
     case TILEP_MONS_DRAUGR_BIRD:
         *ofs_x = -4;
-        *ofs_y = 1;
-        break;
-    case TILEP_MONS_KOBOLD_GEOMANCER:
-    case TILEP_MONS_KOBOLD_GEOMANCER_1:
-    case TILEP_MONS_KOBOLD_GEOMANCER_2:
-        *ofs_x = -3;
         *ofs_y = 1;
         break;
     case TILEP_MONS_KOBOLD_DEMONOLOGIST:
@@ -759,6 +760,7 @@ bool mcache_monster::get_weapon_offset(tileidx_t mon_tile,
     case TILEP_MONS_OGRE:
     case TILEP_MONS_SWAMP_OGRE:
     case TILEP_MONS_OGRE_MAGE:
+    case TILEP_MONS_OGRE_MAGE_PHASED:
     case TILEP_MONS_IRONBOUND_THUNDERHULK:
     case TILEP_MONS_LODUL:
         *ofs_x = 1;
@@ -981,6 +983,7 @@ bool mcache_monster::get_shield_offset(tileidx_t mon_tile,
     case TILEP_MONS_ORC_WARLORD:
     case TILEP_MONS_ZOMBIE_ORC:
     case TILEP_MONS_DEEP_ELF_KNIGHT:
+    case TILEP_MONS_DEEP_ELF_KNIGHT_PHASED:
     case TILEP_MONS_KIRKE:
     case TILEP_MONS_DIMME:
     case TILEP_MONS_ORC_APOSTLE_2:
@@ -1013,11 +1016,6 @@ bool mcache_monster::get_shield_offset(tileidx_t mon_tile,
     case TILEP_MONS_ARACHNE_STAVELESS:
         *ofs_x = -6;
         *ofs_y = 1;
-        break;
-
-    case TILEP_MONS_ARMATAUR:
-        *ofs_x = -9;
-        *ofs_y = 2;
         break;
 
     case TILEP_MONS_WIGLAF:
@@ -1468,7 +1466,7 @@ int mcache_monster::info(tile_draw_info *dinfo) const
 
 bool mcache_monster::valid(const monster_info& mon)
 {
-    tileidx_t mon_tile = tileidx_monster(mon) & TILE_FLAG_MASK;
+    tileidx_t mon_tile = tileidx_monster(mon).tile();
 
     int ox, oy;
     bool have_weapon_offs = (mon.type == MONS_PLAYER
@@ -1529,9 +1527,20 @@ mcache_ghost::mcache_ghost(const monster_info& mon)
 {
     ASSERT(mcache_ghost::valid(mon));
 
+    uint32_t data[] =
+    {
+        (uint32_t)mon.i_ghost.species,
+        (uint32_t)mon.i_ghost.job,
+        (uint32_t)mon.i_ghost.religion,
+        (uint32_t)mon.i_ghost.best_skill,
+        (uint32_t)mon.i_ghost.best_skill_rank,
+        (uint32_t)mon.i_ghost.xl_rank,
+        (uint32_t)mon.i_ghost.damage,
+        (uint32_t)mon.i_ghost.ac,
+    };
+
     const uint32_t seed = hash32(&mon.mname[0], mon.mname.size())
-                        ^ hash32(&mon.i_ghost, sizeof(mon.i_ghost)
-                                             - sizeof(mon.i_ghost.title));
+                          ^ hash_uint32(data);
 
     m_doll.parts[TILEP_PART_BASE] = TILEP_SHOW_EQUIP;
     tilep_race_default(mon.i_ghost.species, 0, &m_doll);
@@ -1554,7 +1563,7 @@ mcache_ghost::mcache_ghost(const monster_info& mon)
     if (!Options.tile_grinch && today_is_halloween())
         m_doll.parts[TILEP_PART_HELM] = TILEP_HELM_PUMPKIN;
     else if (m_doll.parts[TILEP_PART_HELM] == TILEP_HELM_PUMPKIN)
-        m_doll.parts[TILEP_PART_HELM] = TILEP_HELM_FIRST_NORM; // every day is *not* halloween
+        m_doll.parts[TILEP_PART_HELM] = TILEP_HELM_NORMAL; // every day is *not* halloween
 
 
     if (ac > 25)
@@ -1577,11 +1586,11 @@ mcache_ghost::mcache_ghost(const monster_info& mon)
     {
     case SK_MACES_FLAILS:
         if (dam > 30)
-            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_GREAT_FLAIL;
-        else if (dam > 25)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_GREAT_MACE;
-        else if (dam > 20)
+        else if (dam > 25)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_EVENINGSTAR;
+        else if (dam > 20)
+            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_DIRE_FLAIL;
         else if (dam > 15)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_MORNINGSTAR;
         else if (dam > 10)
@@ -1593,17 +1602,21 @@ mcache_ghost::mcache_ghost(const monster_info& mon)
         break;
 
     case SK_SHORT_BLADES:
-        if (dam > 20)
+        if (dam > 25)
+            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_QUICK_BLADE;
+        else if (dam > 20)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_RAPIER;
         else if (dam > 10)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_SHORT_SWORD_SLANT;
         else
-            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_DAGGER_SLANT;
+            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_DAGGER;
         break;
 
     case SK_LONG_BLADES:
-        if (dam > 25)
-            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_GREAT_SWORD_SLANT;
+        if (dam > 35)
+            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_TRIPLE_SWORD;
+        else if (dam > 25)
+            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_GREAT_SWORD;
         else if (dam > 20)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_KATANA_SLANT;
         else if (dam > 15)
@@ -1628,6 +1641,8 @@ mcache_ghost::mcache_ghost(const monster_info& mon)
         break;
 
     case SK_POLEARMS:
+        if (dam > 40)
+            m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_BARDICHE;
         if (dam > 30)
             m_doll.parts[TILEP_PART_HAND1] = TILEP_HAND1_GLAIVE;
         else if (dam > 20)
@@ -1682,7 +1697,7 @@ mcache_armour::mcache_armour(const monster_info& mon)
 {
     ASSERT(mcache_armour::valid(mon));
 
-    m_mon_tile = tileidx_monster(mon) & TILE_FLAG_MASK;
+    m_mon_tile = tileidx_monster(mon).tile();
 
     const item_def* mon_armour = mon.inv[MSLOT_ARMOUR].get();
     if (mon_armour)
@@ -1715,16 +1730,19 @@ mcache_demon::mcache_demon(const monster_info& minf)
     const uint32_t seed = hash32(&minf.mname[0], minf.mname.size());
 
     m_demon.head = tile_player_coloured(TILEP_DEMON_HEAD,
-                                        element_colour(minf.colour()))
+                                        element_colour(minf.colour(),
+                                                       minf.pos))
         + hash_with_seed(tile_player_count(TILEP_DEMON_HEAD), seed, 1);
     m_demon.body = tile_player_coloured(TILEP_DEMON_BODY,
-                                        element_colour(minf.colour()))
+                                        element_colour(minf.colour(),
+                                                       minf.pos))
         + hash_with_seed(tile_player_count(TILEP_DEMON_BODY), seed, 2);
 
     if (minf.is(MB_AIRBORNE))
     {
         m_demon.wings = tile_player_coloured(TILEP_DEMON_WINGS,
-                                             element_colour(minf.colour()))
+                                             element_colour(minf.colour(),
+                                                            minf.pos))
             + hash_with_seed(tile_player_count(TILEP_DEMON_WINGS), seed, 3);
     }
     else

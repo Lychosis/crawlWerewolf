@@ -204,7 +204,16 @@ function master_elementalist_setup(e, sprintscale)
            "fire_storm.11.wizard;" ..
            "ozocubu's_refrigeration.11.wizard;" ..
            "haste.11.wizard;" ..
-           "repel_missiles.11.wizard" .. equip_def .. " . ring of willpower"
+           "deflect_missiles.11.wizard" .. equip_def .. " . ring of willpower"
+end
+
+-- A function to reduce all the scythe definition boilerplate.
+function scythe(ego)
+  local s = "halberd itemname:scythe tile:wpn_scythe wtile:scythe"
+  if ego ~= nil then
+    s = s .. " ego:" .. ego
+  end
+  return s
 end
 
 -- A handy boilerplate-reducing function for getting a cloud generator to place
@@ -231,21 +240,20 @@ function vault_species_skeletons(e, category)
 -- post-rotting. Orcs are included to cover Beogh's popularity in the Dungeon.
 -- Coglins have their exoskeletons stolen. Species that only show up
 -- in extended are counted as the rarest type.
-  local s1 = {"goblin", "gnoll", "elf", "kobold", "troll", "orc"}
+  local s1 = {"goblin", "gnoll", "elf", "kobold", "troll", "orc", "centaur"}
   local s2 = {"draconian", "naga", "merfolk", "minotaur", "spriggan", "tengu"}
-  local s3 = {"armataur", "barachi", "demigod", "dwarf",
-              "demonspawn", "felid", "oni"}
+  local s3 = {"barachi", "demigod", "dwarf", "demonspawn", "felid", "oni"}
   local output = "human skeleton"
   if category == "early" or category == "dungeon" or category == "all" then
-    output = output .. " / " .. table.concat(s1, " skeleton / ")
+    output = output .. " / " .. table.concat(s1, " skeleton / ") .. " skeleton"
   end
   if category == "late" or category == "dungeon" or category == "all" then
-    output = output .. " / " .. table.concat(s2, " skeleton / ")
+    output = output .. " / " .. table.concat(s2, " skeleton / ") .. " skeleton"
   end
   if category == "all" then
-    output = output .. " / " .. table.concat(s3, " skeleton / ")
+    output = output .. " / " .. table.concat(s3, " skeleton / ") .. " skeleton"
   end
-  return output  .. " skeleton"
+  return output
 end
 
 -- Three sets of reusable vault feature redefines scattered across the game,
@@ -314,11 +322,16 @@ function decorative_floor (e, glyph, type)
                               "dngn_dark_flower_pot_broken"},
     ["orcish standard"] = {"lightcyan", "dngn_ensign_beogh"},
     ["infernal standard"] = {"red", "dngn_ensign_gehenna"},
+    ["caliginous standard"] = {"magenta", "dngn_ensign_dark"},
     ["fur brush"] = {"brown", "dngn_yak_fur"},
     ["set of bottled spirits"] = {"lightgreen", "dngn_bottled_spirits"},
+    ["djembe set"] = {"brown", "dngn_djembe"},
+    ["skull pike"] = {"lightgrey", "dngn_skull_pike"},
     ["mop and bucket"] = {"lightblue", "dngn_mop"},
     ["bloodied mop and bucket"] = {"lightred", "dngn_mop_bloody"},
-    ["weapon-inlaid floor"] = {"lightgrey", "floor_blade"}
+    ["assortment of trash"] = {"lightgrey", "dngn_assortment_of_trash"},
+    ["weapon-inlaid floor"] = {"lightgrey", "floor_blade"},
+    ["empty mutation catalyst"] = {"blue", "dngn_empty_mutation_catalyst"}
   }
 
   for name, contents in pairs(dec) do
@@ -361,7 +374,7 @@ function vaults_hard_standard(e, ngen, ft)
   end
   if you.in_branch("Vaults") then
     if not ft then
-      e.ftile('0123456789._^~$%*|defghijkmnFGITUVY+mn{([<})]}> = floor_metal_gold')
+      e.ftile('0123456789._^~$%*|defghijkmnFGISTUVY+mn{([<})]}> = floor_metal_gold')
     else
       e.ftile(ft .. ' = floor_metal_gold')
     end

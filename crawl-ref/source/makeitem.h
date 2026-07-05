@@ -18,6 +18,7 @@ int create_item_named(string name, coord_def pos, string *error);
 
 int items(bool allow_uniques, object_class_type force_class, int force_type,
           int item_level, int force_ego = 0, int agent = NO_AGENT,
+          bool acquirement = false,
           string custom_name = "",
           CrawlHashTable const *fixed_props = nullptr);
 
@@ -50,6 +51,8 @@ spell_type choose_parchment_spell(int item_level, spschool school = spschool::no
                                   int fixed_spell_level = 0);
 
 void lucky_upgrade_item(item_def& item);
+
+void drop_net_at(const coord_def& pos);
 
 armour_type pick_random_aux_armour_type();
 armour_type pick_random_shield_type();
