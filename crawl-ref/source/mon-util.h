@@ -431,6 +431,10 @@ bool mons_is_sensed(monster_type mc);
 bool mons_offers_beogh_conversion(const monster& mon);
 bool mons_offers_beogh_conversion_now(const monster& mon);
 
+bool mons_is_rider(monster_type mc);
+monster_type mons_mount_type(monster_type mc);
+monster_type mons_rider_type(monster_type mc);
+
 bool invalid_monster(const monster* mon);
 bool invalid_monster_type(monster_type mt);
 bool invalid_monster_index(int i);
@@ -502,9 +506,8 @@ bool mons_is_immotile(const monster& mons);
 
 int get_dist_to_nearest_monster();
 bool monster_nearby();
-actor *actor_by_mid(mid_t m, bool require_valid = false);
-monster *monster_by_mid(mid_t m, bool require_valid = false);
-monster *cached_monster_copy_by_mid(mid_t m);
+actor *actor_by_mid(mid_t m, bool require_valid = false, bool allow_dead = false);
+monster *monster_by_mid(mid_t m, bool require_valid = false, bool allow_dead = false);
 bool mons_is_recallable(const actor* caller, const monster& targ);
 void init_anon();
 actor *find_agent(mid_t m, kill_category kc);

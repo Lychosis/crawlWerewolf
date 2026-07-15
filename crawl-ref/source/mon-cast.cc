@@ -247,9 +247,18 @@ static const map<spell_type, mons_spell_logic> spell_to_logic = {
         [](monster &caster, mon_spell_slot, bolt& beam)
         {
             beam.fire();
+
             coord_def spot;
-            if (find_habitable_spot_near(caster.pos(), caster.type, 2, spot))
-                caster.move_to(spot, MV_TRANSLOCATION);
+            int count = 0;
+            monster_pathfind path;
+            path.fill_traversability(&caster, 2, true);
+            for (radius_iterator ri(caster.pos(), 2, C_SQUARE); ri; ++ri)
+            {
+                if (path.is_reachable(*ri) && one_chance_in(++count))
+                    spot = *ri;
+            }
+            if (!spot.origin())
+                caster.move_to(spot);
         },
         _selfench_beam_setup(BEAM_INVISIBILITY),
     } },
@@ -1683,6 +1692,32 @@ static void _cast_regenerate_other(monster* caster)
     }
 }
 
+static void _cast_touch_of_paradox(monster* caster)
+{
+    int seen = 0;
+    monster* targ = nullptr;
+
+    for (monster_near_iterator mi(caster, LOS_NO_TRANS); mi; ++mi)
+    {
+        if (*mi != caster && mons_aligned(caster, *mi)
+            && mons_has_attacks(*mi->as_monster())
+            && !mi->has_ench(ENCH_PARADOX_TOUCHED))
+        {
+            if (one_chance_in(++seen))
+                targ = *mi;
+        }
+    }
+
+    if (targ != nullptr)
+    {
+        const int pow = mons_spellpower(*caster, SPELL_TOUCH_OF_PARADOX);
+        int dur = (4 + roll_dice(2, pow / 20)) * BASELINE_DELAY;
+        flash_tile(targ->pos(), MAGENTA, 120, TILE_BOLT_CORRUPTION);
+        simple_monster_message(*targ, " is touched by paradox!");
+        targ->add_ench(mon_enchant(ENCH_PARADOX_TOUCHED, caster, dur));
+    }
+}
+
 static void _cast_mass_regeneration(monster* caster)
 {
     vector<monster*> targs;
@@ -2824,6 +2859,7 @@ bool setup_mons_cast(const monster* mons, bolt &pbolt, spell_type spell_cast,
     case SPELL_FUNERAL_DIRGE:
     case SPELL_MANIFOLD_ASSAULT:
     case SPELL_REGENERATE_OTHER:
+    case SPELL_TOUCH_OF_PARADOX:
     case SPELL_MASS_REGENERATION:
     case SPELL_BESTOW_ARMS:
     case SPELL_FULMINANT_PRISM:
@@ -3577,7 +3613,6 @@ static bool _seal_doors_and_stairs(const monster* warden,
             for (coord_def dc : door_spots)
             {
                 dgn_close_door(dc);
-                set_terrain_changed(dc);
                 dungeon_events.fire_position_event(DET_DOOR_CLOSED, dc);
 
                 if (is_excluded(dc))
@@ -6525,8 +6560,8 @@ static branch_summon_pair _invitation_summons[] =
     }},
   { BRANCH_ELF,
     { // Elf enemies
-      {  1,   1,   50, FLAT, MONS_DEEP_ELF_AIR_MAGE },
-      {  1,   1,   50, FLAT, MONS_DEEP_ELF_FIRE_MAGE },
+      {  1,   1,   50, FLAT, MONS_DEEP_ELF_ZEPHYRMANCER },
+      {  1,   1,   50, FLAT, MONS_DEEP_ELF_PYROMANCER },
       {  1,   1,   40, FLAT, MONS_DEEP_ELF_KNIGHT },
     }},
   { BRANCH_VAULTS,
@@ -8782,6 +8817,10 @@ void mons_cast(monster* mons, bolt pbolt, spell_type spell_cast,
         _cast_bestow_arms(*mons);
         return;
 
+    case SPELL_TOUCH_OF_PARADOX:
+        _cast_touch_of_paradox(mons);
+        return;
+
     case SPELL_FULMINANT_PRISM:
         _mons_cast_prisms(*mons, *mons->get_foe(),
                           mons_spellpower(*mons, SPELL_FULMINANT_PRISM), false);
@@ -9033,7 +9072,7 @@ static void _speech_fill_target(string& targ_prep, string& target,
     else if (mons->foe == MHITNOT && !mons_is_confused(*mons, true))
         target = "NONEXISTENT FOE";
     else if (!invalid_monster_index(mons->foe)
-             && env.mons[mons->foe].type == MONS_NO_MONSTER)
+             && invalid_monster(&env.mons[mons->foe]))
     {
         target = "DEAD FOE";
     }
@@ -9946,6 +9985,20 @@ ai_action::goodness monster_spell_goodness(monster* mon, spell_type spell)
     case SPELL_REGENERATE_OTHER:
     case SPELL_MASS_REGENERATION:
         return _ally_needs_regeneration(*mon);
+
+    case SPELL_TOUCH_OF_PARADOX:
+        if (!foe || !mon->can_see(*foe))
+            return ai_action::bad();
+
+        for (monster_near_iterator mi(mon, LOS_NO_TRANS); mi; ++mi)
+        {
+            if (*mi != mon && mons_aligned(mon, *mi)
+                && mons_has_attacks(**mi) && !mi->has_ench(ENCH_PARADOX_TOUCHED))
+            {
+                return ai_action::good();
+            }
+        }
+        return ai_action::bad();
 
     case SPELL_POISONOUS_CLOUD:
     case SPELL_MEPHITIC_CLOUD:

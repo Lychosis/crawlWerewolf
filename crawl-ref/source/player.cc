@@ -7502,7 +7502,7 @@ void player::teleport(bool now, bool wizard_tele)
 {
     ASSERT(!crawl_state.game_is_arena());
     if (now)
-        you_teleport_now(wizard_tele);
+        you_teleport_now("", false, wizard_tele);
     else
         you_teleport();
 }
@@ -9127,7 +9127,6 @@ void player_open_door(coord_def doorpos)
         if (cell_is_runed(dc))
             explored_tracked_feature(env.grid(dc));
         dgn_open_door(dc);
-        set_terrain_changed(dc);
         dungeon_events.fire_position_event(DET_DOOR_OPENED, dc);
 
         if (is_excluded(dc))
@@ -9299,7 +9298,6 @@ void player_close_door(coord_def doorpos)
     {
         // Once opened, formerly runed doors become normal doors.
         dgn_close_door(dc);
-        set_terrain_changed(dc);
         dungeon_events.fire_position_event(DET_DOOR_CLOSED, dc);
 
         if (is_excluded(dc))
